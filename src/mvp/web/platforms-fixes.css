@@ -1,0 +1,442 @@
+
+/* ==========================================================================
+   Platform Preview Specific Fixes (Loaded after platforms.css)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. 微信公众号配图修复
+   - 流式块级布局，消除水平排列挤压
+   - 图片按原始宽高比自适应完整显示（无强制拉伸/裁切）
+   - 图注沉底居中、可折行、字号适中、防溢出
+   -------------------------------------------------------------------------- */
+figure.pv-fig.wx-fig {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 22px 0 16px;
+  padding: 0;
+  background: transparent;
+  border-radius: var(--radius-sm, 6px);
+  overflow: hidden;
+}
+
+figure.pv-fig.wx-fig img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+  margin: 0 auto;
+  border-radius: var(--radius-sm, 6px);
+  background: var(--bg-surface-subtle, #f7f6f3);
+}
+
+figcaption.wx-caption {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 8px 0 0;
+  padding: 0 4px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-faint, #7c766e);
+  text-align: center;
+  letter-spacing: 0.02em;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* --------------------------------------------------------------------------
+   2. 门店海报卖点排版修复
+   - 适配 420px 宽画幅内约 370px 真实可用宽度
+   - 转为垂直层叠块：名称居上稳固显示，参数说明居下允许换行
+   - 清除 nowrap 与 flex 收缩导致的压缩归零及右侧溢出
+   -------------------------------------------------------------------------- */
+.pv-poster .po-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.pv-poster .po-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--poster-line, rgba(0, 0, 0, 0.12));
+}
+
+.pv-poster .po-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.pv-poster .po-item-name {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--poster-ink-primary, #1f1d1a);
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  word-break: break-word;
+}
+
+.pv-poster .po-item-spec {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  flex: none;
+  flex-shrink: 1;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+  font-size: 10.5px;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  color: var(--poster-ink-tertiary, #78716c);
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* --------------------------------------------------------------------------
+   3. 缺整机图占位样式修复与隔离
+   - 恢复通用视图（公众号、小红书、朋友圈等）清晰可见的字号与对比度
+   - 将机械网格工程风严格隔离在海报容器 .pv-poster 作用域内
+   -------------------------------------------------------------------------- */
+.pv-missing-hero {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  width: 100%;
+  min-height: 180px;
+  box-sizing: border-box;
+  padding: 24px 20px;
+  margin: 16px 0;
+  background: var(--accent-tint, #faf4f0) !important;
+  background-image: none !important;
+  border: 1.5px dashed var(--accent-terracotta, #c85a32) !important;
+  border-radius: var(--radius-md, 10px);
+}
+
+.pv-missing-hero-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: none !important;
+  color: var(--accent-terracotta, #c85a32) !important;
+  padding: 6px 14px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(200, 90, 50, 0.35) !important;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(31, 29, 26, 0.04);
+}
+
+.pv-missing-hero-sub {
+  display: block;
+  width: 100%;
+  max-width: 88%;
+  margin-top: 10px !important;
+  font-size: 11.5px !important;
+  line-height: 1.55 !important;
+  color: var(--text-secondary, #5c5852) !important;
+  letter-spacing: normal !important;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* 仅在门店海报容器内生效的图纸工程风格 */
+.pv-poster .pv-missing-hero {
+  min-height: 160px;
+  padding: 20px 16px;
+  margin: 0 0 12px;
+  background-color: #faf7f2 !important;
+  background-image:
+    linear-gradient(to right, rgba(68, 64, 60, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(68, 64, 60, 0.07) 1px, transparent 1px) !important;
+  background-size: 14px 14px !important;
+  border: 1px dashed var(--poster-line-strong, rgba(68, 64, 60, 0.35)) !important;
+  border-radius: 4px;
+}
+
+.pv-poster .pv-missing-hero .pv-missing-hero-label {
+  font-size: 11px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !
+important;
+  color: var(--accent-terracotta, #c85a32) !important;
+  background: rgba(250, 247, 242, 0.95) !important;
+  border-color: rgba(200, 90, 50, 0.4) !important;
+  padding: 4px 10px !important;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+}
+
+.pv-poster .pv-missing-hero .pv-missing-hero-sub {
+  display: block;
+  width: 100%;
+  max-width: 92%;
+  margin-top: 8px !important;
+  font-size: 9.5px !important;
+  line-height: 1.45 !important;
+  letter-spacing: 0.02em !important;
+  color: var(--poster-muted, #78716c) !important;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.pv-poster .pv-missing-hero {
+  max-width: 100%;
+  max-height: 220px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* ROUND 2B */
+
+figure.pv-fig.wx-fig img,
+figure.wx-fig img,
+.wx-fig img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto !important;
+  object-fit: contain !important;
+}
+
+figure.pv-fig.wx-fig,
+figure.wx-fig,
+.wx-fig {
+  display: block;
+  height: auto;
+}
+
+figure.wx-fig figcaption,
+.wx-fig figcaption {
+  display: block;
+  width: 100%;
+}
+
+.status-indicator {
+  white-space: normal !important;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.status-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+header,
+header > *,
+.header,
+.header > * {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  header,
+  .header {
+    flex-wrap: wrap;
+  }
+
+  .status-indicator {
+    box-sizing: border-box;
+  }
+}
+
+/* 通用缺图占位高度修正：避免 height:100% 在长文容器内被内容撑满 */
+.pv-missing-hero {
+  height: auto !important;
+}
+.pv-poster .pv-missing-hero {
+  height: 100% !important;
+}
+
+/* ROUND 2C POSTER FIT */
+.pv-poster {
+  box-sizing: border-box !important;
+  width: 420px !important;
+  height: 560px !important;
+  max-height: 560px !important;
+  padding: 18px 22px 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  overflow: hidden !important;
+}
+
+.pv-poster .po-brand,
+.pv-poster .po-header {
+  flex-shrink: 0 !important;
+  margin-bottom: 6px !important;
+}
+
+.pv-poster .po-visual {
+  height: 145px !important;
+  min-height: 145px !important;
+  max-height: 145px !important;
+  margin-bottom: 8px !important;
+  object-fit: cover !important;
+  flex-shrink: 0 !important;
+}
+
+.pv-poster .po-body,
+.pv-poster .po-main,
+.pv-poster .po-content {
+  flex: 0 1 auto !important;
+  min-height: 0 !important;
+}
+
+.pv-poster .po-title {
+  font-size: 18px !important;
+  line-height: 1.22 !important;
+  margin-top: 0 !important;
+  margin-bottom: 4px !important;
+  letter-spacing: -0.2px !important;
+}
+
+.pv-poster .po-sub {
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+  margin-top: 0 !important;
+  margin-bottom: 6px !important;
+}
+
+.pv-poster .po-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.pv-poster .po-item {
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 1px 0 !important;
+}
+
+.pv-poster .po-item-name {
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  margin-bottom: 1px !important;
+}
+
+.pv-poster .po-item-spec {
+  font-size: 9.5px !important;
+  line-height: 1.32 !important;
+}
+
+.pv-poster .po-footer {
+  position: static !important;
+  inset: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  margin-top: 8px !important;
+  padding-top: 0 !important;
+  flex-shrink: 0 !important;
+  clear: both !important;
+}
+
+.pv-poster .po-footer .po-cta {
+  font-size: 11px !important;
+  line-height: 1.3 !important;
+  padding: 4px 8px !important;
+}
+
+.pv-poster .po-footer .po-disclaimer,
+.pv-poster .po-footer .po-note,
+.pv-poster .po-footer .po-desc {
+  font-size: 8.5px !important;
+  line-height: 1.25 !important;
+  margin-top: 3px !important;
+}
+
+/* ROUND 2D POSTER SPACING */
+
+.pv-poster {
+  display: flex;
+  flex-direction: column;
+  height: 560px;
+  box-sizing: border-box;
+  padding-bottom: 18px;
+}
+
+.pv-poster .po-visual {
+  height: 202px !important;
+  min-height: 202px !important;
+  max-height: 202px !important;
+  overflow: hidden;
+}
+
+.pv-poster .po-visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pv-poster .po-title {
+  font-size: 20.5px !important;
+  line-height: 1.25 !important;
+  margin-top: 8px !important;
+  margin-bottom: 4px !important;
+}
+
+.pv-poster .po-sub,
+.pv-poster .po-subtitle {
+  font-size: 11.5px !important;
+  line-height: 1.35 !important;
+  margin-top: 0 !important;
+  margin-bottom: 6px !important;
+}
+
+.pv-poster .po-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5.5px !important;
+  margin-top: 0 !important;
+  margin-bottom: 10px !important;
+}
+
+.pv-poster .po-list .po-item,
+.pv-poster .po-list-item {
+  margin-bottom: 0 !important;
+}
+
+.pv-poster .po-footer {
+  margin-top: auto !important;
+}

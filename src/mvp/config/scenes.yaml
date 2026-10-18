@@ -1,0 +1,69 @@
+# 场景先验：结构化部分。人群/场景 → 默认维度权重与痛点。
+# 这是“业务规则”，不是产品事实；LLM 再根据自由文本需求调整，最终权重 = 先验*prior_mix + LLM*(1-prior_mix)。
+prior_mix: 0.4
+
+dimensions:
+  portability: 便携轻薄（重量、厚度）
+  display: 屏幕显示（尺寸、分辨率、色域、亮度）
+  performance: 性能与容量（处理器、内存、存储）
+  battery: 续航与充电（电池容量、充电）
+  ports: 接口与扩展
+  creation: 创作与手写（触控、笔、色彩）
+  ecosystem: 多设备协同与 AI 能力
+  os_compat: 系统与软件兼容（鸿蒙 / Windows）
+  value: 配置价值（性价比）
+
+# “性价比”不直接判定，只按可核验的点来描述
+value_definition: >-
+  配置价值 = 在知识库里能找到依据的内存/存储/接口/配件/系统生态等配置点各自能否满足用户任务。
+  价格只能引用“官方公开价格快照”并写明价格类型、核验时间和条件；没有快照就不下“划算/便宜”的结论，
+  只写“以官方渠道为准”，并列入待确认。
+
+scenarios:
+  开学季:
+    weights: {portability: .2, battery: .15, value: .2, display: .1, performance: .1, creation: .1, ecosystem: .1, os_compat: .1, ports: .05}
+    pain_points: [课程指定软件是否能装, 每天背着走, 预算有限, 宿舍与教室两头用]
+    stage: 比较
+  职场办公:
+    weights: {portability: .2, battery: .15, performance: .15, ports: .15, os_compat: .15, ecosystem: .1, display: .05, value: .05}
+    pain_points: [会议与出差反复携带, 外接投屏与外设, 多设备文件接力, 公司软件兼容]
+    stage: 决策
+  内容创作:
+    weights: {creation: .25, display: .25, performance: .25, ecosystem: .05, battery: .05, portability: .05, ports: .05, os_compat: .05}
+    pain_points: [屏幕色彩与触控, 导出与多任务, 软件工具链是否支持, 外出创作续航]
+    stage: 比较
+  家庭换新:
+    weights: {value: .2, display: .15, performance: .15, ecosystem: .15, portability: .1, battery: .1, os_compat: .1, ports: .05}
+    pain_points: [多人共用, 旧设备资料迁移, 预算与耐用, 家人是否会用]
+    stage: 比较
+  企业采购:
+    weights: {os_compat: .25, ports: .15, performance: .15, ecosystem: .1, battery: .1, portability: .1, value: .1, display: .05}
+    pain_points: [行业软件与驱动兼容, 批量管理, 外设与投屏, 采购流程]
+    stage: 决策
+  门店到访:
+    weights: {display: .2, portability: .2, ecosystem: .2, performance: .1, value: .1, battery: .1, ports: .05, creation: .05}
+    pain_points: [现场几分钟内看懂差异, 型号版本容易混, 想当场体验]
+    stage: 到店
+  新品首发:
+    weights: {ecosystem: .25, display: .2, performance: .2, portability: .15, battery: .1, creation: .05, ports: .03, os_compat: .02}
+    pain_points: [新在哪里, 和上一代的差异需有依据, 是否值得等]
+    stage: 认知
+  节日营销:
+    weights: {value: .25, portability: .2, display: .15, ecosystem: .15, performance: .1, battery: .1, ports: .05}
+    pain_points: [送礼或自用的选择, 活动信息以官方为准, 不被促销话术误导]
+    stage: 决策
+
+# 人群关键词（子串匹配）→ 权重增量
+audiences:
+  大学生: {portability: .1, value: .1}
+  新生: {portability: .1, value: .1}
+  家长: {value: .1, os_compat: .05}
+  设计: {creation: .15, display: .1}
+  创作: {creation: .15, display: .1}
+  程序员: {performance: .15, os_compat: .1, ports: .05}
+  开发: {performance: .15, os_compat: .1, ports: .05}
+  商务: {portability: .1, battery: .1}
+  出差: {portability: .1, battery: .1}
+  教师: {ports: .1, display: .05}
+  企业: {os_compat: .1, ports: .05}
+  IT: {os_compat: .1}

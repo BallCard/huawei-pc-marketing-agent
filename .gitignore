@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# 本地配置与密钥
+.env
+.env.*
+
+# 知识库副本与缓存（举办方资料，不入库）
+data/
+
+# 工具与系统
+.claude/launch.json
+.DS_Store
+Thumbs.db
+nul
+*.log
