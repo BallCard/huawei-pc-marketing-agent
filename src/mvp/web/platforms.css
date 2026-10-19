@@ -213,6 +213,21 @@ figure.pv-fig img {
 
 /* 3. 小红书平台原生预览 (.pv-xhs)
    ========================================================================== */
+.publisher-avatar {
+  display: grid;
+  place-items: center;
+}
+
+.publisher-avatar svg {
+  width: 78%;
+  height: 78%;
+  fill: none;
+  stroke: #716a5b;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .pv-phone.pv-xhs {
   --xhs-red: #c9463d;
   --xhs-red-tint: rgba(201, 70, 61, 0.08);
@@ -436,7 +451,7 @@ figure.pv-fig img {
   stroke-width: 1.6;
 }
 
-/* 4. 微信公众号长文原生预览 (.pv-wx.wide)
+/* 4. 微信公众号原生图文预览 (.pv-wx.wide)
    ========================================================================== */
 .pv-phone.pv-wx {
   --wx-green: #2a7e58;
@@ -525,9 +540,17 @@ blockquote.wx-lead {
 
 /* 配图通栏 + 图注 */
 figure.pv-fig.wx-fig {
+  display: block;
   margin: 22px 0 8px 0;
   border-radius: var(--radius-sm);
   width: 100%;
+  background: transparent;
+}
+
+figure.pv-fig.wx-fig img {
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
 }
 
 figcaption.wx-caption {
@@ -544,7 +567,8 @@ figcaption.wx-caption {
   line-height: 1.82;
   color: #2b2724;
   margin: 0 0 16px 0;
-  text-align: justify;
+  text-align: left;
+  white-space: pre-wrap;
   letter-spacing: 0.02em;
 }
 

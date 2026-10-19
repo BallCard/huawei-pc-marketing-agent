@@ -26,7 +26,7 @@ const PRESETS = [
   },
   {
     title: "同一款 · 换公众号",
-    sub: "长文 · 职场办公",
+    sub: "职场办公",
     v: {
       product: "HUAWEI MateBook 14（鸿蒙版）",
       audience: "经常出差的职场人",
@@ -122,16 +122,11 @@ let pollTimer = null;
 let startedAt = 0;
 
 async function init() {
+  Studio.init();
   try {
     const res = await fetch("/api/info");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const info = await res.json();
-
-    const statusEl = UI.$("#status");
-    if (statusEl) {
-      const label = statusEl.querySelector(".status-label") || statusEl;
-      label.textContent = `知识库：${info.kb?.kb_name || ""}（${info.kb?.models ?? 0} 个型号） · 写作 ${info.writer_model || ""} · 审核 ${info.judge_model || ""}`;
-    }
 
     const modelList = UI.$("#modelList");
     if (modelList && Array.isArray(info.models)) {
@@ -167,13 +162,8 @@ async function init() {
       }
     }
   } catch (err) {
-    const need = UI.$("#need");
-    if (need) {
-      need.replaceChildren(UI.el("div", { class: "card" }, [
-        UI.el("h3", {}, ["系统初始化失败"]),
-        UI.el("p", {}, [err.message || String(err)])
-      ]));
-    }
+    UI.$("form-error").hidden = false;
+    UI.$("form-error").textContent = `暂时无法读取产品和场景，请确认本地服务已启动后刷新。${err.message}`;
   }
 
   const presetsEl = UI.$("#presets");
@@ -183,28 +173,31 @@ async function init() {
       const btn = UI.el("button", {
         type: "button",
         class: "preset",
-        title: "点击直接运行"
+        title: "填入创作简报"
       }, [
         UI.el("b", {}, [p.title]),
         UI.el("span", {}, [p.sub])
       ]);
       btn.addEventListener("click", () => {
         fill(p.v);
-        submit("");
+        Studio.setMode("structured");
+        Studio.syncPlatform();
+        Studio.syncOptions();
+        UI.$("presets-dialog").close();
+        Studio.navigate("create");
+        Studio.toast("已填入示例");
       });
       presetsEl.appendChild(btn);
     });
   }
 
-  const btnGo = UI.$("#go");
-  if (btnGo) {
-    btnGo.addEventListener("click", () => submit(""));
-  }
+  UI.$("task-form").addEventListener("submit", event => { event.preventDefault(); submit(""); });
 
   const btnRedo = UI.$("#redo");
   if (btnRedo) {
     btnRedo.addEventListener("click", () => {
       const instr = UI.$("#instr")?.value || "";
+      if (!instr.trim()) { Studio.toast("先写一句想修改的内容"); UI.$("instr").focus(); return; }
       submit(instr);
     });
   }
@@ -219,10 +212,26 @@ async function init() {
     btnDl.addEventListener("click", exportHtml);
   }
 
-  if (new URLSearchParams(location.search).has("debug")) {
-    document.querySelectorAll("details.dbg").forEach(d => {
-      d.open = true;
-    });
+  Studio.syncPlatform();
+  const saved = sessionStorage.getItem("studio-active-job");
+  if (saved) {
+    try {
+      const previous = JSON.parse(saved);
+      fill(previous.form || { ...previous.task, extra: previous.mode === "sentence" ? "" : previous.task.extra });
+      Studio.setMode(previous.mode);
+      UI.$("scene-description").value = previous.sentence || "";
+      Studio.syncPlatform();
+      Studio.syncOptions();
+      startedAt = previous.startedAt || Date.now();
+      UI.$("go").disabled = true;
+      UI.$("redo").disabled = true;
+      const restorePage = location.hash.slice(1);
+      Studio.startRun();
+      poll(previous.id, restorePage);
+    } catch (err) {
+      sessionStorage.removeItem("studio-active-job");
+      console.warn("无法恢复上次创作", err);
+    }
   }
 }
 
@@ -253,6 +262,7 @@ function fill(v) {
 
   const extra = UI.$("#extra");
   if (extra && v.extra !== undefined) extra.value = v.extra;
+  if (v.speed) UI.$("speed").value = v.speed;
 }
 
 function readTask() {
@@ -262,7 +272,7 @@ function readTask() {
     .map(s => s.trim())
     .filter(Boolean);
 
-  return {
+  const task = {
     product: UI.$("#product")?.value.trim() || "",
     audience: UI.$("#audience")?.value.trim() || "",
     scenario: UI.$("#scenario")?.value.trim() || "",
@@ -272,15 +282,35 @@ function readTask() {
     constraints,
     extra: UI.$("#extra")?.value.trim() || ""
   };
+  if (Studio.getMode() === "sentence") {
+    task.audience = "";
+    task.scenario = "";
+    task.extra = [UI.$("scene-description").value.trim(), task.extra].filter(Boolean).join("\n\n");
+  }
+  return task;
 }
 
 async function submit(instruction) {
+  if (UI.$("go").disabled) return;
+  const error = UI.$("form-error");
+  error.hidden = true;
+  if (!instruction && Studio.getMode() === "sentence" && !UI.$("scene-description").value.trim()) {
+    error.textContent = "先说说你想为谁写、在什么场景下使用。";
+    error.hidden = false;
+    UI.$("scene-description").focus();
+    return;
+  }
+  if (!instruction && Studio.getMode() === "structured" && (!UI.$("audience").value.trim() || !UI.$("scenario").value.trim())) {
+    error.textContent = "选择人群和场景，或者切换到「说一句话」描述需求。";
+    error.hidden = false;
+    return;
+  }
   if (pollTimer) {
-    clearInterval(pollTimer);
+    clearTimeout(pollTimer);
     pollTimer = null;
   }
 
-  const task = readTask();
+  const task = instruction && current?.task ? { ...current.task } : readTask();
   const payload = {
     ...task,
     instruction: instruction ? String(instruction).trim() : ""
@@ -313,6 +343,7 @@ async function submit(instruction) {
   const chips = UI.$("#chips");
   if (chips) chips.replaceChildren();
 
+  Studio.startRun();
   showFlow([], true);
 
   try {
@@ -329,51 +360,83 @@ async function submit(instruction) {
     if (!jid) {
       throw new Error("服务端未返回有效的任务 ID");
     }
+    const form = Object.fromEntries(["product", "audience", "scenario", "platform", "goal", "constraints", "extra", "speed"].map(id => [id, UI.$(id).value]));
+    sessionStorage.setItem("studio-active-job", JSON.stringify({ id: jid, task, form, mode: Studio.getMode(), sentence: UI.$("scene-description").value, startedAt }));
     poll(jid);
   } catch (err) {
     unlock();
     const runbar = UI.$("#runbar");
     if (runbar) runbar.hidden = true;
+    Studio.stopRun();
+    UI.$("process-title").textContent = "这次创作没能启动。";
     if (need) {
       need.replaceChildren(UI.el("div", { class: "card" }, [
         UI.el("h3", {}, ["任务启动失败"]),
         UI.el("p", {}, [err.message || String(err)])
       ]));
+      need.appendChild(UI.el("button", { class: "btn-secondary", type: "button", onclick: () => Studio.navigate("create") }, "返回简报重试"));
     }
   }
 }
 
-function poll(jid) {
-  if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(async () => {
+function poll(jid, restorePage = null) {
+  if (pollTimer) clearTimeout(pollTimer);
+  let failures = 0;
+  const tick = async () => {
     try {
       const res = await fetch(`/api/job/${jid}`);
-      if (!res.ok) return;
+      if (res.status === 404) {
+        unlock();
+        Studio.stopRun();
+        UI.$("runbar").hidden = true;
+        sessionStorage.removeItem("studio-active-job");
+        UI.$("process-title").textContent = "上次创作已过期。";
+        UI.$("need").replaceChildren(UI.el("p", {}, "服务可能已重启，请返回简报重新开始。"), UI.el("button", { class: "btn-secondary", type: "button", onclick: () => Studio.navigate("create") }, "返回创作简报"));
+        return;
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const j = await res.json();
+      failures = 0;
       const isRunning = j.state === "running";
+      if (isRunning) restorePage = null;
       showFlow(j.steps || [], isRunning);
 
       if (j.state === "done") {
-        clearInterval(pollTimer);
         pollTimer = null;
         unlock();
         showResult(j.result);
+        if (restorePage && j.result?.status !== "need_info") Studio.navigate(restorePage, false);
+        return;
       } else if (j.state === "error") {
-        clearInterval(pollTimer);
         pollTimer = null;
         unlock();
+        Studio.stopRun();
+        sessionStorage.removeItem("studio-active-job");
+        UI.$("process-title").textContent = "创作中遇到了一点问题。";
         const need = UI.$("#need");
         if (need) {
           need.replaceChildren(UI.el("div", { class: "card" }, [
             UI.el("h3", {}, ["运行出错"]),
             UI.el("p", {}, [`运行出错：${j.error || "未知异常"}`])
           ]));
+          need.appendChild(UI.el("button", { class: "btn-secondary", type: "button", onclick: () => Studio.navigate("create") }, "返回简报重试"));
         }
+        return;
       }
-    } catch {
-      // 网络异常静默重试
+    } catch (err) {
+      failures += 1;
+      UI.$("runbar").hidden = false;
+      UI.$("runbar").textContent = `连接暂时中断，正在重试（${failures}）`;
+      if (failures >= 10) {
+        unlock();
+        Studio.stopRun();
+        UI.$("need").replaceChildren(UI.el("p", {}, `无法获取进度：${err.message}。刷新页面可尝试恢复这次创作。`));
+        return;
+      }
     }
-  }, 900);
+    pollTimer = setTimeout(tick, failures ? 2500 : 900);
+  };
+  tick();
 }
 
 function unlock() {
@@ -389,7 +452,8 @@ function showFlow(steps, running) {
     if (running) {
       runbar.hidden = false;
       const lastStep = steps && steps.length > 0 ? steps[steps.length - 1] : null;
-      const stepLabel = lastStep ? (lastStep.label || lastStep.step || "处理中") : "准备中";
+      const names = { scene: "场景分析", model: "匹配产品", strategy: "平台策划", retrieve: "查找资料", extract: "提炼事实", compose: "图文创作", verify: "事实核验", repair: "修订内容", judge: "独立审阅" };
+      const stepLabel = lastStep ? (names[lastStep.step] || "处理中") : "准备中";
       const doneCount = steps ? steps.filter(s => s.status === "done").length : 0;
       const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
 
@@ -404,21 +468,14 @@ function showFlow(steps, running) {
   }
 
   const flowBox = UI.$("#flow");
-  const flowSum = UI.$("#flow-sum");
   const dbgFlow = UI.$("#dbg-flow");
 
   const flowRes = typeof window.buildFlow === "function" ? window.buildFlow(steps, running) : null;
   if (flowBox && flowRes) {
     const node = (flowRes instanceof Node) ? flowRes : flowRes.node;
-    if (node) flowBox.replaceChildren(node);
+    if (node && flowBox.firstChild !== node) flowBox.replaceChildren(node);
   }
 
-  const curStep = steps && steps.length > 0 ? (steps[steps.length - 1].label || steps[steps.length - 1].step || "执行中") : "准备中";
-  const summaryText = running
-    ? `运行中… ${curStep}`
-    : (flowRes?.summary || (steps && steps.length ? `已完成 ${steps.length} 步` : "完成"));
-
-  if (flowSum) flowSum.textContent = summaryText;
   if (dbgFlow) dbgFlow.hidden = false;
 }
 
@@ -430,6 +487,8 @@ function showResult(r) {
     const stage = UI.$("#stage");
     if (stage) stage.hidden = true;
     showNeedInfo(r);
+    Studio.stopRun();
+    UI.$("process-title").textContent = "再补充一点，就能继续。";
     return;
   }
 
@@ -440,13 +499,11 @@ function showResult(r) {
   if (stageTitle) {
     const platformKey = r.platform_spec?.platform || r.task?.platform || "";
     const platformName = r.platform_spec?.platform_name || platformKey;
-    const hint = UI.PLATFORM_HINT[platformKey] || "";
     const titleText = r.article?.title || "图文成品";
-    const subText = hint ? `${platformName} · ${hint}` : platformName;
 
     stageTitle.replaceChildren(
       UI.el("b", {}, [titleText]),
-      UI.el("span", {}, [subText])
+      UI.el("span", {}, [platformName])
     );
   }
 
@@ -483,6 +540,7 @@ function showResult(r) {
     const el = UI.$(sel);
     if (el) el.hidden = false;
   });
+  Studio.finishRun(r);
 }
 
 function showNeedInfo(r) {
@@ -493,7 +551,7 @@ function showNeedInfo(r) {
   if (!need) return;
 
   const info = r.need_info || r.scene_judgement?.need_info || {};
-  const questions = info.questions || [];
+  const questions = r.questions || info.questions || [];
   const candidates = info.candidates || r.candidates || [];
 
   const card = UI.el("div", { class: "card need-card" }, [
@@ -527,6 +585,7 @@ function showNeedInfo(r) {
   }
 
   need.replaceChildren(card);
+  card.appendChild(UI.el("button", { class: "btn-secondary", type: "button", onclick: () => Studio.navigate("create") }, "返回简报补充"));
 }
 
 function plainText(r) {
@@ -641,7 +700,7 @@ async function exportHtml() {
 
   const headHtml = `<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>华为PC营销图文</title>\n<style>\n${styles}\n</style>`;
   const bodyHtml = clone.outerHTML;
-  const htmlDoc = `<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n${headHtml}\n</head>\n<body style="padding:24px;background:#f5f5f5;">\n${bodyHtml}\n</body>\n</html>`;
+  const htmlDoc = `<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n${headHtml}\n<style>html{height:auto}body{display:block;height:auto;min-height:100vh;overflow:auto;padding:24px;background:#f8f7f3}.preview-stage{height:auto;overflow:visible}</style>\n</head>\n<body>\n${bodyHtml}\n</body>\n</html>`;
 
   const platform = current?.platform_spec?.platform || current?.task?.platform || "article";
   const rawModelId = current?.model?.id || "huawei-pc";
@@ -670,7 +729,7 @@ function renderChips(r) {
 
   const vfImages = vf.images || [];
   const imgMatch = vfImages.length > 0 && vfImages.every(i => i.model_match);
-  chips.appendChild(UI.tag("图片型号 " + (imgMatch ? "全部一致" : "存在不一致"), imgMatch ? "ok" : "bad"));
+  chips.appendChild(UI.tag("图片型号 " + (vfImages.length ? imgMatch ? "全部一致" : "存在不一致" : "暂无配图"), vfImages.length ? imgMatch ? "ok" : "bad" : "warn"));
 
   const comp = vf.compliance || [];
   chips.appendChild(UI.tag("合规 " + (comp.length ? `处理 ${comp.length} 处` : "无命中"), comp.length ? "warn" : "ok"));
@@ -688,7 +747,8 @@ function renderChips(r) {
   const judge = vf.judge || {};
   const overall = judge.overall || "-";
   const judgeOk = overall === "pass" || overall === "ok";
-  chips.appendChild(UI.tag(`审核 ${overall}`, judgeOk ? "ok" : "warn"));
+  const judgeLabels = { pass: "通过", ok: "通过", needs_fix: "需人工复核", fail: "需人工复核", warn: "需关注", "-": "未完成" };
+  chips.appendChild(UI.tag(`审核 ${judgeLabels[overall] || "需关注"}`, judgeOk ? "ok" : "warn"));
 
   const model = (r && r.model) || {};
   chips.appendChild(UI.tag(`型号 ${model.name || "-"}`));
@@ -959,9 +1019,10 @@ function renderVerify(r) {
 
   const vf = (r && r.verification) || {};
   const remaining = vf.remaining || [];
+  const judgeOverall = vf.judge?.overall;
   const vfSum = document.getElementById("vf-sum");
   if (vfSum) {
-    vfSum.textContent = remaining.length ? `${remaining.length} 项待人工关注` : "通过";
+    vfSum.textContent = remaining.length ? `${remaining.length} 项待人工关注` : judgeOverall && !["pass", "ok"].includes(judgeOverall) ? "独立审核建议人工复核" : "事实核验通过";
   }
 
   const container = document.getElementById("verify") || dbg;

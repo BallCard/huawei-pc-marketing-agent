@@ -11,7 +11,7 @@
     const blocks = Array.isArray(article.blocks) ? article.blocks : [];
 
     // 1. .xhs-head
-    const ava = UI.el("div", { className: "xhs-ava" }, "华");
+    const ava = PV.publisherAvatar("xhs-ava");
     const name = UI.el("span", { className: "xhs-name" }, "华为PC门店");
     const user = UI.el("div", { className: "xhs-user" }, ava, name);
     const follow = UI.el("button", { type: "button", className: "xhs-follow" }, "关注");
@@ -105,6 +105,10 @@
         bodyChildren.push(UI.el("p", { className: "xhs-p" }, b.text));
       }
     });
+
+    if (article.cta) {
+      bodyChildren.push(UI.el("p", { className: "xhs-p" }, article.cta));
+    }
 
     if (Array.isArray(article.tags) && article.tags.length > 0 && typeof PV.hashTags === "function") {
       const renderedTags = PV.hashTags(article.tags);

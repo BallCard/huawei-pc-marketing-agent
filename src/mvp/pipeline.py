@@ -215,6 +215,7 @@ def plan_strategy(task: dict, scene: dict, kb, model_id: str) -> dict:
         "platform": task["platform"], "platform_name": spec["name"],
         "reader": spec["reader"], "structure": spec["structure"], "tone": spec["tone"],
         "cta_style": spec["cta_style"], "images": spec["images"], "chars": spec["chars"],
+        "writing_limits": spec.get("writing_limits", {}),
         "max_facts": spec["max_facts"], "tags": spec["tags"],
         "price_policy": policy, "price_snippets": prices,
         "priority_dims": scene["top_dims"], "user_problem": scene.get("user_problem", ""),
@@ -324,7 +325,7 @@ def compose(task: dict, scene: dict, strat: dict, facts: list[dict], images: lis
         "用户限制": task.get("constraints") or [],
         "补充": task.get("extra") or "",
         "平台策略": {k: strat[k] for k in ("platform_name", "reader", "structure", "tone", "cta_style", "images",
-                                          "chars", "tags", "price_policy")},
+                                          "chars", "tags", "price_policy", "writing_limits")},
         "已选事实": [{"id": f["id"], "角色": f["role"], "text": f["text"], "来源": f["source"]["label"]} for f in facts],
         "可用图片": image_catalog(images),
         "修改指令": instruction or "",
@@ -416,11 +417,14 @@ def deterministic_check(article: dict, facts: list[dict], doc: ModelDoc, strat: 
     return {"issues": issues, "platform_issues": plat, "images": img_checks}
 
 
-def judge(article: dict, facts: list[dict], strat: dict, det: dict, judge_model: str | None = None) -> dict:
+def judge(article: dict, facts: list[dict], strat: dict, det: dict, judge_model: str | None = None,
+          images: list[Image] | None = None) -> dict:
     payload = {
-        "平台策略": {"name": strat["platform_name"], "price_policy": strat["price_policy"], "tone": strat["tone"]},
+        "平台策略": {"name": strat["platform_name"], "price_policy": strat["price_policy"], "tone": strat["tone"],
+                     "structure": strat["structure"], "chars": strat["chars"], "writing_limits": strat["writing_limits"]},
         "已选事实": [{"id": f["id"], "text": f["text"]} for f in facts],
-        "软文": {"title": article["title"], "lead": article["lead"], "cta": article["cta"],
+        "配图资料": image_catalog(images or []),
+        "软文": {"title": article["title"], "lead": article["lead"], "cta": article["cta"], "tags": article["tags"],
                 "blocks": [{"index": i, **{k: v for k, v in b.items()}} for i, b in enumerate(article["blocks"])]},
         "规则表命中数": len(det["issues"]),
     }
@@ -535,7 +539,8 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
         article = normalize_article(raw, facts, images)
 
     # 2) 独立审核模型只审终稿一次；它的意见进入“核验结果”供人确认，不再触发整篇重写
-    jd = tr.run("judge", f"独立审核（{judge_model}）", lambda: judge(article, facts, strat, det, judge_model=judge_model))
+    jd = tr.run("judge", f"独立审核（{judge_model}）", lambda: judge(
+        article, facts, strat, det, judge_model=judge_model, images=images))
     attempts.append({"round": len(attempts) + 1, "issues": collect_issues({"issues": [], "platform_issues": []}, jd),
                      "source": "judge"})
     removed = []

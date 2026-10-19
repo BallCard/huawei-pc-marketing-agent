@@ -92,7 +92,7 @@
       meta
     );
 
-    const ava = UI.el("div", { className: "mm-ava" }, "华");
+    const ava = PV.publisherAvatar("mm-ava");
     const post = UI.el("div", { className: "mm-post" }, ava, main);
     const scroll = UI.el("div", { className: "pv-scroll" }, post);
 

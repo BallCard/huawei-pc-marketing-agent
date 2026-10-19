@@ -6,6 +6,20 @@
   const PV = (window.PV = window.PV || {});
   PV.renderers = PV.renderers || {};
 
+  function publisherAvatar(className) {
+    const avatar = document.createElement("div");
+    avatar.className = `${className} publisher-avatar`;
+    avatar.setAttribute("aria-hidden", "true");
+    const ns = "http://www.w3.org/2000/svg";
+    const icon = document.createElementNS(ns, "svg");
+    icon.setAttribute("viewBox", "0 0 48 48");
+    const outline = document.createElementNS(ns, "path");
+    outline.setAttribute("d", "M10 12.5c7-.6 20-.5 27 .1l-.3 20-27-.2.3-19.9ZM6 37l35 .3M21 33l-.5 4m8-4 .6 4M15 18l15 .2m-15 5 10 .2");
+    icon.appendChild(outline);
+    avatar.appendChild(icon);
+    return avatar;
+  }
+
   function imgUrl(r, im) {
     const modelId = r?.model?.id != null ? String(r.model.id) : "";
     const imName = im?.name != null ? String(im.name) : "";
@@ -177,6 +191,7 @@
   }
 
   PV.imgUrl = imgUrl;
+  PV.publisherAvatar = publisherAvatar;
   PV.imageFor = imageFor;
   PV.figure = figure;
   PV.missingFigure = missingFigure;

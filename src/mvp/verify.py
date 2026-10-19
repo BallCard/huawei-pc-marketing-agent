@@ -89,8 +89,21 @@ def check_platform(article: dict, spec: dict) -> list[str]:
     lo_c, hi_c = spec["chars"]
     if chars < lo_c * 0.7:
         issues.append(f"正文约 {chars} 字，明显少于{spec['name']}建议的 {lo_c}-{hi_c} 字")
-    if chars > hi_c * 1.3:
-        issues.append(f"正文约 {chars} 字，明显多于{spec['name']}建议的 {lo_c}-{hi_c} 字")
+    if chars > hi_c:
+        issues.append(f"正文约 {chars} 字，超过{spec['name']}上限 {hi_c} 字；请删减次要卖点和重复铺垫")
+    limits = spec.get("writing_limits", {})
+    fields = [("title", "标题", article.get("title", "")), ("lead", "导语", article.get("lead", "")),
+              ("cta", "行动引导", article.get("cta", ""))]
+    for idx, block in enumerate(article.get("blocks", []), 1):
+        if block.get("type") == "text":
+            fields.append(("text_block", f"第 {idx} 块正文", block.get("text", "")))
+        elif block.get("type") == "image":
+            fields.append(("caption", f"第 {idx} 块图注", block.get("caption", "")))
+    for key, label, text in fields:
+        limit = limits.get(key)
+        size = len(re.sub(r"\s+", "", text or ""))
+        if limit and size > limit:
+            issues.append(f"{label} {size} 字，超过 {limit} 字；改为短句，保留必要的版本与适用条件")
     if spec.get("tags") and not article.get("tags"):
         issues.append("缺少话题标签")
     return issues
