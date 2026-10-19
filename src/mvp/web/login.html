@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录 · 华章有据</title>
+  <link rel="icon" type="image/svg+xml" href="/static/brand/app-icon.svg">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/login.css">
+</head>
+<body>
+  <main class="login-page">
+    <div class="login-brand"><img src="/static/brand/logo-mark.svg" width="48" height="48" alt=""><span>v1.0</span></div>
+    <h1>华章有据</h1>
+    <p>基于产品知识库，为华为电脑生成适配四个平台、附事实核验的营销图文。</p>
+    <form id="login-form">
+      <div><label for="username">访问账号</label><input id="username" autocomplete="username" required maxlength="200"></div>
+      <div><label for="password">密码</label><input id="password" type="password" autocomplete="current-password" required maxlength="500"></div>
+      <p id="login-error" role="alert" hidden></p>
+      <button id="login-submit" class="btn-primary" type="submit">进入工作台 <span aria-hidden="true">→</span></button>
+    </form>
+  </main>
+  <script src="/static/login.js"></script>
+</body>
+</html>

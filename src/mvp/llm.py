@@ -14,24 +14,29 @@ class LLMError(RuntimeError):
     pass
 
 
-def _headers() -> dict:
+def _headers(api_key: str | None = None) -> dict:
     h = {"Content-Type": "application/json"}
-    if settings.LLM_API_KEY:
-        h["Authorization"] = f"Bearer {settings.LLM_API_KEY}"
+    key = settings.LLM_API_KEY if api_key is None else api_key
+    if key:
+        h["Authorization"] = f"Bearer {key}"
     return h
 
 
 def chat(messages: list, model: str | None = None, json_mode: bool = False,
-         max_tokens: int = 8000, retries: int = 2) -> str:
+         max_tokens: int = 8000, retries: int = 2, role: str = "writer") -> str:
+    config = settings.llm_config(role)
     body = {"model": model or settings.WRITER_MODEL, "messages": messages,
             "max_tokens": max_tokens}
     if json_mode:
         body["response_format"] = {"type": "json_object"}
+    if config["thinking"] != "auto":
+        body["thinking"] = {"type": config["thinking"]}
+    body.update(config["extra"])
     last = None
     for i in range(retries + 1):
         try:
-            r = httpx.post(f"{settings.LLM_BASE_URL}/chat/completions", json=body,
-                           headers=_headers(), timeout=settings.LLM_TIMEOUT)
+            r = httpx.post(f"{config['base_url']}/chat/completions", json=body,
+                           headers=_headers(config["api_key"]), timeout=settings.LLM_TIMEOUT)
             r.raise_for_status()
             text = r.json()["choices"][0]["message"].get("content") or ""
             if not text.strip():
@@ -55,12 +60,12 @@ def parse_json(text: str):
         raise
 
 
-def ask_json(system: str, user: str, model: str | None = None, retries: int = 2):
+def ask_json(system: str, user: str, model: str | None = None, retries: int = 2, role: str = "writer"):
     """要求模型输出 JSON 对象；解析失败会带着报错重试。"""
     msgs = [{"role": "system", "content": system}, {"role": "user", "content": user}]
     last = None
     for _ in range(retries + 1):
-        raw = chat(msgs, model=model, json_mode=True)
+        raw = chat(msgs, model=model, json_mode=True, role=role)
         try:
             return parse_json(raw)
         except json.JSONDecodeError as e:

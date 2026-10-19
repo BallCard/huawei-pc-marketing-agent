@@ -41,6 +41,23 @@
     toastTimer = setTimeout(() => { UI.$("toast").hidden = true; }, 2400);
   }
   function init() {
+    const welcome = UI.$("welcome");
+    const surfaces = [document.querySelector(".site-header"), UI.$("workspace")];
+    let welcomed = false;
+    try { welcomed = sessionStorage.getItem("studio-welcomed") === "1" || !!sessionStorage.getItem("studio-active-job"); } catch { /* Storage can be disabled by the browser. */ }
+    function enter() {
+      if (welcome.hidden || welcome.classList.contains("is-leaving")) return;
+      try { sessionStorage.setItem("studio-welcomed", "1"); } catch { /* Welcome still works without storage. */ }
+      welcome.classList.add("is-leaving");
+      surfaces.forEach(surface => { surface.inert = false; });
+      const finish = () => { welcome.hidden = true; UI.$("page-create").focus({preventScroll: true}); };
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) finish();
+      else setTimeout(finish, 350);
+    }
+    welcome.hidden = welcomed;
+    surfaces.forEach(surface => { surface.inert = !welcomed; });
+    UI.$("enter-studio").addEventListener("click", enter);
+    if (!welcomed) UI.$("enter-studio").focus({preventScroll: true});
     document.querySelectorAll("[data-page]").forEach(button => button.addEventListener("click", () => navigate(button.dataset.page, false)));
     document.querySelectorAll("[data-nav]").forEach(button => button.addEventListener("click", () => navigate(button.dataset.nav)));
     window.addEventListener("hashchange", () => navigate(location.hash.slice(1)));

@@ -179,7 +179,7 @@ def parse_scene(task: dict, instruction: str | None) -> dict:
         "购买阶段先验": cfg["scenarios"][hit]["stage"] if hit else "",
         "配置价值定义": cfg["value_definition"],
     }
-    out = llm.ask_json(prompt("scene"), jdump(payload), model=settings.FAST_MODEL)
+    out = llm.ask_json(prompt("scene"), jdump(payload), model=settings.FAST_MODEL, role="fast")
     dims = set(cfg["dimensions"])
     lw = {d: float(out.get("weights", {}).get(d, 0) or 0) for d in dims}
     lw = _norm_w(lw) if sum(lw.values()) > 0 else prior
@@ -247,7 +247,7 @@ def decide_model(task: dict, scene: dict, kb) -> dict:
     payload = {"需求画像": {k: scene.get(k) for k in (
         "audience", "scenario", "user_problem", "stage", "hard_constraints", "soft_preferences",
         "tradeoffs", "weights", "unmappable")}, "候选型号": cards}
-    rec = llm.ask_json(prompt("recommend"), jdump(payload), model=settings.FAST_MODEL)
+    rec = llm.ask_json(prompt("recommend"), jdump(payload), model=settings.FAST_MODEL, role="fast")
     valid = {m.id for m in kb.models()}
     primary = rec.get("primary")
     if primary not in valid:
@@ -287,7 +287,7 @@ def extract_facts(doc: ModelDoc, scene: dict, strat: dict) -> list[dict]:
         "平台": {"name": strat["platform_name"], "max_facts": strat["max_facts"], "price_policy": strat["price_policy"]},
         "资料片段": [_snip_line(s) for s in snippets],
     }
-    out = llm.ask_json(prompt("extract"), jdump(payload), model=settings.FAST_MODEL)
+    out = llm.ask_json(prompt("extract"), jdump(payload), model=settings.FAST_MODEL, role="fast")
     by_id = {s.id: s for s in snippets}
     picked, seen = [], set()
     for it in out.get("selected", []):
@@ -336,7 +336,8 @@ def compose(task: dict, scene: dict, strat: dict, facts: list[dict], images: lis
         sys_p, mdl = prompt("repair"), settings.FAST_MODEL
     else:
         sys_p, mdl = prompt("compose"), (writer_model or settings.WRITER_MODEL)
-    return llm.ask_json(sys_p, jdump(payload), model=mdl)
+    return llm.ask_json(sys_p, jdump(payload), model=mdl,
+                        role="fast" if previous is not None or mdl == settings.FAST_MODEL else "writer")
 
 
 def normalize_article(raw: dict, facts: list[dict], images: list[Image]) -> dict:
@@ -428,7 +429,9 @@ def judge(article: dict, facts: list[dict], strat: dict, det: dict, judge_model:
                 "blocks": [{"index": i, **{k: v for k, v in b.items()}} for i, b in enumerate(article["blocks"])]},
         "规则表命中数": len(det["issues"]),
     }
-    return llm.ask_json(prompt("judge"), jdump(payload), model=(judge_model or settings.JUDGE_MODEL))
+    selected = judge_model or settings.JUDGE_MODEL
+    return llm.ask_json(prompt("judge"), jdump(payload), model=selected,
+                        role="fast" if selected == settings.FAST_MODEL else "judge")
 
 
 def collect_issues(det: dict, jd: dict | None) -> list[str]:
@@ -538,16 +541,18 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
                                issues=msgs, writer_model=writer_model)})["article"]
         article = normalize_article(raw, facts, images)
 
-    # 2) 独立审核模型只审终稿一次；它的意见进入“核验结果”供人确认，不再触发整篇重写
+    # 2) 先删去规则仍未通过的片段，独立审核必须看到实际展示的终稿。
+    removed = []
+    if collect_issues(det, None):
+        article, removed = strip_bad_blocks(article, det, None)
+        det = tr.run("verify", "删去未通过片段后复核",
+                     lambda: deterministic_check(article, facts, doc, strat, images))
+
+    # 独立审核意见进入结果供人确认，不触发整篇重写。
     jd = tr.run("judge", f"独立审核（{judge_model}）", lambda: judge(
         article, facts, strat, det, judge_model=judge_model, images=images))
     attempts.append({"round": len(attempts) + 1, "issues": collect_issues({"issues": [], "platform_issues": []}, jd),
                      "source": "judge"})
-    removed = []
-    if collect_issues(det, None):
-        article, removed = strip_bad_blocks(article, det, None)
-        det = deterministic_check(article, facts, doc, strat, images)
-
     res = build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, attempts, removed, kb)
     res["verification"]["judge"]["model"] = judge_model
     res["models_used"] = {"writer": writer_model, "judge": judge_model, "fast": settings.FAST_MODEL,
@@ -582,7 +587,8 @@ def build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, a
     elif img_out and not heroes_used:
         notice.append("本稿所配图片均不含整机，仅作辅助示意。")
     if len(img_out) < spec_imgs[0]:
-        notice.append(f"{strat['platform_name']}建议 {spec_imgs[0]}-{spec_imgs[1]} 张图，当前仅配 {len(img_out)} 张（受知识库可用图片限制）。")
+        reason = "知识库可用图片不足" if len(images) < spec_imgs[0] else "请补充配图或重新生成"
+        notice.append(f"{strat['platform_name']}建议 {spec_imgs[0]}-{spec_imgs[1]} 张图，当前仅配 {len(img_out)} 张（{reason}）。")
     used_fids = {r for b in article["blocks"] if b["type"] == "text" for r in b.get("fact_refs", [])}
     claim_rows = []
     for b in article["blocks"]:
@@ -604,7 +610,9 @@ def build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, a
         pend.append("价格、补贴、库存与活动：本稿不含，发布前以官方渠道为准。")
     if jd:
         pend += [p for p in jd.get("pending_confirm", []) if p]
-    remaining = collect_issues(det, None)
+    remaining = collect_issues(det, jd)
+    if jd and jd.get("overall") not in ("pass", "ok") and not jd.get("problems"):
+        remaining.append("独立审核未通过，请人工复核后发布。")
     status = "ok" if not remaining else "ok_with_flags"
     res = {
         "status": status,

@@ -6,13 +6,23 @@
   <meta name="theme-color" content="#f8f7f3">
   <title>华章有据</title>
   <meta name="application-name" content="华章有据">
+  <meta name="description" content="基于产品知识库，为华为电脑生成适配四个平台、附事实核验的营销图文。">
   <link rel="icon" type="image/svg+xml" href="/static/brand/app-icon.svg">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/platforms.css">
   <link rel="stylesheet" href="/static/platforms-fixes.css">
-  <link rel="stylesheet" href="/static/studio.css?v=handoff-2">
+  <link rel="stylesheet" href="/static/studio.css?v=1.0.0">
 </head>
 <body>
+  <section id="welcome" class="welcome" aria-labelledby="welcome-title">
+    <div class="welcome-content">
+      <img class="welcome-logo" src="/static/brand/logo-mark.svg" width="76" height="76" alt="">
+      <h1 id="welcome-title">华章有据</h1>
+      <p>从产品知识出发，生成有据可查的华为电脑营销图文。</p>
+      <button id="enter-studio" class="welcome-enter" type="button">进入体验 <span aria-hidden="true">↗</span></button>
+    </div>
+    <span class="welcome-edition">华章有据 · v1.0</span>
+  </section>
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <!-- Lucide outline icons, ISC license: https://lucide.dev/license -->
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
@@ -35,6 +45,7 @@
       <button id="tab-work" type="button" role="tab" data-page="work" aria-controls="page-work" aria-selected="false" tabindex="-1">图文作品</button>
       <button id="tab-evidence" type="button" role="tab" data-page="evidence" aria-controls="page-evidence" aria-selected="false" tabindex="-1">事实核验</button>
     </nav>
+    <form id="session-exit" class="session-exit" action="/logout" method="post" hidden><button type="submit">退出登录</button></form>
   </header>
   <main id="workspace" class="workspace">
     <section id="page-create" class="page page-create" role="tabpanel" aria-labelledby="tab-create" tabindex="0">
@@ -104,6 +115,6 @@
   <dialog id="options-dialog" class="studio-dialog options-dialog" aria-labelledby="options-title"><div class="dialog-heading"><div><h2 id="options-title">内容偏好</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭内容偏好"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="options-fields"><div class="form-group"><label for="goal">希望读者看完做什么</label><input id="goal" placeholder="例如：到店体验、私信咨询；留空由场景决定"></div><div class="form-group"><label for="constraints">有哪些不能写的内容</label><input id="constraints" value="不要提价格" placeholder="用逗号分隔，例如：不要提价格，不编造使用经历"></div><div class="form-group"><label for="extra">还有什么想补充</label><textarea id="extra" rows="3" placeholder="真实痛点、语气偏好，或希望优先突出的卖点"></textarea></div><div class="form-group"><label for="speed">创作档位</label><select id="speed"><option value="quality">质量优先</option><option value="fast">快速创作</option></select></div><button id="save-options" class="btn-primary" type="button">保存偏好 <svg class="icon"><use href="#i-check"/></svg></button></div></dialog>
   <dialog id="step-dialog" class="studio-dialog" aria-labelledby="step-dialog-title"><div class="dialog-heading"><div><p id="step-dialog-meta" class="section-label"></p><h2 id="step-dialog-title"></h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭执行详情"><svg class="icon"><use href="#i-close"/></svg></button></div><p id="step-dialog-note" class="dialog-copy"></p><div id="step-dialog-body" class="step-dialog-body"></div></dialog>
   <!-- Bump the progress asset versions together when changing the handoff UI. -->
-  <script src="/static/dom.js"></script><script src="/static/flow-playback.js?v=handoff-2"></script><script src="/static/flow.js?v=handoff-2"></script><script src="/static/preview.js"></script><script src="/static/preview-xhs.js"></script><script src="/static/preview-wx.js"></script><script src="/static/preview-mm.js"></script><script src="/static/preview-poster.js"></script><script src="/static/studio.js"></script><script src="/static/app.js?v=handoff-2"></script>
+  <script src="/static/dom.js"></script><script src="/static/flow-playback.js?v=handoff-2"></script><script src="/static/flow.js?v=handoff-2"></script><script src="/static/preview.js"></script><script src="/static/preview-xhs.js"></script><script src="/static/preview-wx.js"></script><script src="/static/preview-mm.js"></script><script src="/static/preview-poster.js"></script><script src="/static/studio.js?v=1.0.0"></script><script src="/static/app.js?v=1.0.0"></script>
 </body>
 </html>

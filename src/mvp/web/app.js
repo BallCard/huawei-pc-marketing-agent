@@ -137,6 +137,7 @@ async function init() {
     const res = await fetch("/api/info");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const info = await res.json();
+    UI.$("session-exit").hidden = !info.auth_enabled;
 
     const modelList = UI.$("#modelList");
     if (modelList && Array.isArray(info.models)) {
@@ -367,7 +368,8 @@ async function submit(instruction) {
       body: JSON.stringify(payload)
     });
     if (!res.ok) {
-      throw new Error(`启动任务失败 HTTP ${res.status}`);
+      const failure = await res.json().catch(() => ({}));
+      throw new Error(typeof failure.detail === "string" ? failure.detail : `启动任务失败 HTTP ${res.status}`);
     }
     const data = await res.json();
     if (generation !== pollGeneration) return;
@@ -762,7 +764,7 @@ function renderChips(r) {
 
   const vf = (r && r.verification) || {};
   const rem = vf.remaining || [];
-  chips.appendChild(UI.tag("产品事实 " + (rem.length ? "有未解决项" : "全部有依据"), rem.length ? "bad" : "ok"));
+  chips.appendChild(UI.tag("事实与规则 " + (rem.length ? "待人工复核" : "核验通过"), rem.length ? "warn" : "ok"));
 
   const vfImages = vf.images || [];
   const imgMatch = vfImages.length > 0 && vfImages.every(i => i.model_match);

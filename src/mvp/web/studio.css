@@ -3,6 +3,7 @@
 .brand { display: flex; align-items: center; gap: 12px; white-space: nowrap; font-size: 15px; }
 .brand b { font: 20px var(--font-serif); letter-spacing: .08em; }
 .brand-mark { display: block; flex: none; width: 29px; height: 29px; }
+.session-exit { justify-self: end; color: var(--text-muted); font-size: 11px; }
 .page-nav { display: flex; align-self: stretch; gap: 28px; }
 .page-nav button { position: relative; padding: 0 2px; color: var(--text-muted); font-size: 12px; white-space: nowrap; }
 .page-nav button[aria-selected="true"] { color: var(--text-main); }
@@ -213,3 +214,29 @@
 }
 @media (max-width: 600px) and (max-height: 700px) { .page-create { padding-top: 10px; padding-bottom: 10px; } .brief h2 { font-size: 23px; margin-bottom: 10px; } .input-modes { margin-bottom: 13px; } .task-form { gap: 13px; } .platform-options button { height: 54px; } label, legend { margin-bottom: 6px; } .page-process { padding-top: 14px; } .page-heading { padding-bottom: 11px; } }
 @media (max-width: 600px) and (max-height: 580px) { body { grid-template-rows: 78px minmax(0, 1fr); } .site-header { grid-template-rows: 38px 40px; } .brief-top { display: none; } .brief h2 { margin-top: 0; font-size: 20px; } .task-form { gap: 10px; } input, select { padding-top: 7px; padding-bottom: 7px; } .platform-options button { height: 44px; flex-direction: row; gap: 5px; } .platform-options .icon { display: none; } #scene-description { height: 70px; } }
+/* A short, quiet opening. The workspace keeps its original compact layout. */
+.welcome { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: var(--bg-canvas); padding: 32px; transition: opacity .35s ease, visibility .35s; }
+.welcome-content { width: min(100%, 620px); padding-bottom: 24px; }
+.welcome-logo { display: block; margin-bottom: 30px; opacity: 0; animation: welcome-reveal .8s ease forwards; }
+.welcome h1 { font: 400 clamp(44px, 7vw, 76px)/1.4 var(--font-serif); letter-spacing: .07em; opacity: 0; animation: welcome-reveal .8s .15s ease forwards; }
+.welcome p { max-width: 470px; margin-top: 24px; font-size: 15px; line-height: 2; color: var(--text-muted); opacity: 0; animation: welcome-reveal .8s .3s ease forwards; }
+.welcome-enter { display: flex; align-items: center; justify-content: space-between; gap: 80px; border-bottom: 1px solid var(--accent-terracotta); padding: 12px 0; margin-top: 45px; color: var(--accent-terracotta); font-size: 13px; opacity: 0; animation: welcome-reveal .8s .5s ease forwards; }
+.welcome-enter:hover span { transform: translate(2px, -2px); }
+.welcome-enter span { transition: transform .2s ease; }
+.welcome-edition { position: absolute; bottom: 26px; left: 32px; color: var(--text-muted); font-size: 10px; letter-spacing: .08em; }
+.welcome.is-leaving { opacity: 0; visibility: hidden; pointer-events: none; }
+@keyframes welcome-reveal { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 900px) {
+  .site-header { position: relative; }
+  .session-exit { position: absolute; right: 24px; top: 17px; }
+  .page-create { overflow-y: auto; overscroll-behavior: contain; }
+}
+@media (max-width: 600px) {
+  .session-exit { right: 20px; top: 20px; }
+  .welcome { padding: 36px; }
+  .welcome-logo { width: 52px; height: 52px; margin-bottom: 24px; }
+  .welcome p { font-size: 13px; margin-top: 19px; }
+  .welcome-enter { margin-top: 34px; }
+  .welcome-edition { left: 36px; }
+}
+@media (prefers-reduced-motion: reduce) { .welcome-logo, .welcome h1, .welcome p, .welcome-enter { opacity: 1; animation: none; } }

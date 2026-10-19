@@ -1,65 +1,98 @@
-# 部署讨论稿
+# v1.0 部署与配置
 
-适用范围：比赛演示／小范围团队。当前只确定方案；本轮完成名称与 Logo，未部署公网服务、未切换模型或写入新密钥。
+华章有据是 FastAPI + 原生网页的单实例应用，生成任务运行在后台线程，任务与结果存 SQLite。面向本人及小范围展示，使用共享访问账号。只运行一个进程，不能使用多个 worker 或多个副本。
 
-## 推荐首版
+## 平台选择（2026-10-19 核对）
 
-- 一套长期运行的 Python 服务，同时提供前端、任务接口与登记过的产品图片；继续同源访问。
-- 管理员预置模型 API，团队成员登录即可创作；自定义 API 放到管理员初始化／设置中，不让每位成员先填密钥。
-- 两个配置轴独立：资料来自 IMA 或资料包；解析、写作、审核调用配置好的模型。
-- 一份持久数据卷保存资料包、视觉描述，任务与结果存 SQLite；先单实例，限制并行生成数。
+| 平台 | 适配判断 | 本版安排 |
+| --- | --- | --- |
+| 魔搭 Docker 创空间 | 能运行现有 Python 和原生网页，端口为 7860；需绑定阿里云并实名 | 首选私有空间 `BallCard/huazhang-youju`，只使用实际返回的免费 CPU 资源 |
+| 普通服务器 / Docker 主机 | 单实例服务与持久卷适配当前后台线程 | 提供 Dockerfile 与 compose.yaml；对外接 HTTPS 代理 |
+| Vercel | 支持 FastAPI；函数实例自动扩缩，当前后台线程和本地 SQLite 不能直接作为可靠的跨请求任务系统 | 需改为持久队列、共享数据库和对象存储，或单请求流式生成 |
+| GPT Sites | 服务端使用 Cloudflare Workers，原生网页可复用；Python 编排不能直接照搬 | 需移植后端到 Worker，或另建容器后端，本版不做拆分 |
+| Google Cloud Run | 支持容器，但默认只在请求期间分配 CPU，本地文件不作为持久库 | 需调整后台 CPU 和持久存储；本版先用魔搭 |
 
-## 资料源与回退
+Vercel 的主要障碍是任务和存储方式，并非不能运行 Python。GPT Sites 的运行方式来自本机 Sites 插件说明。
 
-拟支持三种模式：IMA 优先且允许回退、仅 IMA、仅资料包。这是待实现的路由，当前 `get_kb()` 没有这些能力。
+## 已实现与边界
 
-1. 管理员配置有权限的 IMA 知识库，或导入 ZIP；ZIP 解压、校验、建立索引只在导入时进行，不在每次查询时重做。
-2. IMA 通过列表／搜索定位资料，再取得可访问的原文，转换为统一的事实、图片与来源结构。搜索返回的标题和高亮摘要不能直接当作完整的产品事实。
-3. IMA 未配置时可明确选择资料包；连接超时、限流或服务异常时，允许切到已校验的资料包快照。鉴权失败应显示真实原因；零命中不等于故障，不能用无关旧资料补答案。
-4. 每次任务固定资料来源与版本。中途故障如需切换，重新开始资料读取阶段，避免一篇稿混用两个版本；审核页记录实际来源和回退原因。
-5. 比赛若要求实际使用 IMA，可选择“仅 IMA”；此模式失败即提示，不把本地读取展示成 IMA 成功。
+- 独立开屏、四个平台生成、场景示例、一句话输入、自动选型、事实溯源、核验和审核、按指令重新生成、复制正文、离线 HTML 导出。
+- 网页账号登录；HttpOnly Cookie，有效期 12 小时；退出清除当前浏览器会话。对外监听强制要求账号和密码。
+- 默认最多一个任务，超限返回 429，限制展示期间的模型用量。
+- SQLite 保存每步快照和结果；完成作品刷新可恢复，重启时将运行任务标记为中断。新建任务时清理较早完成结果，保留最近约 30 个。
+- `/healthz` 只返回固定健康状态；资料、任务和接口要求登录，接口与作品页不缓存。
+- 独立审核针对最终展示稿；有异议时标记 `ok_with_flags`，不会显示核验全部通过。
 
-资料包建议包含：
+尚不支持 IMA 实时读取、网页上传 ZIP、管理员配置面板、多用户账号与数据隔离、自动向小红书/微信发布。资料基准日为 2026-10-17，参数与销售条件应在发布前人工复核。
 
-```text
-package.json         包版本、资料基准日、来源、文件哈希
-kb/                  现有 Markdown、CSV 与 images/ 目录
-metadata/vision.json  图片画面描述与类型，和图片哈希绑定
+## 环境变量
+
+本机开发 `.env` 保持原配置。`.env.deploy` 是忽略的部署专用配置，包含演示账号的随机密码；不要提交 Git、截图或发到聊天。
+
+| 配置 | 本次用途 |
+| --- | --- |
+| `LLM_BASE_URL` | `https://api.deepseek.com` |
+| `LLM_API_KEY` | DeepSeek 密钥，存创空间 **Secret** |
+| `WRITER_MODEL` / `JUDGE_MODEL` | `deepseek-flash`；独立请求与审核上下文 |
+| `LLM_THINKING` | `disabled`，展示优先响应速度 |
+| `FAST_MODEL` | `Qwen/Qwen3.5-35B-A3B` |
+| `FAST_LLM_BASE_URL` | `https://api-inference.modelscope.cn/v1` |
+| `FAST_LLM_API_KEY` | 魔搭推理令牌，存创空间 **Secret** |
+| `FAST_LLM_THINKING` / `FAST_LLM_EXTRA_BODY` | `auto` / `{"enable_thinking":false}` |
+| `AUTH_USERNAME` / `AUTH_PASSWORD` | 演示访问账号 / 随机密码；密码存 **Secret** |
+| `COOKIE_SECURE` | HTTPS 为 `1`，仅本机 HTTP 验证时为 `0` |
+| `HOST` / `PORT` | 魔搭为 `0.0.0.0` / `7860` |
+| `KB_BACKEND` / `KB_DIR` | `local` / `/app/data/kb` |
+| `CACHE_DIR` | `/app/data/cache`，需匹配资料包的 `vision.json` |
+| `JOB_DB` | `/mnt/workspace/huazhang-youju/jobs.sqlite3`，使用魔搭持久目录 |
+| `MAX_CONCURRENT_JOBS` | `1` |
+| `MODELSCOPE_API_KEY` | 仅本机部署工具使用的魔搭管理令牌，不整份上传本机配置 |
+
+未配置单独角色接口时复用 `LLM_*`；写作和审核同样支持 `WRITER_LLM_*`、`JUDGE_LLM_*` 覆盖。没有静默切换供应商的回退。“质量优先”按三个角色配置运行；“快速创作”写作和审核也使用 FAST 模型。
+
+图片标签已离线预计算，上线不需再次调用视觉模型。重新分析图片时需单独选择支持视觉的模型。资料包与视觉缓存必须配套。
+
+## 魔搭发布
+
+目标固定在 `deploy/modelscope/target.json`。发布工具使用官方 OpenAPI，创建时默认私有，查询实际免费硬件，不主动改成公开或付费。
+
+```powershell
+python -X utf8 scripts/deploy_modelscope.py inspect
+python -X utf8 scripts/deploy_modelscope.py deploy
+python -X utf8 scripts/deploy_modelscope.py status
 ```
 
-导入前检查路径和解压规模，导入成功后原子切换版本并保留上一版。当前 `data/kb` 约 32.2 MiB、1522 个文件；视觉描述另在 `data/cache/vision.json`，部署时必须一起考虑。缺少视觉描述时可重新分析，不能凭图片文件名编写图注。
+先提交主项目代码。工具在忽略的 `data/deploy/modelscope` 准备独立 Git 检出，将代码与产品资料同步到私有创空间；在 `deployment-source.json` 记录源提交。仅复制产品资料与 `vision.json`，不上传本机历史作品。密钥经 Secret API 写入，Git 认证通过进程环境和 askpass，远端 URL 不含令牌。
 
-## 模型接入
+不要把带资料包的创空间改为公开源码。对他人展示前配置创空间允许的访问范围，再单独告知演示账号。免费资源有额度和生命周期限制，改名或迁移可能影响持久目录；重要结果请导出或备份。
 
-首版建议使用开发者预置模式，保留管理员切换供应商的入口。成员界面不展示模型配置。
+## 其他 Docker 主机
 
-八个 Bot 表示职责分工，部分节点执行本地规则；不需要八套 API 或八份密钥。
+准备 `.env`、`data/kb` 和 `data/cache/vision.json`，填入可从容器访问的模型接口与访问账号：
 
-| 角色 | 初始选择 | 后续取舍 |
-| --- | --- | --- |
-| 场景解析、事实抽取、修订 | DeepSeek `deepseek-flash` | 优先测 JSON 稳定性与响应时间 |
-| 写作 | 先测 `deepseek-flash` | 用同一批简报比较，再决定是否切 `deepseek-v4-pro` |
-| 独立审核 | 单独调用、独立上下文 | 可对比 Flash 与 Pro 的漏报和误报；不因更换模型就宣称审核可靠 |
-| 数字、型号、图片登记、篇幅检查 | Python 确定性规则 | 不需要模型 |
+```bash
+docker compose config --quiet
+docker compose up -d --build
+```
 
-截至 2026-10-19，官方表列出 OpenAI 格式接口、JSON 输出，以及 Flash 的图像理解能力。Pro 不支持图像理解，所以图片分析应有独立能力配置；也可直接使用资料包中已校验的视觉描述。不能把 Gemini 的 high/medium/low 名称替换后就认为部署适配完成。
+Compose 只绑定主机 `127.0.0.1:7860`，由 HTTPS 代理转发；知识库和缓存只读挂载，SQLite 使用独立卷。容器中的 `127.0.0.1:8045` 指容器自身，不能直接复用电脑上的反代。
 
-现有后端已有 `LLM_BASE_URL`、`LLM_API_KEY` 和三个角色模型名，可以作为开发者预置的起点。仍需补供应商能力检查、思考模式参数、超时与错误分类；Flash 默认开启思考模式，应按角色显式配置并测量延迟。
+## 验证入口
 
-管理员初始化顺序：首次管理员设置 → 资料源连接或 ZIP 导入 → 供应商、密钥、模型与连接测试 → 保存并开始使用。初始设置完成后锁定管理员入口，不能让后续访客改全局配置。
+```powershell
+python -X utf8 -m unittest discover -s tests -v
+node --test tests/test_flow_playback.cjs
+python -X utf8 scripts/preflight.py --check-model
+# 另启本机部署配置服务后执行真实生成验收：
+python -X utf8 scripts/acceptance.py --base http://127.0.0.1:7880
+```
 
-未来若支持普通用户自带接口，配置必须按用户隔离并在服务端加密保存，任务启动时固定所用配置；不能让每次请求改全局 `.env` 或把密钥放在浏览器存储中。首版不需要承担这部分复杂度。
+部署配置本机验证时设 `APP_ENV_FILE=.env.deploy`、`HOST=127.0.0.1`、`COOKIE_SECURE=0`、`PORT=7880`，再运行 `python -X utf8 -m src.mvp.app`。真实验收包含四平台、缺输入、自动推荐、缺整机图和修改指令，结果保存在忽略的 `data/acceptance/latest.json`。`ok_with_flags` 表示仍需人工复核。
 
-## 当前缺口与实施顺序
+## 官方依据
 
-1. `ImaKB` 仍会抛 `NotImplementedError`；补真实资料读取与来源记录，再做 ZIP 导入和可验证的回退。
-2. 密钥与模型目前只支持服务启动配置；补管理员初始化与连接检查。
-3. 任务在内存中、由后台线程执行。先持久化任务／结果；重启后把运行中的任务标记为中断，允许重新生成，不假装任务仍在继续。
-4. 当前服务没有登录鉴权。开放给团队前补访问控制、并发限制、用量记录，再配置 HTTPS 与数据卷备份。
-5. 验收至少覆盖：IMA 可用、IMA 故障后正确使用 ZIP、仅资料包运行、密钥错误、服务器重启、同一简报在各模型上的 JSON 与文案表现。
-
-## 依据
-
-- [DeepSeek 官方模型与功能表](https://api-docs.deepseek.com/zh-cn/quick_start/pricing/)：实际模型名、接口格式、JSON、视觉与思考模式；上线时重新核对。
-- [IMA 官方开发者入口](https://ima.qq.com/agent-interface)及本机官方 IMA 技能的知识库接口规范：列表、搜索、原文读取与鉴权边界。
-- 当前实现：`src/mvp/kb.py`、`settings.py`、`llm.py`、`app.py`；资料与密钥均不进入 Git。
+- [魔搭 Docker 与持久目录](https://github.com/modelscope/modelscope-skills/blob/main/skills/ms-studio-deploy/references/docker-templates.md)、[部署 OpenAPI](https://github.com/modelscope/modelscope-skills/blob/main/skills/ms-studio-deploy/SKILL.md)。
+- [魔搭 API 推理](https://modelscope.cn/docs/model-service/API-Inference/intro)；本次使用实际账号取得模型列表并验证 JSON 返回。
+- [DeepSeek 模型与接口](https://api-docs.deepseek.com/quick_start/pricing/)、[Chat Completions 参数](https://api-docs.deepseek.com/api/create-chat-completion/)。
+- [Vercel FastAPI](https://vercel.com/docs/frameworks/backend/fastapi)、[函数限制](https://vercel.com/docs/functions/limitations)。
+- [Cloud Run CPU 与容器约定](https://docs.cloud.google.com/run/docs/container-contract)。

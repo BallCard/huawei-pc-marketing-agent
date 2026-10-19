@@ -6,6 +6,9 @@ __pycache__/
 # 本地配置与密钥
 .env
 .env.*
+!.env.example
+model.txt
+deployment-data/
 
 # 知识库副本与缓存（举办方资料，不入库）
 data/

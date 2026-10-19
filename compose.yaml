@@ -1,0 +1,31 @@
+services:
+  studio:
+    build: .
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 7860
+      KB_DIR: /app/data/kb
+      CACHE_DIR: /app/data/cache
+      JOB_DB: /app/data/state/jobs.sqlite3
+    ports:
+      - "127.0.0.1:${PORT:-7860}:7860"
+    volumes:
+      - type: bind
+        source: ./data/kb
+        target: /app/data/kb
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./data/cache
+        target: /app/data/cache
+        read_only: true
+        bind:
+          create_host_path: false
+      - studio-state:/app/data/state
+
+volumes:
+  studio-state:
