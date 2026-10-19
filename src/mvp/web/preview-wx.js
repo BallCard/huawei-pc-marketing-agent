@@ -82,7 +82,7 @@
     // 根容器
     let root;
     if (desktop) {
-      const account = UI.el("aside", { className: "wx-account" }, PV.publisherAvatar("wx-account-avatar"),
+      const account = UI.el("aside", { className: "wx-account" }, PV.publisherAvatar("wx-account-avatar", true),
         UI.el("b", {}, "华为PC选购指南"), UI.el("span", {}, "公众号"));
       const page = UI.el("div", { className: "wx-desktop-page" },
         UI.el("div", { className: "wx-reading-column" }, articleEl, footer), account);

@@ -17,7 +17,7 @@ from typing import Callable
 
 import yaml
 
-from . import llm, settings, verify
+from . import llm, settings, verify, web_images
 from .kb import Image, ModelDoc, Snippet, get_kb
 
 PLATFORMS = ["wechat_article", "xiaohongshu", "moments", "poster"]
@@ -267,11 +267,16 @@ def retrieve(kb, model_id: str, strat: dict) -> dict:
     doc = kb.load(model_id)
     imgs = [i for i in doc.images if verify.image_model_ok(i, doc)]
     dropped = [i.id for i in doc.images if i not in imgs]
+    lookup = {"status": "not_needed", "reason": "知识库已有整机图", "pages": []}
+    if not any(i.is_hero for i in imgs):
+        lookup = web_images.find_hero(doc)
+        imgs = lookup.get("images", []) + imgs
     # 整机图排前面，logo/示意图等非产品图排后面；模型只会在“可用图片”里按语义挑，不会被图注带偏
     rank = {"device": 0, "device_scene": 1, "detail": 2, "screen_ui": 3, "diagram": 4, "other": 5, "people": 5, "logo": 6, "": 3}
     imgs.sort(key=lambda i: (0 if i.is_hero else 1, rank.get(i.kind, 5)))
     heroes = [i for i in imgs if i.is_hero and i.kind in ("device", "device_scene", "")]
-    return {"doc": doc, "images": imgs, "dropped_images": dropped, "hero_count": len(heroes)}
+    return {"doc": doc, "images": imgs, "dropped_images": dropped, "hero_count": len(heroes),
+            "image_search": {k: v for k, v in lookup.items() if k != "images"}}
 
 
 def _snip_line(s: Snippet) -> str:
@@ -311,7 +316,7 @@ def extract_facts(doc: ModelDoc, scene: dict, strat: dict) -> list[dict]:
 def image_catalog(images: list[Image]) -> list[dict]:
     return [{"id": f"I{n}", "name": i.id, "model": i.model, "官网图注": i.caption,
              "尺寸": f"{i.width}x{i.height}", "视觉描述": i.vision, "画面类型": i.kind, "含整机": i.shows_device,
-             "建议用途": i.use}
+             "建议用途": i.use, "来源类型": i.source_type, "来源页面": i.page, "核验时间": i.checked_at}
             for n, i in enumerate(images, 1)]
 
 
@@ -509,9 +514,9 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
                 "snippets": len(r0["doc"].snippets), "images": len(r0["images"]),
                 "dropped_images_model_mismatch": r0["dropped_images"], "hero_images": r0["hero_count"],
                 "image_kinds": {i.id[-28:]: i.kind or "未标注" for i in r0["images"]},
-                "sources": [s["url"] for s in r0["doc"].sources][:3]}
+                "sources": [s["url"] for s in r0["doc"].sources][:3], "image_search": r0["image_search"]}
 
-    tr.run("retrieve", "资料与图片检索（知识库）", _retrieve_once)
+    tr.run("retrieve", "读取本型号资料，缺图时检索官网并核验", _retrieve_once)
     r = docs_holder["r"]
     doc, images = r["doc"], r["images"]
 
@@ -554,6 +559,7 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
     attempts.append({"round": len(attempts) + 1, "issues": collect_issues({"issues": [], "platform_issues": []}, jd),
                      "source": "judge"})
     res = build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, attempts, removed, kb)
+    res["image_search"] = r["image_search"]
     res["verification"]["judge"]["model"] = judge_model
     res["models_used"] = {"writer": writer_model, "judge": judge_model, "fast": settings.FAST_MODEL,
                           "speed": "fast" if fast else "quality"}
@@ -571,7 +577,9 @@ def build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, a
             text_idx += 1
         elif b["type"] == "image":
             pos_of[b["image_id"]] = f"第 {text_idx} 段后" if text_idx else "文首"
-    img_out = [{"id": iid, "name": id2img[iid].id, "model": id2img[iid].model, "source_title": f"{doc.name} 图片索引",
+    img_out = [{"id": iid, "name": id2img[iid].id, "model": id2img[iid].model,
+                "source_title": id2img[iid].source_title or f"{doc.name} 图片索引",
+                "source_type": id2img[iid].source_type, "checked_at": id2img[iid].checked_at,
                 "source_url": id2img[iid].page, "origin_url": id2img[iid].url,
                 "caption": next((b["caption"] for b in article["blocks"] if b.get("image_id") == iid), ""),
                 "position": pos_of.get(iid, ""), "local_path": str(id2img[iid].path),
@@ -582,8 +590,8 @@ def build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, a
     notice = []
     avail_hero = sum(1 for i in images if i.is_hero)
     if avail_hero == 0:
-        notice.append(f"知识库里 {doc.name} 登记的 {len(images)} 张图均不含笔记本整机（多为芯片标志、功能示意图），"
-                      "无法配出产品主视觉；不会拿其他型号的图顶替。请向资料方补充该型号整机图。")
+        notice.append(f"{doc.name} 的知识库缺少可用整机图，且暂无通过核验的官方联网补图。"
+                      "请补充该型号官方整机图，或稍后重试联网检索。")
     elif img_out and not heroes_used:
         notice.append("本稿所配图片均不含整机，仅作辅助示意。")
     if len(img_out) < spec_imgs[0]:

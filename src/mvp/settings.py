@@ -62,6 +62,10 @@ def _find_kb_dir() -> Path:
 KB_DIR = _find_kb_dir()
 CACHE_DIR = Path(os.environ.get("CACHE_DIR") or str(KB_DIR.parent / "cache"))
 KB_BASE_DATE = "2026-10-17"  # 知识库事实基准日
+WEB_IMAGE_SEARCH = os.environ.get("WEB_IMAGE_SEARCH", "1") == "1"
+WEB_IMAGE_TIMEOUT = float(os.environ.get("WEB_IMAGE_TIMEOUT", "25"))
+# 复用 FAST 接口；须为支持图片输入的视觉模型。
+IMAGE_VERIFY_MODEL = os.environ.get("IMAGE_VERIFY_MODEL") or FAST_MODEL
 
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "7860"))

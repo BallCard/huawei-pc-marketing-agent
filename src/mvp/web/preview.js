@@ -1,15 +1,25 @@
 (function () {
   "use strict";
 
-  const DEFAULT_MISSING_REASON = "知识库没有该型号的整机图，不会用其他型号顶替。";
+  const DEFAULT_MISSING_REASON = "暂未找到通过来源与型号核验的整机图，可补充官方图片或稍后重试联网检索。";
 
   const PV = (window.PV = window.PV || {});
   PV.renderers = PV.renderers || {};
 
-  function publisherAvatar(className) {
+  function publisherAvatar(className, brand = false) {
     const avatar = document.createElement("div");
     avatar.className = `${className} publisher-avatar`;
     avatar.setAttribute("aria-hidden", "true");
+    if (brand) {
+      const logo = document.createElement("img");
+      logo.src = "/static/brand/huawei-mark.svg";
+      logo.alt = "";
+      logo.width = 48;
+      logo.height = 48;
+      logo.style.cssText = "width:72%;height:72%;object-fit:contain";
+      avatar.appendChild(logo);
+      return avatar;
+    }
     const ns = "http://www.w3.org/2000/svg";
     const icon = document.createElementNS(ns, "svg");
     icon.setAttribute("viewBox", "0 0 48 48");

@@ -187,10 +187,10 @@ def health():
 
 @app.get("/img/{model_id}/{filename}")
 def img(model_id: str, filename: str):
-    """只放行 图片索引.csv 登记过的文件，防止目录穿越与读取非登记文件。"""
+    """仅提供知识库登记图片和已核验的官方联网补图。"""
     p = get_kb().image_file(model_id, filename) if get_kb().info(model_id) else None
     if not p or not Path(p).exists():
-        raise HTTPException(404, "图片未在图片索引中登记")
+        raise HTTPException(404, "图片未登记或未通过来源核验")
     return FileResponse(p)
 
 

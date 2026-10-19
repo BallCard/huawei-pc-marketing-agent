@@ -1018,7 +1018,17 @@ function renderEvidence(r) {
     tr.appendChild(tdDev);
 
     const tdSrc = document.createElement("td");
-    tdSrc.textContent = i.source_title || i.source_url || "";
+    if (/^https:\/\//i.test(i.source_url || "")) {
+      const link = document.createElement("a");
+      link.href = i.source_url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = i.source_title || "查看官方来源";
+      tdSrc.appendChild(link);
+    } else {
+      tdSrc.textContent = i.source_title || i.source_url || "";
+    }
+    if (i.checked_at) tdSrc.appendChild(document.createTextNode(`（核验 ${i.checked_at.slice(0, 10)}）`));
     tr.appendChild(tdSrc);
 
     const tdPos = document.createElement("td");

@@ -68,6 +68,9 @@ class Image:
     shows_device: bool | None = None
     angle: str = ""
     color: str = ""
+    source_type: str = "knowledge_base"
+    source_title: str = ""
+    checked_at: str = ""
 
     @property
     def is_hero(self) -> bool:
@@ -227,9 +230,12 @@ class LocalKB:
         return doc
 
     def image_file(self, model_id: str, filename: str) -> Path | None:
-        """只放行图片索引.csv 登记过的文件。"""
+        """只放行知识库登记图片，或联网补图清单中已核验的本型号图片。"""
         doc = self.load(model_id)
         img = next((i for i in doc.images if i.id == filename), None)
+        if not img and filename.startswith("web-"):
+            from .web_images import cached_images
+            img = next((i for i in cached_images(doc, require_fresh=False) if i.id == filename), None)
         return img.path if img else None
 
     # ---------- 价格（仅官方公开价格快照）----------
