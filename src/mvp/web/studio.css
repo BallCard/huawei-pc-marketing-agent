@@ -220,7 +220,9 @@
 .welcome-logo { display: block; margin-bottom: 30px; opacity: 0; animation: welcome-reveal .8s ease forwards; }
 .welcome h1 { font: 400 clamp(44px, 7vw, 76px)/1.4 var(--font-serif); letter-spacing: .07em; opacity: 0; animation: welcome-reveal .8s .15s ease forwards; }
 .welcome p { max-width: 470px; margin-top: 24px; font-size: 15px; line-height: 2; color: var(--text-muted); opacity: 0; animation: welcome-reveal .8s .3s ease forwards; }
-.welcome-enter { display: flex; align-items: center; justify-content: space-between; gap: 80px; border-bottom: 1px solid var(--accent-terracotta); padding: 12px 0; margin-top: 45px; color: var(--accent-terracotta); font-size: 13px; opacity: 0; animation: welcome-reveal .8s .5s ease forwards; }
+.welcome-enter { display: flex; align-items: center; justify-content: space-between; gap: 56px; padding: 12px 0; margin-top: 45px; color: var(--text-main); font-size: 13px; opacity: 0; animation: welcome-reveal .8s .5s ease forwards; }
+.welcome-enter:focus-visible { outline: none; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 7px; }
+.welcome-enter:hover { color: var(--text-muted); }
 .welcome-enter:hover span { transform: translate(2px, -2px); }
 .welcome-enter span { transition: transform .2s ease; }
 .welcome-edition { position: absolute; bottom: 26px; left: 32px; color: var(--text-muted); font-size: 10px; letter-spacing: .08em; }

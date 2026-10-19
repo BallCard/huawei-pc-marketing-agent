@@ -21,8 +21,9 @@ button { cursor: pointer; background: none; border: 0; }
 button:disabled { cursor: wait; opacity: .5; }
 button, a { touch-action: manipulation; }
 a { color: inherit; text-decoration: none; }
-button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent-terracotta); outline-offset: 4px; }
-input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-terracotta); outline-offset: 2px; }
+button:focus-visible, a:focus-visible, [role="tab"]:focus-visible { outline: 1px solid var(--border-strong); outline-offset: 4px; }
+[role="tabpanel"]:focus { outline: none; }
+input:focus, select:focus, textarea:focus { outline: 1px solid var(--border-strong); outline-offset: 1px; border-color: var(--text-muted); }
 h1, h2, h3, p { margin: 0; }
 .icon-definitions { position: absolute; width: 0; height: 0; overflow: hidden; }
 .icon { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }

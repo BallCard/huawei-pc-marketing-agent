@@ -55,7 +55,9 @@ def valid_session(token: str) -> bool:
 @app.middleware("http")
 async def access_control(request: Request, call_next):
     public = {"/healthz", "/login", "/api/login", "/static/style.css", "/static/login.css",
-              "/static/login.js", "/static/brand/logo-mark.svg", "/static/brand/app-icon.svg"}
+              "/static/login.js", "/static/brand/logo-mark.svg", "/static/brand/app-icon.svg",
+              "/static/gallery/welcome.jpg", "/static/gallery/brief.jpg", "/static/gallery/workflow.jpg",
+              "/static/gallery/result.jpg", "/static/gallery/evidence.jpg"}
     if settings.AUTH_PASSWORD and request.url.path not in public:
         if not valid_session(request.cookies.get("studio-session", "")):
             if request.url.path == "/":

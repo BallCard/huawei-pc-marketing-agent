@@ -85,6 +85,8 @@ class ServiceTests(unittest.TestCase):
             self.assertEqual(self.client.get(path).status_code, 401, path)
         self.assertEqual(self.client.post("/api/run", json={}).status_code, 401)
         self.assertEqual(self.client.get("/healthz").json(), {"status": "ok"})
+        self.assertEqual(self.client.get("/static/gallery/welcome.jpg").status_code, 200)
+        self.assertEqual(self.client.get("/static/gallery/private.txt").status_code, 401)
         self.assertEqual(self.client.post("/api/login", json={"username": "tester", "password": "wrong"}).status_code, 401)
         response = self.login()
         self.assertIn("HttpOnly", response.headers["set-cookie"])

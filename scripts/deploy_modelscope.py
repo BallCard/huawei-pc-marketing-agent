@@ -1,12 +1,14 @@
-"""发布到指定的私有魔搭创空间。凭据只从 .env.deploy 读取，不写入 Git 或命令行。"""
+"""发布到指定的魔搭创空间，保持代码隐藏。凭据只从 .env.deploy 读取。"""
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import os
 import shutil
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 import httpx
@@ -52,6 +54,12 @@ def show_status():
 
 def deploy():
     cfg = config()
+    source_commit = git(["rev-parse", "HEAD"], ROOT)
+    visibility = TARGET["visibility"]
+    if visibility not in ("private", "protected"):
+        raise RuntimeError("带资料包的部署仅允许 private 或 protected，不能公开代码仓库")
+    if not cfg.get("AUTH_USERNAME") or not cfg.get("AUTH_PASSWORD"):
+        raise RuntimeError("部署前必须配置演示访问账号和密码")
     user = api("GET", "/users/me")
     if user.get("username", "").lower() != OWNER.lower():
         raise RuntimeError("魔搭登录账号与 target.json 的 owner 不一致")
@@ -62,9 +70,12 @@ def deploy():
     detail = api("GET", f"/studios/{REPO}", allow_missing=True)
     if detail is None:
         detail = api("POST", "/studios", payload={"owner": OWNER, "repo_name": NAME,
-                     "sdk_type": "docker", "visibility": "private", "hardware": free["name"],
+                     "sdk_type": "docker", "visibility": visibility, "hardware": free["name"],
                      "display_name": "华章有据", "description": "基于产品知识库的华为电脑营销图文工作台"})
-        print("已创建私有 Docker 创空间，资源：" + free["name"], flush=True)
+        print("已创建代码隐藏的 Docker 创空间，资源：" + free["name"], flush=True)
+    elif detail.get("visibility") != visibility:
+        api("PATCH", f"/studios/{REPO}/settings", payload={"visibility": visibility})
+        print("创空间访问模式：" + visibility + "（代码保持隐藏）", flush=True)
     # Never copy credentials, task results, or unrelated files into the Studio source checkout.
     tools_dir = ROOT / "data" / "deploy" / "tools"
     tools_dir.mkdir(parents=True, exist_ok=True)
@@ -83,14 +94,13 @@ def deploy():
         if git(["remote", "get-url", "origin"], checkout) != remote:
             raise RuntimeError("部署工作目录的远端与目标不一致，已停止")
         git(["pull", "--ff-only"], checkout, env)
-    source_commit = git(["rev-parse", "HEAD"], ROOT)
-    for name in git(["ls-files"], ROOT).splitlines():
-        src = ROOT / name
-        dst = checkout / name
-        if src.is_file():
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dst)
-    shutil.copy2(ROOT / "deploy/modelscope/Dockerfile", checkout / "Dockerfile")
+    # Deploy the recorded commit, even when another chat is editing this checkout.
+    archive = subprocess.run(["git", "archive", "--format=zip", source_commit], cwd=ROOT,
+                             capture_output=True, check=True)
+    with zipfile.ZipFile(io.BytesIO(archive.stdout)) as source:
+        source.extractall(checkout)
+    shutil.copy2(checkout / "deploy/modelscope/Dockerfile", checkout / "Dockerfile")
+    shutil.copy2(checkout / "deploy/modelscope/README.md", checkout / "README.md")
     (checkout / ".dockerignore").write_text(".git\n.env*\nmodel.txt\ndata\n**/__pycache__\n", encoding="utf-8")
     bundle = checkout / "deployment-data"
     kb_dir = Path(cfg.get("KB_DIR") or ROOT / "data/kb")

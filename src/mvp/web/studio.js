@@ -57,7 +57,6 @@
     welcome.hidden = welcomed;
     surfaces.forEach(surface => { surface.inert = !welcomed; });
     UI.$("enter-studio").addEventListener("click", enter);
-    if (!welcomed) UI.$("enter-studio").focus({preventScroll: true});
     document.querySelectorAll("[data-page]").forEach(button => button.addEventListener("click", () => navigate(button.dataset.page, false)));
     document.querySelectorAll("[data-nav]").forEach(button => button.addEventListener("click", () => navigate(button.dataset.nav)));
     window.addEventListener("hashchange", () => navigate(location.hash.slice(1)));
