@@ -120,6 +120,16 @@ const PRESETS = [
 let current = null;
 let pollTimer = null;
 let startedAt = 0;
+let pollGeneration = 0;
+let flowSteps = [];
+let flowBackendRunning = false;
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const flowPlayback = new window.FlowPlayback({
+  minActiveMs: reducedMotion ? 180 : 650,
+  handoffMs: reducedMotion ? 0 : 180,
+  finishMs: reducedMotion ? 0 : 280,
+  onChange: state => showFlow(flowSteps, flowBackendRunning, state)
+});
 
 async function init() {
   Studio.init();
@@ -309,6 +319,10 @@ async function submit(instruction) {
     clearTimeout(pollTimer);
     pollTimer = null;
   }
+  const generation = ++pollGeneration;
+  flowPlayback.reset();
+  flowSteps = [];
+  flowBackendRunning = true;
 
   const task = instruction && current?.task ? { ...current.task } : readTask();
   const payload = {
@@ -356,6 +370,7 @@ async function submit(instruction) {
       throw new Error(`启动任务失败 HTTP ${res.status}`);
     }
     const data = await res.json();
+    if (generation !== pollGeneration) return;
     const jid = (data && typeof data === "object") ? (data.job?.id || data.job || data.id) : data;
     if (!jid) {
       throw new Error("服务端未返回有效的任务 ID");
@@ -364,6 +379,7 @@ async function submit(instruction) {
     sessionStorage.setItem("studio-active-job", JSON.stringify({ id: jid, task, form, mode: Studio.getMode(), sentence: UI.$("scene-description").value, startedAt }));
     poll(jid);
   } catch (err) {
+    if (generation !== pollGeneration) return;
     unlock();
     const runbar = UI.$("#runbar");
     if (runbar) runbar.hidden = true;
@@ -381,11 +397,18 @@ async function submit(instruction) {
 
 function poll(jid, restorePage = null) {
   if (pollTimer) clearTimeout(pollTimer);
+  const generation = ++pollGeneration;
+  const restoring = restorePage !== null;
+  let firstSnapshot = true;
+  flowPlayback.reset();
   let failures = 0;
   const tick = async () => {
     try {
       const res = await fetch(`/api/job/${jid}`);
+      if (generation !== pollGeneration) return;
       if (res.status === 404) {
+        pollTimer = null;
+        flowPlayback.reset();
         unlock();
         Studio.stopRun();
         UI.$("runbar").hidden = true;
@@ -396,13 +419,21 @@ function poll(jid, restorePage = null) {
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const j = await res.json();
-      failures = 0;
+      if (generation !== pollGeneration) return;
       const isRunning = j.state === "running";
       if (isRunning) restorePage = null;
-      showFlow(j.steps || [], isRunning);
+      flowSteps = j.steps || [];
+      flowBackendRunning = isRunning;
+      flowPlayback.update(window.buildFlow.summarize(flowSteps, isRunning).map(stage => stage.status), {
+        immediate: (restoring && firstSnapshot) || j.state === "error" || j.result?.status === "need_info"
+      });
+      failures = 0;
+      firstSnapshot = false;
 
       if (j.state === "done") {
         pollTimer = null;
+        await flowPlayback.whenSettled();
+        if (generation !== pollGeneration) return;
         unlock();
         showResult(j.result);
         if (restorePage && j.result?.status !== "need_info") Studio.navigate(restorePage, false);
@@ -424,17 +455,21 @@ function poll(jid, restorePage = null) {
         return;
       }
     } catch (err) {
+      if (generation !== pollGeneration) return;
+      flowPlayback.pause();
+      console.warn("读取或展示生成进度失败", err);
       failures += 1;
       UI.$("runbar").hidden = false;
-      UI.$("runbar").textContent = `连接暂时中断，正在重试（${failures}）`;
+      UI.$("runbar").textContent = `进度暂未更新，正在重试（${failures}）`;
       if (failures >= 10) {
+        flowPlayback.reset();
         unlock();
         Studio.stopRun();
         UI.$("need").replaceChildren(UI.el("p", {}, `无法获取进度：${err.message}。刷新页面可尝试恢复这次创作。`));
         return;
       }
     }
-    pollTimer = setTimeout(tick, failures ? 2500 : 900);
+    if (generation === pollGeneration) pollTimer = setTimeout(tick, failures ? 2500 : 900);
   };
   tick();
 }
@@ -446,15 +481,17 @@ function unlock() {
   if (btnRedo) btnRedo.disabled = false;
 }
 
-function showFlow(steps, running) {
+function showFlow(steps, running, presentation = null) {
   const runbar = UI.$("#runbar");
   if (runbar) {
-    if (running) {
+    if (running || presentation?.pending) {
       runbar.hidden = false;
       const lastStep = steps && steps.length > 0 ? steps[steps.length - 1] : null;
       const names = { scene: "场景分析", model: "匹配产品", strategy: "平台策划", retrieve: "查找资料", extract: "提炼事实", compose: "图文创作", verify: "事实核验", repair: "修订内容", judge: "独立审阅" };
-      const stepLabel = lastStep ? (names[lastStep.step] || "处理中") : "准备中";
-      const doneCount = steps ? steps.filter(s => s.status === "done").length : 0;
+      const presentedIndex = presentation?.activeIndex >= 0 ? presentation.activeIndex : presentation?.handoffFrom;
+      const presentedStep = presentedIndex != null ? window.buildFlow.stageIds[presentedIndex] : null;
+      const stepLabel = presentedStep ? names[presentedStep] : lastStep ? (names[lastStep.step] || "处理中") : "准备中";
+      const doneCount = presentation ? presentation.states.filter(status => status === "done").length : steps ? steps.filter(s => s.status === "done").length : 0;
       const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
 
       runbar.replaceChildren(
@@ -470,7 +507,7 @@ function showFlow(steps, running) {
   const flowBox = UI.$("#flow");
   const dbgFlow = UI.$("#dbg-flow");
 
-  const flowRes = typeof window.buildFlow === "function" ? window.buildFlow(steps, running) : null;
+  const flowRes = typeof window.buildFlow === "function" ? window.buildFlow(steps, running, presentation) : null;
   if (flowBox && flowRes) {
     const node = (flowRes instanceof Node) ? flowRes : flowRes.node;
     if (node && flowBox.firstChild !== node) flowBox.replaceChildren(node);

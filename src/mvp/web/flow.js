@@ -10,12 +10,14 @@
     { id: "verify", title: "事实核验员", role: "把好事实关", kind: "确定性核验", note: "逐项检查数字、型号、配图与合规用语；发现问题时交回修订。", color: "#c9d4bb" },
     { id: "judge", title: "独立审阅者", role: "最后再看一遍", kind: "审核 Agent", note: "独立审阅终稿，把仍需人工判断的意见留下供你确认。", color: "#d6cbb7" }
   ];
-  const LABELS = { done: "已完成", running: "正在工作", error: "需要关注", wait: "等待接力", skip: "未执行" };
+  const LABELS = { done: "已完成", running: "正在工作", settling: "交接中", error: "需要关注", wait: "等待接力", skip: "未执行" };
   const NS = "http://www.w3.org/2000/svg";
   let root = null;
   let latest = [];
   let selected = null;
   let links;
+  let handoffFrom = null;
+  const isActive = data => data?.status === "running" || data?.status === "settling";
 
   function drawLinks() {
     if (!root?.isConnected) return;
@@ -46,7 +48,7 @@
       }
       const group = links.children[i];
       const status = latest[i]?.status || "wait";
-      group.setAttribute("class", status === "done" && latest[i + 1]?.status === "running" ? "handoff" : status);
+      group.setAttribute("class", status === "done" && (handoffFrom === i || isActive(latest[i + 1])) ? "handoff" : status);
       group.children[0].setAttribute("d", path);
       group.children[1].setAttribute("d", `M${endX - direction * 5} ${endY - 4}L${endX} ${endY}L${endX - direction * 5} ${endY + 4}`);
     });
@@ -119,7 +121,7 @@
     if (!st) return;
     const data = latest.find(s => s.id === selected);
     UI.$("step-dialog-title").textContent = st.title;
-    UI.$("step-dialog-meta").textContent = `${st.kind} · ${LABELS[data?.status || "wait"]}`;
+    UI.$("step-dialog-meta").textContent = `${st.kind} · ${LABELS[data?.actualStatus || "wait"]}`;
     UI.$("step-dialog-note").textContent = st.note;
     const body = UI.$("step-dialog-body");
     const scrollTop = body.parentElement.scrollTop;
@@ -131,17 +133,22 @@
     }
     body.parentElement.scrollTop = scrollTop;
   }
-  function buildFlow(steps, running) {
+  function summarizeFlow(steps, running) {
     const safe = Array.isArray(steps) ? steps : [];
-    latest = STAGES.map(st => {
+    return STAGES.map(st => {
       const entries = safe.filter(item => (item.step === "repair" ? "verify" : item.step) === st.id);
       const status = entries.some(s => s.status === "error") ? "error" : entries.some(s => s.status === "running") ? "running" : entries.length ? "done" : running || !safe.length ? "wait" : "skip";
       return { ...st, steps: entries, status, ms: entries.reduce((sum, s) => sum + (s.ms || 0), 0) };
     });
+  }
+  function buildFlow(steps, running, presentation = null) {
+    handoffFrom = presentation?.handoffFrom ?? null;
+    latest = summarizeFlow(steps, running).map((stage, i) => ({ ...stage,
+      actualStatus: stage.status, status: presentation?.states[i] ?? stage.status }));
     if (!root) root = makeGraph();
     latest.forEach((data, i) => {
       const node = root.children[i];
-      node.className = `bot-node ${data.status}` + (data.status === "done" && latest[i + 1]?.status === "running" ? " handoff" : "");
+      node.className = `bot-node ${data.status}` + (data.status === "done" && (handoffFrom === i || isActive(latest[i + 1])) ? " handoff" : "");
       node.querySelector(".bot-role").textContent = LABELS[data.status];
       node.querySelector(".bot-check").hidden = data.status !== "done";
       node.querySelector("button").setAttribute("aria-label", `${data.title}：${LABELS[data.status]}，查看详情`);
@@ -155,5 +162,7 @@
     if (UI.$("step-dialog").open) updateDetail();
     return root;
   }
+  buildFlow.summarize = summarizeFlow;
+  buildFlow.stageIds = STAGES.map(stage => stage.id);
   window.buildFlow = buildFlow;
 })();

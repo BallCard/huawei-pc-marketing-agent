@@ -68,8 +68,8 @@
 .bot-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); fill: none; }
 .ring-track { stroke: #e3e0d7; stroke-width: 1; }
 .ring-active { stroke: var(--accent-terracotta); stroke-width: 1.8; stroke-linecap: round; stroke-dasharray: 36 250; opacity: 0; transform-origin: center; }
-.bot-node.running .ring-active { opacity: 1; animation: turn 1.7s linear infinite; }
-.bot-node.running .bot-portrait { animation: bot-bob 2.7s ease-in-out infinite; }
+.bot-node.running .ring-active, .bot-node.settling .ring-active { opacity: 1; animation: turn 1.7s linear infinite; }
+.bot-node.running .bot-portrait, .bot-node.settling .bot-portrait { animation: bot-bob 2.7s ease-in-out infinite; }
 @keyframes bot-bob { 50% { transform: translateY(-3px) rotate(2deg); } }
 .bot-node.done .ring-track { stroke: #b8c5ae; stroke-width: 1.4; }
 .bot-node.wait .bot-portrait { opacity: .55; }
@@ -78,7 +78,7 @@
 .bot-check .icon { width: 11px; height: 11px; }
 .bot-name { margin-top: 11px; font-size: 12px; font-weight: 400; }
 .bot-role { font-size: 10px; margin-top: 5px; color: var(--text-muted); }
-.bot-node.running .bot-role { color: var(--accent-terracotta); }
+.bot-node.running .bot-role, .bot-node.settling .bot-role { color: var(--accent-terracotta); }
 .bot-connector { position: absolute; top: clamp(38px, 5vh, 55px); left: calc(50% + 58px); width: calc(100% - 80px); height: 18px; pointer-events: none; overflow: visible; }
 .bot-connector path { stroke: #dedbd0; stroke-width: 1.3; fill: none; }
 .bot-node.done .bot-connector path { stroke: #aab69e; }
