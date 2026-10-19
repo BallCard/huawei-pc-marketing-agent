@@ -564,7 +564,7 @@ function showResult(r) {
 
   const preview = UI.$("#preview");
   if (preview && typeof window.renderPreview === "function") {
-    preview.replaceChildren(window.renderPreview(r));
+    Studio.renderPreview(r);
   }
 
   renderChips(r);

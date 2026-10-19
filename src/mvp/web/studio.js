@@ -3,6 +3,26 @@
   const pages = ["create", "process", "work", "evidence"];
   let mode = "structured";
   let toastTimer;
+  let previewResult = null;
+  let previewDevice = null;
+  const previewMedia = window.matchMedia("(max-width: 600px)");
+
+  function renderPreview(result) {
+    previewResult = result;
+    const platform = result?.platform_spec?.platform || result?.task?.platform || "xiaohongshu";
+    const poster = platform === "poster";
+    const device = poster ? "poster" : previewDevice || (previewMedia.matches ? "mobile" : "desktop");
+    UI.$("preview-workspace").dataset.device = device;
+    UI.$("preview-toolbar").hidden = poster;
+    UI.$("preview").dataset.device = device;
+    const captions = { xiaohongshu: "图文笔记", wechat_article: "公众号文章", moments: "朋友圈动态" };
+    UI.$("preview-device-caption").textContent = `${device === "desktop" ? "电脑端" : "手机端"} · ${captions[platform] || "图文预览"}`;
+    document.querySelectorAll("[data-preview-device]").forEach(button => {
+      button.setAttribute("aria-pressed", String(button.dataset.previewDevice === device));
+    });
+    UI.$("preview").replaceChildren(window.renderPreview(result, { device }));
+    UI.$("preview").parentElement.scrollTo(0, 0);
+  }
 
   function navigate(page, focus = true) {
     if (!pages.includes(page)) page = "create";
@@ -41,6 +61,18 @@
     toastTimer = setTimeout(() => { UI.$("toast").hidden = true; }, 2400);
   }
   function init() {
+    try {
+      const savedDevice = sessionStorage.getItem("studio-preview-device");
+      if (["desktop", "mobile"].includes(savedDevice)) previewDevice = savedDevice;
+    } catch { /* Device switching also works without browser storage. */ }
+    document.querySelectorAll("[data-preview-device]").forEach(button => button.addEventListener("click", () => {
+      previewDevice = button.dataset.previewDevice;
+      try { sessionStorage.setItem("studio-preview-device", previewDevice); } catch { /* Keep the in-memory choice. */ }
+      if (previewResult) renderPreview(previewResult);
+    }));
+    previewMedia.addEventListener("change", () => {
+      if (!previewDevice && previewResult) renderPreview(previewResult);
+    });
     const welcome = UI.$("welcome");
     const surfaces = [document.querySelector(".site-header"), UI.$("workspace")];
     let welcomed = false;
@@ -117,5 +149,5 @@
     UI.$("instr").value = "";
     navigate("work");
   }
-  window.Studio = { init, navigate, setMode, getMode: () => mode, syncPlatform, syncOptions, toast, startRun, stopRun, finishRun };
+  window.Studio = { init, navigate, setMode, getMode: () => mode, syncPlatform, syncOptions, toast, startRun, stopRun, finishRun, renderPreview };
 })();

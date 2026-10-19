@@ -2,7 +2,8 @@
   const UI = window.UI;
   const PV = window.PV;
 
-  function renderMoments(r) {
+  function renderMoments(r, options = {}) {
+    const desktop = options.device === "desktop";
     const data = r || {};
     const article = data.article || {};
 
@@ -96,6 +97,15 @@
     const post = UI.el("div", { className: "mm-post" }, ava, main);
     const scroll = UI.el("div", { className: "pv-scroll" }, post);
 
+    if (desktop) {
+      const rail = UI.el("div", { className: "mm-desktop-rail", "aria-hidden": "true" },
+        PV.publisherAvatar("mm-desktop-avatar"), PV.icon("message"), PV.icon("file"),
+        UI.el("span", { className: "mm-rail-active" }, PV.icon("grid")));
+      return UI.el("div", { className: "pv-desktop pv-mm" }, PV.desktopBar("微信 · 朋友圈"),
+        UI.el("div", { className: "mm-desktop-body" }, rail,
+          UI.el("div", { className: "mm-desktop-feed" },
+            UI.el("div", { className: "mm-desktop-heading" }, "朋友圈"), scroll)));
+    }
     return UI.el("div", { className: "pv-phone pv-mm" }, nav, scroll);
   }
 

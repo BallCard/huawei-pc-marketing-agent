@@ -5,7 +5,8 @@
   const PV = window.PV;
   if (!UI || !PV) return;
 
-  function renderXhs(r) {
+  function renderXhs(r, options = {}) {
+    const desktop = options.device === "desktop";
     const data = r || {};
     const article = data.article || {};
     const blocks = Array.isArray(article.blocks) ? article.blocks : [];
@@ -30,7 +31,12 @@
     });
 
     const car = UI.el("div", { className: "xhs-car" });
-    const dots = UI.el("div", { className: "xhs-dots" });
+    const dots = UI.el("div", { className: "xhs-dots", role: "group", "aria-label": "笔记图片" });
+    let activeSlide = 0;
+    function goToSlide(index) {
+      activeSlide = (index + slides.length) % slides.length;
+      car.scrollTo({ left: activeSlide * car.clientWidth, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+    }
 
     const hasHero = typeof PV.hasHero === "function" ? PV.hasHero(data) : true;
     const heroReason = typeof PV.heroReason === "function" ? PV.heroReason(data) : "缺整机图";
@@ -52,17 +58,9 @@
         item.fig.appendChild(idxBadge);
         car.appendChild(item.fig);
 
-        const dot = UI.el("i", { className: idx === 0 ? "xhs-dot on" : "xhs-dot" });
+        const dot = UI.el("button", { type: "button", className: idx === 0 ? "xhs-dot on" : "xhs-dot", "aria-label": `查看第 ${idx + 1} 张图片`, "aria-current": String(idx === 0) });
         dot.addEventListener("click", function () {
-          item.fig.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-          const allDots = dots.querySelectorAll(".xhs-dot");
-          allDots.forEach(function (d, dIdx) {
-            if (dIdx === idx) {
-              d.classList.add("on");
-            } else {
-              d.classList.remove("on");
-            }
-          });
+          goToSlide(idx);
         });
         dots.appendChild(dot);
       });
@@ -82,7 +80,9 @@
           }
         });
         const allDots = dots.querySelectorAll(".xhs-dot");
+        activeSlide = closestIdx;
         allDots.forEach(function (d, dIdx) {
+          d.setAttribute("aria-current", String(dIdx === closestIdx));
           if (dIdx === closestIdx) {
             d.classList.add("on");
           } else {
@@ -126,24 +126,37 @@
     const actEl = UI.el(
       "div",
       { className: "xhs-act" },
-      UI.el("button", { type: "button", className: "xhs-act-btn" }, "赞"),
-      UI.el("button", { type: "button", className: "xhs-act-btn" }, "收藏"),
-      UI.el("button", { type: "button", className: "xhs-act-btn" }, "评论")
+      UI.el("span", { className: "xhs-act-btn" }, PV.icon("heart"), "赞"),
+      UI.el("span", { className: "xhs-act-btn" }, PV.icon("bookmark"), "收藏"),
+      UI.el("span", { className: "xhs-act-btn" }, PV.icon("message"), "评论")
     );
     const bar = UI.el("div", { className: "xhs-bar" }, inputEl, actEl);
 
     // 根容器组合
-    const root = UI.el("div", { className: "pv-phone pv-xhs" });
+    const root = UI.el("div", { className: desktop ? "pv-desktop pv-xhs" : "pv-phone pv-xhs" });
     root.appendChild(head);
-
+    const media = UI.el("div", { className: "xhs-media" });
     if (!hasHero && slides.length > 0 && missingHeroEl) {
-      root.appendChild(missingHeroEl);
+      media.appendChild(missingHeroEl);
     }
-    root.appendChild(car);
+    media.appendChild(car);
     if (slides.length > 0) {
-      root.appendChild(dots);
+      media.appendChild(dots);
     }
-    root.appendChild(body);
+    if (desktop && slides.length > 1) {
+      const previous = UI.el("button", { type: "button", className: "xhs-carousel-arrow previous", "aria-label": "上一张图片" }, PV.icon("left"));
+      const next = UI.el("button", { type: "button", className: "xhs-carousel-arrow next", "aria-label": "下一张图片" }, PV.icon("right"));
+      previous.addEventListener("click", () => goToSlide(activeSlide - 1));
+      next.addEventListener("click", () => goToSlide(activeSlide + 1));
+      media.append(previous, next);
+    }
+    root.appendChild(media);
+    const content = UI.el("div", { className: "xhs-content" }, body);
+    if (desktop) {
+      content.appendChild(UI.el("div", { className: "xhs-comments-empty" },
+        UI.el("span", {}, "评论区"), UI.el("p", {}, "暂无评论")));
+    }
+    root.appendChild(content);
     root.appendChild(bar);
 
     return root;

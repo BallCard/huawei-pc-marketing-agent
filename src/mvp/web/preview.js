@@ -163,13 +163,41 @@
     return blocks.filter((b) => b && b.type === "text");
   }
 
-  function renderPreview(r) {
-    const platform = r?.platform_spec?.platform || "";
+  // Inline Lucide paths keep preview icons available in exported HTML, too.
+  function icon(name) {
+    const paths = {
+      left: "m15 18-6-6 6-6", right: "m9 18 6-6-6-6",
+      heart: "M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z",
+      bookmark: "M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z",
+      message: "M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z",
+      grid: "M3 3h7v7H3Zm11 0h7v7h-7ZM3 14h7v7H3Zm11 0h7v7h-7Z",
+      file: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 0v6h6M8 13h8m-8 4h6",
+      minimize: "M5 12h14", maximize: "M5 5h14v14H5Z", close: "m18 6-12 12M6 6l12 12"
+    };
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("class", "icon");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS(ns, "path");
+    path.setAttribute("d", paths[name] || paths.file);
+    svg.appendChild(path);
+    return svg;
+  }
+
+  function desktopBar(title) {
+    return UI.el("div", { className: "pv-windowbar" },
+      UI.el("span", { className: "pv-window-title" }, icon("message"), title),
+      UI.el("span", { className: "pv-window-controls", "aria-hidden": "true" }, icon("minimize"), icon("maximize"), icon("close")));
+  }
+
+  function renderPreview(r, options = {}) {
+    const platform = r?.platform_spec?.platform || r?.task?.platform || "";
     const renderer =
       PV.renderers[platform] || PV.renderers.xiaohongshu;
 
     if (typeof renderer === "function") {
-      return renderer(r);
+      return renderer(r, options);
     }
 
     const tip = document.createElement("div");
@@ -201,6 +229,8 @@
   PV.hashTags = hashTags;
   PV.imageBlocks = imageBlocks;
   PV.textBlocks = textBlocks;
+  PV.icon = icon;
+  PV.desktopBar = desktopBar;
 
   window.renderPreview = renderPreview;
 })();

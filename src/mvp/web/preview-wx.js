@@ -5,7 +5,8 @@
   const PV = window.PV;
   if (!UI || !PV) return;
 
-  function renderWx(r) {
+  function renderWx(r, options = {}) {
+    const desktop = options.device === "desktop";
     const data = r || {};
     const article = data.article || {};
     const blocks = Array.isArray(article.blocks) ? article.blocks : [];
@@ -79,7 +80,17 @@
     const footer = UI.el("div", { className: "wx-footer" }, stats);
 
     // 根容器
-    const root = UI.el("div", { className: "pv-phone pv-wx wide" }, nav, articleEl, footer);
+    let root;
+    if (desktop) {
+      const account = UI.el("aside", { className: "wx-account" }, PV.publisherAvatar("wx-account-avatar"),
+        UI.el("b", {}, "华为PC选购指南"), UI.el("span", {}, "公众号"));
+      const page = UI.el("div", { className: "wx-desktop-page" },
+        UI.el("div", { className: "wx-reading-column" }, articleEl, footer), account);
+      root = UI.el("div", { className: "pv-desktop pv-wx" },
+        PV.desktopBar("微信 · 公众号"), UI.el("div", { className: "pv-scroll wx-desktop-scroll" }, page));
+    } else {
+      root = UI.el("div", { className: "pv-phone pv-wx wide" }, nav, articleEl, footer);
+    }
 
     return root;
   }
