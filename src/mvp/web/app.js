@@ -698,7 +698,7 @@ async function exportHtml() {
     }
   }
 
-  const headHtml = `<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>华为PC营销图文</title>\n<style>\n${styles}\n</style>`;
+  const headHtml = `<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>华章有据 · 营销图文</title>\n<style>\n${styles}\n</style>`;
   const bodyHtml = clone.outerHTML;
   const htmlDoc = `<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n${headHtml}\n<style>html{height:auto}body{display:block;height:auto;min-height:100vh;overflow:auto;padding:24px;background:#f8f7f3}.preview-stage{height:auto;overflow:visible}</style>\n</head>\n<body>\n${bodyHtml}\n</body>\n</html>`;
 

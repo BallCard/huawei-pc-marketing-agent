@@ -1,9 +1,8 @@
 /* Screen-sized pages, with bounded reading areas for long documents. */
 .site-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 3.5vw; gap: 24px; border-bottom: 1px solid var(--border-line); }
 .brand { display: flex; align-items: center; gap: 12px; white-space: nowrap; font-size: 15px; }
-.brand b { font: 20px var(--font-serif); }
-.brand-divider { margin: 0 9px; color: #b9b5a9; font-size: 17px; }
-.brand-mark { width: 29px; height: 29px; stroke: var(--accent-terracotta); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.brand b { font: 20px var(--font-serif); letter-spacing: .08em; }
+.brand-mark { display: block; flex: none; width: 29px; height: 29px; }
 .page-nav { display: flex; align-self: stretch; gap: 28px; }
 .page-nav button { position: relative; padding: 0 2px; color: var(--text-muted); font-size: 12px; white-space: nowrap; }
 .page-nav button[aria-selected="true"] { color: var(--text-main); }
