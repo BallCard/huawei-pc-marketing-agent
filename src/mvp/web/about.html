@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>项目介绍 · 华章有据</title>
+  <meta name="description" content="从产品知识出发，生成有据可查的华为电脑营销图文。">
+  <link rel="icon" type="image/svg+xml" href="/static/brand/app-icon.svg">
+  <link rel="stylesheet" href="/static/style.css?v=20261019.1">
+  <style>
+    body { display:block; overflow:auto; }
+    .about { max-width:1080px; margin:auto; padding:32px 32px 64px; }
+    .about-header { display:flex; align-items:center; justify-content:space-between; gap:24px; padding-bottom:24px; border-bottom:1px solid var(--border-line); }
+    .about-brand { display:flex; align-items:center; gap:12px; font:22px var(--font-serif); }
+    .about a { color:var(--text-main); text-underline-offset:5px; }
+    .about-hero { padding:60px 0 40px; }
+    .about-hero small { color:var(--text-muted); letter-spacing:.1em; }
+    h1 { font:clamp(36px,6vw,58px)/1.3 var(--font-serif); margin:16px 0 20px; }
+    .about p { font-size:15px; line-height:1.9; color:var(--text-muted); }
+    .about-hero p { max-width:720px; font-size:18px; }
+    .about-steps { display:grid; grid-template-columns:repeat(3,1fr); gap:28px; padding:28px 0; border-block:1px solid var(--border-line); }
+    .about h2 { font:24px/1.5 var(--font-serif); margin:0 0 8px; }
+    .about-steps h2 { font-size:20px; }
+    .about section + section { margin-top:44px; }
+    .about figure { margin:0 0 36px; }
+    .about figure img { display:block; width:100%; height:auto; border:1px solid var(--border-line); border-radius:4px; }
+    .about figcaption { padding-top:12px; line-height:1.8; font-size:14px; color:var(--text-muted); }
+    .about-note { border-top:1px solid var(--border-line); padding-top:28px; }
+    @media (max-width:600px) { .about { padding:24px 20px 40px; } .about-hero { padding:36px 0 28px; } .about-steps { grid-template-columns:1fr; gap:18px; } }
+  </style>
+</head>
+<body>
+  <main class="about">
+    <header class="about-header"><div class="about-brand"><img src="/static/brand/logo-mark.svg" alt="" width="32" height="32">华章有据</div><a href="/">进入体验 →</a></header>
+    <section class="about-hero"><small>v1.0 · 首个正式版</small><h1>每一句，都有据可查。</h1><p>从产品知识出发，生成有据可查的华为电脑营销图文。</p><p>输入目标人群与场景，为小红书、公众号、朋友圈或门店海报生成适配的内容；配图、产品事实与独立审核记录，一起交给你。</p></section>
+    <section class="about-steps" aria-label="体验步骤">
+      <div><h2>01 写下需求</h2><p>使用场景示例或一句话输入。机型留空时，根据需求推荐。</p></div>
+      <div><h2>02 看 Agent 接力</h2><p>场景分析、选型、事实提取、写作与审核，展示真实执行过程。</p></div>
+      <div><h2>03 核对后带走</h2><p>检查事实来源和审核意见，再复制正文或导出含图片的 HTML。</p></div>
+    </section>
+    <section aria-labelledby="gallery-title"><h2 id="gallery-title">真实界面</h2><p>以下截图来自全魔搭模型配置下的一次实际生成。</p>
+      <figure><img src="/static/gallery/welcome.jpg" width="1280" height="720" alt="简约开屏：Logo、华章有据、一句话介绍与进入体验"><figcaption>独立开屏 · 简单认识项目，点击进入工作台。</figcaption></figure>
+      <figure><img src="/static/gallery/brief.jpg" width="1280" height="720" loading="lazy" alt="创作简报：选择人群、场景、平台与产品"><figcaption>创作简报 · 结构化选择与一句话输入都可用。</figcaption></figure>
+      <figure><img src="/static/gallery/workflow.jpg" width="1280" height="720" loading="lazy" alt="八个角色的 Agent 生成接力过程"><figcaption>生成过程 · 查看各阶段状态、真实耗时与执行详情。</figcaption></figure>
+      <figure><img src="/static/gallery/result.jpg" width="1280" height="720" loading="lazy" alt="实际生成的小红书图文作品与审核摘要"><figcaption>图文作品 · 平台版式预览，支持修改、复制与 HTML 导出。</figcaption></figure>
+      <figure><img src="/static/gallery/evidence.jpg" width="1280" height="720" loading="lazy" alt="产品事实引用与对应型号的登记配图"><figcaption>事实核验 · 产品事实标注来源，配图限定为对应型号的登记文件。</figcaption></figure>
+    </section>
+    <section class="about-note"><h2>模型与演示</h2><p>所有在线模型请求均走魔搭推理 API。Qwen3.5-35B-A3B 负责解析、推荐、事实提取与修订；DeepSeek-V4.1-Flash-1017 负责写作与独立审核，两次调用使用独立上下文。快速创作档位统一使用 Qwen。</p><p>演示账号由作者单独提供；访问者无需注册魔搭或配置 API。当前同时最多生成一个任务，单次样例约 30 秒，实际耗时随模型排队和修订次数变化。</p><p>资料基准日为 2026-10-17。使用预置产品资料包，尚未接入 IMA 实时知识库。生成内容发布前仍需人工复核；本应用不会自动发布到社交平台。</p><p><a href="/">用演示账号进入体验 →</a></p></section>
+  </main>
+</body>
+</html>

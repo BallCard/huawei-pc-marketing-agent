@@ -54,7 +54,7 @@ def valid_session(token: str) -> bool:
 
 @app.middleware("http")
 async def access_control(request: Request, call_next):
-    public = {"/healthz", "/login", "/api/login", "/static/style.css", "/static/login.css",
+    public = {"/healthz", "/about", "/login", "/api/login", "/static/style.css", "/static/login.css",
               "/static/login.js", "/static/brand/logo-mark.svg", "/static/brand/app-icon.svg",
               "/static/gallery/welcome.jpg", "/static/gallery/brief.jpg", "/static/gallery/workflow.jpg",
               "/static/gallery/result.jpg", "/static/gallery/evidence.jpg"}
@@ -94,6 +94,11 @@ def login_page():
     if not settings.AUTH_PASSWORD:
         return RedirectResponse("/", status_code=303)
     return FileResponse(WEB / "login.html")
+
+
+@app.get("/about")
+def about_page():
+    return FileResponse(WEB / "about.html")
 
 
 @app.post("/api/login")

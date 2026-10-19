@@ -2,7 +2,7 @@
 
 **从产品知识出发，生成有据可查的华为电脑营销图文。**
 
-v1.0.0 · 首个正式版。[在线体验](https://ballcard-huazhang-youju.ms.show) · [魔搭主页](https://modelscope.cn/studios/BallCard/huazhang-youju) · [部署与配置](docs/deployment.md)
+v1.0.0 · 首个正式版。[在线体验](https://ballcard-huazhang-youju.ms.show) · [图文介绍](https://ballcard-huazhang-youju.ms.show/about) · [魔搭主页](https://modelscope.cn/studios/BallCard/huazhang-youju) · [部署与配置](docs/deployment.md)
 
 > 个人项目副本，独立于比赛协作仓库。产品资料不进入 GitHub，仅在本机和已授权的私有创空间保留部署副本。
 
