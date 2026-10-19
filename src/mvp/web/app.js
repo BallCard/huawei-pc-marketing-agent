@@ -789,8 +789,6 @@ function renderChips(r) {
   const judgeLabels = { pass: "通过", ok: "通过", needs_fix: "需人工复核", fail: "需人工复核", warn: "需关注", "-": "未完成" };
   chips.appendChild(UI.tag(`审核 ${judgeLabels[overall] || "需关注"}`, judgeOk ? "ok" : "warn"));
 
-  const model = (r && r.model) || {};
-  chips.appendChild(UI.tag(`型号 ${model.name || "-"}`));
 }
 
 function weightRows(weights, prior, llm) {

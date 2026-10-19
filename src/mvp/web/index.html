@@ -8,11 +8,12 @@
   <meta name="application-name" content="华章有据">
   <meta name="description" content="基于产品知识库，为华为电脑生成适配四个平台、附事实核验的营销图文。">
   <link rel="icon" type="image/svg+xml" href="/static/brand/app-icon.svg">
-  <link rel="stylesheet" href="/static/style.css?v=20261019.1">
+  <link rel="stylesheet" href="/static/style.css?v=readability-2">
   <link rel="stylesheet" href="/static/platforms.css">
   <link rel="stylesheet" href="/static/platforms-fixes.css">
-  <link rel="stylesheet" href="/static/studio.css?v=20261019.1">
-  <link rel="stylesheet" href="/static/preview-devices.css?v=20261019.2">
+  <link rel="stylesheet" href="/static/studio.css?v=readability-2">
+  <link rel="stylesheet" href="/static/preview-devices.css?v=readability-2">
+  <link rel="stylesheet" href="/static/work-page.css?v=sketch-2">
 </head>
 <body>
   <section id="welcome" class="welcome" aria-labelledby="welcome-title">
@@ -86,7 +87,7 @@
       </div>
     </section>
     <section id="page-process" class="page page-process" role="tabpanel" aria-labelledby="tab-process" tabindex="0" hidden>
-      <div class="page-heading"><div><h2 id="process-title">好内容，需要一点默契。</h2></div><button id="view-result" class="btn-secondary" type="button" data-nav="work" hidden>查看作品 <svg class="icon"><use href="#i-arrow"/></svg></button></div>
+      <div class="page-heading"><div><h2 id="process-title">好内容，需要一点默契。</h2><p class="page-description">从选材到审核，看看内容如何一步步成形。</p></div><button id="view-result" class="btn-secondary" type="button" data-nav="work" hidden>查看作品 <svg class="icon"><use href="#i-arrow"/></svg></button></div>
       <div class="process-meta"><div id="runbar" class="runbar" aria-live="polite" hidden></div></div>
       <div id="need" class="need-container" aria-live="polite"></div>
       <div id="dbg-flow" class="process-content"><div id="flow"></div></div>
@@ -94,9 +95,32 @@
     </section>
     <section id="page-work" class="page page-work" role="tabpanel" aria-labelledby="tab-work" tabindex="0" hidden>
       <div id="work-empty" class="empty-state"><svg class="empty-icon"><use href="#i-pen"/></svg><h2>还没有作品</h2><button type="button" class="btn-secondary" data-nav="create">去写创作简报 <svg class="icon"><use href="#i-arrow"/></svg></button></div>
-      <div id="stage" class="stage-container" hidden>
-        <div class="stage-bar"><div id="stage-title" class="stage-title-group"><b></b><span></span></div><div class="stage-actions"><button id="copy" class="btn-secondary" type="button"><svg class="icon"><use href="#i-copy"/></svg><span>复制正文</span></button><button id="dl" class="btn-secondary" type="button"><svg class="icon"><use href="#i-download"/></svg><span>导出 HTML</span></button></div></div>
-        <div id="notice" class="notice-strip" role="status"></div><div class="work-body"><aside class="work-summary"><h2 id="result-platform">图文预览</h2><p id="result-model" class="result-model"></p><div id="chips" class="chips-container" aria-label="核验摘要"></div><button type="button" class="text-button" data-nav="evidence">查看事实与审核 <svg class="icon"><use href="#i-arrow"/></svg></button></aside><div id="preview-workspace" class="preview-workspace">
+      <div id="stage" class="work-layout" hidden>
+        <aside class="work-controls" aria-label="作品与打磨工具">
+          <div class="work-identity">
+            <div id="work-platform-mark" class="work-platform-mark" aria-hidden="true"></div>
+            <p id="result-platform" class="work-platform-name">图文作品</p>
+            <h2 id="result-model" class="work-product-name"></h2>
+          </div>
+          <div id="notice" class="notice-strip" role="status"></div>
+          <div id="revise" class="work-refine" hidden>
+            <h3>还想怎么打磨？</h3>
+            <p class="work-refine-hint">选一个方向，或写下你的想法。</p>
+            <div class="work-refine-options" role="group" aria-label="打磨方向">
+              <button type="button" data-refine-preset="tone" aria-pressed="false"><span class="refine-number" aria-hidden="true">1</span><span><b>换种语气</b><small>更自然，更像日常分享</small></span><svg class="icon"><use href="#i-arrow"/></svg></button>
+              <button type="button" data-refine-preset="benefits" aria-pressed="false"><span class="refine-number" aria-hidden="true">2</span><span><b>突出卖点</b><small>把适合场景的优势说清楚</small></span><svg class="icon"><use href="#i-arrow"/></svg></button>
+              <button type="button" class="work-refine-custom" data-refine-preset="custom" aria-pressed="false">其他要求 <span aria-hidden="true">↗</span></button>
+            </div>
+            <label class="sr-only" for="instr">具体修改要求</label>
+            <textarea id="instr" rows="3" placeholder="比如：开头更直接，多一点通勤场景。"></textarea>
+            <button id="redo" class="btn-primary work-refine-submit" type="button">开始打磨 <svg class="icon"><use href="#i-arrow"/></svg></button>
+          </div>
+          <div class="work-utilities">
+            <div class="work-delivery"><button id="copy" class="text-button" type="button"><svg class="icon"><use href="#i-copy"/></svg><span>复制正文</span></button><button id="dl" class="text-button" type="button"><svg class="icon"><use href="#i-download"/></svg><span>导出 HTML</span></button></div>
+            <div class="work-review"><button type="button" class="text-button" data-nav="evidence">事实与审核 <svg class="icon"><use href="#i-arrow"/></svg></button><span id="work-review-status" role="status"></span></div>
+          </div>
+        </aside>
+        <div id="preview-workspace" class="preview-workspace work-preview">
           <div id="preview-toolbar" class="preview-toolbar" hidden>
             <span class="preview-label">发布效果</span>
             <div class="preview-devices" role="group" aria-label="预览设备">
@@ -106,12 +130,11 @@
             <span id="preview-device-caption" class="preview-device-caption" aria-live="polite"></span>
           </div>
           <div class="preview-backdrop"><div id="preview" class="preview-stage"></div></div>
-        </div></div>
-        <div id="revise" class="revise-bar" hidden><label for="instr">再打磨一下</label><input id="instr" type="text" placeholder="例如：语气更生活化，多写一点图书馆里的使用场景"><button id="redo" class="btn-primary" type="button">修改作品 <svg class="icon"><use href="#i-arrow"/></svg></button></div>
+        </div>
       </div>
     </section>
     <section id="page-evidence" class="page page-evidence" role="tabpanel" aria-labelledby="tab-evidence" tabindex="0" hidden>
-      <div class="page-heading"><div><h2>每一句，都有据可查。</h2></div><button type="button" class="text-button" data-nav="work">返回作品 <svg class="icon"><use href="#i-arrow"/></svg></button></div>
+      <div class="page-heading"><div><h2>每一句，都有据可查。</h2><p class="page-description">回看引用的事实与配图，确认发布前需要留意的地方。</p></div><button type="button" class="text-button" data-nav="work">返回作品 <svg class="icon"><use href="#i-arrow"/></svg></button></div>
       <div id="evidence-empty" class="empty-state"><svg class="empty-icon"><use href="#i-book"/></svg><h3>还没有核验记录</h3><button type="button" class="btn-secondary" data-nav="create">开始一次创作</button></div>
       <div id="insights" class="insights" hidden>
         <div class="insight-tabs" role="tablist" aria-label="核验内容"><button id="insight-tab-evidence" type="button" role="tab" data-insight="evidence" aria-controls="insight-evidence" aria-selected="true">事实与配图</button><button id="insight-tab-judge" type="button" role="tab" data-insight="judge" aria-controls="insight-judge" aria-selected="false" tabindex="-1">选型逻辑</button><button id="insight-tab-verify" type="button" role="tab" data-insight="verify" aria-controls="insight-verify" aria-selected="false" tabindex="-1">审核记录</button></div>
@@ -126,6 +149,6 @@
   <dialog id="options-dialog" class="studio-dialog options-dialog" aria-labelledby="options-title"><div class="dialog-heading"><div><h2 id="options-title">内容偏好</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭内容偏好"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="options-fields"><div class="form-group"><label for="goal">希望读者看完做什么</label><input id="goal" placeholder="例如：到店体验、私信咨询；留空由场景决定"></div><div class="form-group"><label for="constraints">有哪些不能写的内容</label><input id="constraints" value="不要提价格" placeholder="用逗号分隔，例如：不要提价格，不编造使用经历"></div><div class="form-group"><label for="extra">还有什么想补充</label><textarea id="extra" rows="3" placeholder="真实痛点、语气偏好，或希望优先突出的卖点"></textarea></div><div class="form-group"><label for="speed">创作档位</label><select id="speed"><option value="quality">质量优先</option><option value="fast">快速创作</option></select></div><button id="save-options" class="btn-primary" type="button">保存偏好 <svg class="icon"><use href="#i-check"/></svg></button></div></dialog>
   <dialog id="step-dialog" class="studio-dialog" aria-labelledby="step-dialog-title"><div class="dialog-heading"><div><p id="step-dialog-meta" class="section-label"></p><h2 id="step-dialog-title"></h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭执行详情"><svg class="icon"><use href="#i-close"/></svg></button></div><p id="step-dialog-note" class="dialog-copy"></p><div id="step-dialog-body" class="step-dialog-body"></div></dialog>
   <!-- Bump the progress asset versions together when changing the handoff UI. -->
-  <script src="/static/dom.js"></script><script src="/static/flow-playback.js?v=handoff-2"></script><script src="/static/flow.js?v=handoff-2"></script><script src="/static/preview.js?v=devices-1"></script><script src="/static/preview-xhs.js?v=devices-1"></script><script src="/static/preview-wx.js?v=devices-1"></script><script src="/static/preview-mm.js?v=devices-1"></script><script src="/static/preview-poster.js"></script><script src="/static/studio.js?v=20261019.2"></script><script src="/static/app.js?v=1.0.0-devices-2"></script>
+  <script src="/static/dom.js"></script><script src="/static/flow-playback.js?v=handoff-2"></script><script src="/static/flow.js?v=handoff-2"></script><script src="/static/preview.js?v=devices-1"></script><script src="/static/preview-xhs.js?v=devices-1"></script><script src="/static/preview-wx.js?v=devices-1"></script><script src="/static/preview-mm.js?v=devices-1"></script><script src="/static/preview-poster.js"></script><script src="/static/studio.js?v=sketch-1"></script><script src="/static/app.js?v=readability-1"></script>
 </body>
 </html>

@@ -2,8 +2,8 @@
 :root {
   color-scheme: light;
   --bg-canvas: #f8f7f3; --bg-surface: #fffefa; --bg-surface-subtle: #eeede6; --bg-surface-elevated: #fcfbf8;
-  --text-main: #25241f; --text-muted: #77746b; --text-faint: #827e73;
-  --border-hairline: #e9e7df; --border-line: #dedcd2; --border-strong: #b7b3a6;
+  --text-main: #25241f; --text-muted: #68645b; --text-faint: #767066;
+  --border-hairline: #e5e1d7; --border-line: #d3cdc0; --border-strong: #aea592;
   --accent-terracotta: #b35f42; --accent-terracotta-hover: #964b32; --accent-terracotta-dark: #964b32; --accent-tint: #f3e8df; --accent-terracotta-soft: #f3e8df;
   --state-ok: #4c6554; --state-ok-bg: #edf1e9; --state-warn: #9c6634; --state-warn-bg: #f6eee1; --state-bad: #a34739; --state-bad-bg: #f7e9e4;
   --font-serif: Georgia, "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
@@ -26,14 +26,14 @@ button:focus-visible, a:focus-visible, [role="tab"]:focus-visible { outline: 1px
 input:focus, select:focus, textarea:focus { outline: 1px solid var(--border-strong); outline-offset: 1px; border-color: var(--text-muted); }
 h1, h2, h3, p { margin: 0; }
 .icon-definitions { position: absolute; width: 0; height: 0; overflow: hidden; }
-.icon { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.icon { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-.btn-primary, .btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 42px; border-radius: 6px; padding: 10px 17px; font-size: 13px; line-height: 1.4; white-space: nowrap; }
+.btn-primary, .btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px; border-radius: 8px; padding: 11px 18px; font-size: 14px; font-weight: 600; line-height: 1.4; white-space: nowrap; }
 .btn-primary { color: #fffdf8; background: var(--text-main); border: 1px solid var(--text-main); }
 .btn-primary:hover:not(:disabled) { background: #454239; }
-.btn-secondary { border: 1px solid var(--border-line); }
+.btn-secondary { border: 1.5px solid var(--border-line); background: var(--bg-surface); }
 .btn-secondary:hover:not(:disabled) { background: var(--bg-surface-subtle); border-color: var(--border-strong); }
-.text-button { display: inline-flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 12px; line-height: 1.5; color: var(--text-muted); }
+.text-button { display: inline-flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; font-weight: 500; line-height: 1.6; color: var(--text-muted); }
 .text-button:hover { color: var(--accent-terracotta); }
 .text-button .icon { width: 15px; height: 15px; }
 .icon-button { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; }
@@ -46,11 +46,11 @@ h1, h2, h3, p { margin: 0; }
 .tag.ok { color: var(--state-ok); background: var(--state-ok-bg); }
 .tag.warn { color: var(--state-warn); background: var(--state-warn-bg); }
 .tag.bad { color: var(--state-bad); background: var(--state-bad-bg); }
-input, select, textarea { width: 100%; border: 1px solid var(--border-line); border-radius: 5px; background: #fffefa; padding: 11px 13px; min-width: 0; line-height: 1.5; font-size: 13px; }
+input, select, textarea { width: 100%; border: 1.5px solid var(--border-line); border-radius: 8px; background: #fffefa; padding: 11px 13px; min-width: 0; line-height: 1.5; font-size: 14px; }
 input:hover, select:hover, textarea:hover { border-color: var(--border-strong); }
 input::placeholder, textarea::placeholder { color: #918c80; }
 textarea { resize: none; }
-label, legend { display: block; font-size: 12px; line-height: 1.5; margin-bottom: 8px; }
+label, legend { display: block; font-size: 14px; font-weight: 600; line-height: 1.5; margin-bottom: 8px; }
 fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 legend { padding: 0; }
 table { width: 100%; border-collapse: collapse; font-size: 12px; line-height: 1.8; }
