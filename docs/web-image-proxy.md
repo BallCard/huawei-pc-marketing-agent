@@ -1,6 +1,6 @@
 # 网页生图私有链路
 
-2026-10-20：用户选择用本人 ChatGPT Plus 网页会话试接，并授权使用 network-infra 管理的美国 VPS。工作台继续部署在魔搭，无需迁移到 Vercel。当前尚未接入个人 ChatGPT 凭据，不能声称已完成真实生图验收。
+2026-10-20：用户选择用本人 ChatGPT Plus 网页会话试接，并授权使用 network-infra 管理的美国 VPS。工作台继续部署在魔搭，无需迁移到 Vercel。本人已提供短期网页凭据，VPS 已读取模型列表并完成一次真实参考图生图，约 29.1 秒。成图继续保留待复核，不等同于产品事实全部通过。
 
 ## 当前方案
 
@@ -22,7 +22,7 @@ VPS 只有约 1 GB 内存，因此使用不含浏览器的轻量路径，不安�
 
 本人将短期网页 access token 放进本机已忽略的 `deploy/gpt-direct/auth.json`，支持 `{"access_token":"…"}` 或网页会话 JSON 的 `accessToken` 字段。只传必要字段，不传密码、Cookie、refresh token 或其他个人资料。`scripts/connect_gpt_account.py` 从该文件读取，使用已验证主机密钥的 SSH 安全安装到 VPS 的 0600 专用文件，只重启新建的 Go 服务，不回显凭据。目标主机与 SSH 私钥路径只在 `deploy/gpt-direct/.env` 本地配置。
 
-账号接通并实际验收后，才将工作台切换为：
+工作台使用以下配置；账号令牌只在 VPS 专用服务中保存，魔搭只持有任务密钥：
 
 ```dotenv
 POSTER_IMAGE_PROVIDER=private_worker
@@ -38,7 +38,7 @@ POSTER_REVIEW_API_KEY=魔搭推理令牌
 
 独立免费测试空间 `BallCard/huazhang-gpt-network-check` 实测普通 HTTPS 可用；ChatGPT 主站和图片域请求失败，认证域返回 Cloudflare 403。测试没有上传会话或产品资料，已请求停止。不能根据一次失败断言永久封锁，也不能把普通 HTTPS 成功算作完整 GPT 生图已通。结果保存在本机忽略目录 `data/qa/network-check/`。
 
-VPS 的普通 HTTPS 探测可到达 ChatGPT，但也遇到 Cloudflare 403。轻量协议路径能否为本账号工作仍待验证；若上游要求交互式浏览器，需调整资源或使用浏览器方案，不能虚报成功或自动处理验证码。
+VPS 的普通 HTTPS 探测也遇到 Cloudflare 403，但真实账号的模型列表与带参考图生图成功；不能用匿名主站探测代替实际接口验证。若以后上游要求交互式浏览器，需调整资源或使用浏览器方案，不能自动处理验证码。
 
 备选 [stufently/gpt-web-gateway](https://github.com/stufently/gpt-web-gateway) 固定提交 `893f553be358210a5c045aa9f62b56ba1edc5c78`，材料在 `deploy/gpt-web/`，支持浏览器登录、`reference_images[]` 和实际上传数量确认；本机鉴权验证通过，尚未登录或出图。已补强强制鉴权、静态图片保护、监听地址和人工验证码处理。其浏览器内存需求不适合当前 VPS。
 
@@ -46,4 +46,10 @@ Gemini 仅为备选，材料在 `deploy/gemini-web/`，不是当前方案的凭�
 
 Vercel 已支持[容器函数](https://vercel.com/kb/guide/docker-on-vercel-vs-render)，但无状态并随流量缩容；[执行时长](https://vercel.com/docs/functions/configuring-functions/duration)受套餐约束。[Daemons](https://vercel.com/kb/guide/vercel-functions-containers-daemons)可运行后台进程，但没有入站 HTTP/TCP 或持久本地磁盘。已有美国 VPS 时，保留魔搭加出站 worker 更直接。
 
-这是网页内部协议的实验接法。官方 [Sign in with ChatGPT 预览限制](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations)尚不支持图像生成，不能把这条链路描述为官方套餐生图接口。会话与上游协议变化可能使其失效；上线前必须完成本人账号的一次真实海报验收。
+这是网页内部协议的实验接法。官方 [Sign in with ChatGPT 预览限制](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations)尚不支持图像生成，不能把这条链路描述为官方套餐生图接口。短期令牌到期后需本人更新；不持有 refresh token。会话与上游协议变化可能使其失效。
+
+## 本次验收边界
+
+本机完成 100 项 Python 与 26 项 JavaScript 测试。线上魔搭健康检查和登录成功，worker 心跳表明私有连接及凭据已配置；未授权领取返回 401，工作台 Cookie 不能领取，worker 密钥不能读取工作台接口。VPS 仅新增回环监听，原网络进程及端口未改，两个新服务闲时合计约 37 MB 内存。
+
+真实样张使用本型号产品图＋A 风格图，返回 1,654,537 字节图片。独立转录保留了中文、约 1.31 kg 与重量适用条件。成图改变了产品视角并补画参考图看不到的接口，需要人工核对；审核模型还提出了一条两边写成同一字的“简繁”意见，不能据此认定有错字。保留原始自动结论，不强行改成通过。已收紧后续生图与审核提示词，本次不自动重生。样张和审核记录在本机忽略目录 `data/qa/gpt-direct-sample/`。

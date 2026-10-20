@@ -30,7 +30,12 @@ def main():
     raw = args.file.read_text(encoding="utf-8-sig").strip()
     if len(raw) > 65536:
         raise SystemExit("账号文件过大。只需要 access token，不需要 Cookie 或完整浏览器资料。")
-    doc = json.loads(raw) if raw.startswith("{") else {"access_token":raw}
+    try:
+        doc = json.loads(raw) if raw.startswith("{") else {"access_token":raw}
+    except ValueError:
+        raise SystemExit("账号文件 JSON 格式有误。请只在 access_token 后的双引号内填写令牌，或只保存令牌本身。")
+    if not isinstance(doc,dict):
+        raise SystemExit("账号文件应为 JSON 对象或单独的 access token。")
     token = doc.get("access_token") or doc.get("accessToken")
     if not isinstance(token,str) or len(token)<80 or any(c.isspace() for c in token):
         raise SystemExit("账号文件没有有效的 access token。")
