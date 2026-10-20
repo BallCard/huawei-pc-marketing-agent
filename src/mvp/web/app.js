@@ -242,7 +242,19 @@ async function init() {
   }
 
   Studio.syncPlatform();
-  const saved = sessionStorage.getItem("studio-active-job");
+  let saved = sessionStorage.getItem("studio-active-job");
+  const linkedJob = new URLSearchParams(location.search).get("job");
+  if (linkedJob && /^[a-f0-9]{32}$/.test(linkedJob)) {
+    saved = null;
+    try {
+      const response = await fetch(`/api/job/${linkedJob}`);
+      if (!response.ok) throw new Error("这份作品已过期或暂时无法读取。");
+      const linked = await response.json();
+      saved = JSON.stringify({id:linkedJob, task:linked.result?.task || linked.artifacts?.request || {}, mode:"structured", startedAt:Date.now()-(linked.elapsed_ms || 0)});
+      sessionStorage.setItem("studio-active-job", saved);
+      history.replaceState(null, "", location.pathname + location.hash);
+    } catch(error) { Studio.toast(error.message); }
+  }
   if (saved) {
     try {
       const previous = JSON.parse(saved);

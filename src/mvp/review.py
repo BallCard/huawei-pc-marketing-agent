@@ -24,7 +24,7 @@ def questions(result: dict) -> dict:
 
     def add(problem, origin):
         detail = str(problem.get("detail") or "").strip()
-        if not detail or any(detail == row["detail"] for row in records):
+        if not detail:
             return
         index = problem.get("index", -1)
         where = problem.get("where", "article")
@@ -35,7 +35,9 @@ def questions(result: dict) -> dict:
         if not quote and isinstance(index, int) and 0 <= index < len(article.get("blocks", [])):
             block = article["blocks"][index]
             quote = block.get("text", block.get("caption", ""))
-        identity = json.dumps([where, index, detail, origin], ensure_ascii=False)
+        if any((row["where"],row["index"],row["quote"],row["detail"],row["origin"]) == (where,index,quote,detail,origin) for row in records):
+            return
+        identity = json.dumps([where, index, quote, detail, origin], ensure_ascii=False)
         records.append({"id": hashlib.sha256(identity.encode()).hexdigest()[:16], "where": where,
                         "index": index, "quote": quote, "detail": detail,
                         "type": problem.get("type", problem.get("kind", origin)), "origin": origin,

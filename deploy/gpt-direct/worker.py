@@ -38,9 +38,9 @@ def request(url, data=None, headers=None, timeout=25, limit=29*1024*1024):
         return json.loads(raw)
 
 
-def remote(path, body):
+def remote(path, body, timeout=25):
     return request(BASE+"/api/poster-worker/"+path, json.dumps(body).encode(),
-                   {"Content-Type":"application/json", "X-Poster-Worker-Key":KEY})
+                   {"Content-Type":"application/json", "X-Poster-Worker-Key":KEY}, timeout=timeout)
 
 
 def ready():
@@ -109,7 +109,7 @@ def main():
                 else:
                     body["error"]=delivery.get("error") or "generation_failed"
                 try:
-                    remote(delivery["id"]+"/result", body)
+                    remote(delivery["id"]+"/result", body, timeout=300)
                 except urllib.error.HTTPError as exc:
                     if exc.code == 400 and delivery.get("image"):
                         persist({"id":delivery["id"], "claim_token":delivery["claim_token"], "error":"invalid_image"})

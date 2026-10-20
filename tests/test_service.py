@@ -103,6 +103,11 @@ class ServiceTests(unittest.TestCase):
             self.assertEqual(self.client.get("/api/info").status_code, 401)
         self.assertFalse(service.valid_session("1.中文"))
 
+    def test_work_link_preserves_only_valid_job_id_through_login(self):
+        jid = "a"*32
+        self.assertEqual(self.client.get("/?job="+jid,follow_redirects=False).headers["location"], "/login?job="+jid)
+        self.assertEqual(self.client.get("/?job=https://example.com",follow_redirects=False).headers["location"], "/login")
+
     def test_overlapping_generation_is_rejected_and_slot_is_released_after_error(self):
         self.login()
         release = threading.Event()

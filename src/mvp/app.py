@@ -91,7 +91,8 @@ async def access_control(request: Request, call_next):
     if settings.AUTH_PASSWORD and request.url.path not in public and not public_font:
         if not valid_session(request.cookies.get("studio-session", "")):
             if request.url.path == "/":
-                return RedirectResponse("/login", status_code=303)
+                linked = request.query_params.get("job", "")
+                return RedirectResponse("/login?job=" + linked if re.fullmatch(r"[a-f0-9]{32}", linked) else "/login", status_code=303)
             return JSONResponse({"detail": "登录已失效，请刷新页面重新登录"}, status_code=401,
                                 headers={"Cache-Control": "no-store"})
     response = await call_next(request)

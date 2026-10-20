@@ -39,5 +39,6 @@
 - `POST /api/job/{id}/review`：提交逐项选择及最终处理方式；旧稿件令牌拒绝写入。
 - `POST /api/job/{id}/poster/regenerate`：手动重新生图或继续等待已提交任务。
 - `GET /api/job/{id}/poster/image`：预览；`?download=1` 下载 PNG。
+- `/?job={id}`：直接打开已保存的作品，登录后保留目标作品；仍需工作台访问账号。
 
 未接入门店真实二维码，生成文案以到店或向店员咨询为行动引导。

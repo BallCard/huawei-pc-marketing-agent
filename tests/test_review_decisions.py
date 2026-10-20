@@ -20,6 +20,15 @@ def result_fixture():
 
 
 class ReviewQuestionsTests(unittest.TestCase):
+    def test_same_explanation_for_distinct_poster_lines_keeps_each_question(self):
+        result = result_fixture()
+        result["poster"] = {"review":{"problems":[
+            {"where":"poster","quote":"约1.31 kg","detail":"成图缺少批准文案"},
+            {"where":"poster","quote":"重量依配置与测量方法而异","detail":"成图缺少批准文案"}]}}
+        questions = [q for q in review.questions(result)["questions"] if q["origin"] == "poster"]
+        self.assertEqual(len(questions), 2)
+        self.assertNotEqual(questions[0]["id"], questions[1]["id"])
+
     def test_questions_come_from_actual_final_issues_and_deduplicate_remaining(self):
         form = review.questions(result_fixture())
         self.assertEqual(len(form["questions"]), 1)

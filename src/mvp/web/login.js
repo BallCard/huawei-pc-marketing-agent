@@ -18,7 +18,8 @@ document.getElementById("login-form").addEventListener("submit", async event => 
     }
     // Each browser session belongs to the newly authenticated user.
     sessionStorage.removeItem("studio-active-job");
-    location.replace("/");
+    const job = new URLSearchParams(location.search).get("job");
+    location.replace(job && /^[a-f0-9]{32}$/.test(job) ? `/?job=${job}` : "/");
   } catch (exc) {
     error.textContent = exc.message || "暂时无法连接服务";
     error.hidden = false;
