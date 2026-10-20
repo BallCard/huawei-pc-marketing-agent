@@ -1,0 +1,122 @@
+/* Site-wide editorial hierarchy. All three variable families are self-hosted in fonts.css. */
+:root {
+  --weight-body: 450; --weight-label: 600; --weight-heading: 650; --weight-emphasis: 700;
+  --type-body: 15px; --type-small: 13px; --type-meta: 12px;
+  --text-main: #25241f; --text-muted: #625d53; --text-faint: #756c5e;
+}
+html { font-synthesis: none; text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
+body { font-family: var(--font-sans); font-size: var(--type-body); font-weight: var(--weight-body); line-height: 1.65; }
+strong, b { font-weight: var(--weight-emphasis); }
+input, select, textarea { font-family: var(--font-sans); font-size: 15px; font-weight: 450; }
+input::placeholder, textarea::placeholder { color: #837b6e; font-weight: 400; }
+label, legend { font-size: 14px; font-weight: 650; color: var(--text-main); }
+.btn-primary, .btn-secondary { font-weight: 650; }
+.text-button, .section-label, .tag { font-weight: 550; }
+.section-label { font-size: 12px; }
+.small, .tag { font-size: 12px; }
+th { font-weight: 650; }
+pre, code, .mono { font-family: var(--font-mono); font-weight: 450; }
+
+/* Main titles carry the paper character; controls use the more legible sans face. */
+.brand b, .about-brand { font-family: var(--font-serif); font-weight: 650; }
+.brand b { font-size: 21px; letter-spacing: .06em; }
+.intro h1, .welcome h1, .login-page h1, .about h1 { font-family: var(--font-serif); font-weight: 650; letter-spacing: -.025em; }
+.intro h1 { line-height: 1.35; }
+.brief h2, .page-heading h2, .page-process .page-heading h2, .dialog-heading h2,
+.empty-state h2, .empty-state h3, .about h2 { font-family: var(--font-serif); font-weight: 650; line-height: 1.4; }
+.page-nav button { font-size: 14px; font-weight: 550; }
+.page-nav button[aria-selected="true"], .input-modes button[aria-selected="true"], .insight-tabs button[aria-selected="true"] { font-weight: 700; }
+.page-description, .page-process .page-description { font-size: 13px; line-height: 1.8; color: var(--text-muted); }
+.page-process .page-heading h2 { font-size: clamp(26px,2.3vw,32px); }
+.welcome p, .login-page > p { font-size: 15px; font-weight: 450; }
+.welcome-enter { font-size: 15px; font-weight: 600; }
+.welcome-edition, .session-exit { font-size: 12px; font-weight: 500; }
+.input-modes button { font-size: 13px; font-weight: 550; }
+.label-row span, .brief-options > span { font-size: 12px; color: var(--text-muted); }
+.platform-options button { font-size: 13px; font-weight: 550; }
+.platform-options button[aria-pressed="true"] { font-weight: 700; }
+.form-error, #login-error { font-size: 13px; font-weight: 550; }
+
+/* Execution details must be readable at a glance, including the quieter source lines. */
+.process-eyebrow { font-size: 11px; font-weight: 600; }
+.stage-copy h3 { font-family: var(--font-sans); font-size: 23px; font-weight: 650; color: var(--text-main); }
+.stage-meta { font-size: 11px; font-weight: 550; color: #7c6e5a; }
+.stage-role, .bot-caption { font-size: 12px; font-weight: 550; color: #7c6e5a; }
+.stage-status { font-weight: 650; }
+.activity-label { font-size: 13px; font-weight: 600; color: #4b463e; }
+.activity-path { font-size: 12px; font-weight: 450; color: #756a59; }
+.activity-excerpt { font-size: 13px; font-weight: 450; color: #686052; }
+.activity-source-type { font-size: 10px; font-weight: 600; color: #806746; }
+.activity-state { font-size: 11px; font-weight: 550; color: #746751; }
+.stage-processing { font-size: 12px; font-weight: 500; color: #796d5a; }
+.stage-processing time, #process-elapsed { font-family: var(--font-mono); font-size: 11px; }
+#process-elapsed { color: #776b58; }
+.stage-detail { font-size: 12px; font-weight: 600; color: #76634a; }
+.phase-dot { font-size: 12px; font-weight: 550; }
+.phase-dot.done { color: #637056; }
+.phase-dot.wait { color: #897d6a; }
+.phase-dot.current { font-weight: 700; }
+.rotation-live { font-size: 13px; font-weight: 550; }
+.stage-peek { font-size: 11px; font-weight: 500; }
+.detail-block h3, .step-dialog-body .detail-block h3 { font-size: 14px; font-weight: 650; }
+.step-dialog-body p, .step-dialog-body .detail-block p, .detail-block blockquote { font-size: 13px; line-height: 1.85; }
+.detail-block h3 span { font-size: 11px; font-weight: 500; }
+.revision-record del, .revision-record ins { font-size: 13px; }
+.dialog-copy { font-size: 13px; }
+.preset b { font-size: 14px; font-weight: 650; }
+.preset span { font-size: 12px; }
+.need-container p, .need-container li { font-size: 13px; }
+.need-container h3 { font-size: 15px; font-weight: 650; }
+
+/* Tool panels, evidence and article previews share typefaces, while keeping platform layouts. */
+.page-work .work-product-name, .page-work .work-refine h3, .stage-title-group b, .work-summary h2 { font-family: var(--font-serif); font-weight: 650; }
+.page-work .work-platform-name { font-size: 14px; font-weight: 600; }
+.page-work .work-refine-hint { font-size: 13px; }
+.page-work .work-refine-options b { font-weight: 650; }
+.page-work .work-refine-options small { font-size: 12px; font-weight: 450; }
+.page-work #work-review-status, .page-work .work-utilities .text-button { font-size: 13px; font-weight: 550; }
+.insight-tabs button { font-weight: 600; }
+.insight-caption h3 { font-size: 17px; font-weight: 650; }
+.insight-caption span { font-size: 13px; }
+.dbg-content { font-size: 14px; line-height: 1.85; }
+.dbg-content table { font-size: 13px; }
+#evidence table th:first-child, #evidence table td:first-child { min-width: 50px; white-space: nowrap; overflow-wrap: normal; font-weight: 600; }
+#evidence table:first-of-type th:nth-child(3), #evidence table:first-of-type td:nth-child(3) { width: 190px; min-width: 170px; }
+#evidence table:first-of-type th:last-child, #evidence table:first-of-type td:last-child { min-width: 54px; white-space: nowrap; }
+.dbg-content h3 { font-family: var(--font-serif); font-size: 21px; font-weight: 650; }
+.dimrow { font-size: 12px; font-weight: 500; }
+.pv-xhs .xhs-title, .pv-wx .wx-title, .pv-mm .mm-author { font-weight: 700; }
+.pv-xhs .xhs-p, .pv-wx .wx-p, .pv-mm .mm-text { font-weight: 450; }
+.pv-poster .po-title { font-weight: 700; }
+.pv-poster .po-item-name { font-weight: 650; }
+.pv-poster .po-item-spec { font-weight: 450; }
+
+/* Larger source text can grow naturally instead of clipping inside a fixed stage. */
+.page-process { overflow-y: auto; }
+.page-process .process-content { display: flex; flex: 1 0 auto; min-height: min-content; overflow: visible; }
+.page-process #flow { display: flex; flex: 1; height: auto; }
+.rotation-stage { flex: 1; height: auto; min-width: 0; padding-top: 40px; padding-bottom: 36px; }
+.page-create { overflow-y: auto; }
+@media (min-width:901px) and (max-height:800px) {
+  .stage-copy h3 { font-size: 22px; }
+  .rotation-stage { padding-top: 28px; padding-bottom: 20px; }
+}
+@media (max-width:700px) {
+  .brand b { font-size: 19px; }
+  .page-nav button { font-size: 13px; }
+  .page-heading h2, .page-process .page-heading h2 { font-size: 25px; }
+  .page-description, .page-process .page-description { font-size: 12px; }
+  .stage-copy h3 { font-size: 20px; }
+  .activity-label { font-size: 12px; }
+  .activity-path { font-size: 11px; }
+  .activity-excerpt { font-size: 12px; }
+  .stage-meta, .stage-processing { font-size: 11px; }
+  .stage-bot { gap: 16px; }
+  .phase-dot { font-size: 11px; }
+  .rotation-live { font-size: 12px; }
+  .page-process .process-content { flex: 1 0 auto; min-height: min-content; }
+  .rotation-stage { padding: 24px 3px 24px; }
+  .insight-tabs { gap: 18px; }
+  .insight-tabs button { font-size: 13px; }
+  .preset b, .dialog-copy, .empty-state p { font-size: 12px; }
+}

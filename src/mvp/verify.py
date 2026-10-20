@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import re
+from decimal import Decimal
 from functools import lru_cache
 
 import yaml
@@ -31,6 +32,15 @@ def scan_compliance(text: str, allowed_text: str = "") -> list[dict]:
             w = m.group(0)
             if w and w in allowed_text:
                 continue
+            if w == "实测" and r["rule"] == "虚构体验评价":
+                # 邀请读者核对不等于声称已经实测；明确的既往/结果表述仍交给规则拦截。
+                before = re.split(r"[。！？\n]", text[:m.start()])[-1]
+                after = text[m.end():]
+                invitation = re.search(r"(?:建议|欢迎|不妨|可以|请|带.{0,10}[去来]|到店|(?:先去|前往|去|来).{0,12}(?:门店|店里|现场)).{0,25}$", before)
+                past = re.search(r"我|已经|曾经|上周|昨天|上个月", before)
+                finding = re.match(r"(?:证明|发现|结果|了|显示|表明|证实|过)", after)
+                if invitation and not past and not finding:
+                    continue
             hits.append({"rule": r["rule"], "kind": r["kind"], "hit": w})
     return hits
 
@@ -46,8 +56,9 @@ def unit_numbers(text: str) -> list[str]:
 def check_numbers(text: str, support_nums: set[str]) -> list[str]:
     """带单位的数字必须能在所引用事实原文里找到；找不到视为无依据。"""
     bad = []
+    supported = {Decimal(n) for n in support_nums}
     for n in unit_numbers(text):
-        if n not in support_nums and n.rstrip("0").rstrip(".") not in support_nums:
+        if Decimal(n) not in supported:
             bad.append(n)
     return sorted(set(bad))
 

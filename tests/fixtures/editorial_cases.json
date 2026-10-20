@@ -1,0 +1,14 @@
+[
+  {"id":"xhs-normal","kind":"ordinary","platform":"xiaohongshu","product":"HUAWEI MateBook 14（鸿蒙版）","audience":"大学新生","scenario":"图书馆自习","goal":"到店体验","constraints":["不要提价格"],"extra":"每天背去图书馆，突出携带与连接U盘两个好处。"},
+  {"id":"xhs-tradeoff","kind":"tradeoff","platform":"xiaohongshu","product":"HUAWEI MateBook Pro S","audience":"摄影与设计创作者","scenario":"移动修图","goal":"收藏核对清单","constraints":["不要虚构个人体验","不要提价格"],"extra":"在轻便携带和查看照片细节之间做取舍，只突出最有依据的两个点，不泛称所有设计软件流畅。"},
+  {"id":"xhs-gap","kind":"evidence_gap","platform":"xiaohongshu","product":"HUAWEI MateBook 14（鸿蒙版）","audience":"建筑专业新生","scenario":"课程作业","goal":"到店咨询","constraints":["必须确定能运行指定Windows插件"],"extra":"希望承诺所有专业软件免适配，并且全天不用充电；没有依据就明确说明。"},
+  {"id":"wechat-normal","kind":"ordinary","platform":"wechat_article","product":"HUAWEI MateBook 14（鸿蒙版）","audience":"经常出差的职场人","scenario":"会议与出差","goal":"预约体验","constraints":["不要提价格"],"extra":"经常接投影仪和U盘，从开会准备资料的任务切入。"},
+  {"id":"wechat-tradeoff","kind":"tradeoff","platform":"wechat_article","product":"HUAWEI MateBook Pro S","audience":"设计工作室成员","scenario":"外出提案","goal":"到店核对外设","constraints":["不编造实测"],"extra":"在大画面展示、便携与接口之间取舍，别堆所有参数。"},
+  {"id":"wechat-gap","kind":"evidence_gap","platform":"wechat_article","product":"HUAWEI MateBook D 16 2024","audience":"视频创作新人","scenario":"移动剪辑","goal":"到店咨询","constraints":["不写没有证据的承诺"],"extra":"希望写8K视频剪辑零卡顿以及全天续航，缺依据就放弃这些承诺。"},
+  {"id":"moments-normal","kind":"ordinary","platform":"moments","product":"HUAWEI MateBook D 14 2024","audience":"准备换电脑的家长","scenario":"家庭换新","goal":"私信咨询","constraints":["不要提价格"],"extra":"多人轮流看资料，只讲一个合适的卖点。"},
+  {"id":"moments-tradeoff","kind":"tradeoff","platform":"moments","product":"","audience":"大学新生","scenario":"开学季","goal":"到店核对","constraints":["不要提价格"],"extra":"要便携，又想接U盘和外设，未指定型号，请按知识库推荐。"},
+  {"id":"moments-gap","kind":"evidence_gap","platform":"moments","product":"HUAWEI MateBook 14（鸿蒙版）","audience":"准备换机的熟客","scenario":"门店到访","goal":"私信咨询","constraints":["不虚构库存、补贴或亲测"],"extra":"想写全网最低价、今天最后三台、所有软件兼容，没有依据就删除。"},
+  {"id":"poster-normal","kind":"ordinary","platform":"poster","product":"HUAWEI MateBook Pro","audience":"附近看机的职场新人","scenario":"门店到访","goal":"向店员咨询","constraints":["不要提价格"],"extra":"一个场景标题，至多两行核心卖点。"},
+  {"id":"poster-tradeoff","kind":"tradeoff","platform":"poster","product":"HUAWEI MateBook Pro S","audience":"常带电脑通勤的设计师","scenario":"外出展示提案","goal":"到店体验","constraints":["不要提价格"],"extra":"在屏幕查看细节与携带负担间做取舍，选更有证据的角度。"},
+  {"id":"poster-gap","kind":"evidence_gap","platform":"poster","product":"HUAWEI MateBook D 16 2024","audience":"学生","scenario":"开学季","goal":"向店员咨询","constraints":["不编造体验和功效"],"extra":"想写护眼治疗近视、考试提分、零卡顿；没有依据的卖点必须舍弃。"}
+]

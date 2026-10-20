@@ -8,12 +8,16 @@
   <meta name="application-name" content="华章有据">
   <meta name="description" content="基于产品知识库，为华为电脑生成适配四个平台、附事实核验的营销图文。">
   <link rel="icon" type="image/svg+xml" href="/static/brand/app-icon.svg">
-  <link rel="stylesheet" href="/static/style.css?v=readability-2">
-  <link rel="stylesheet" href="/static/platforms.css">
-  <link rel="stylesheet" href="/static/platforms-fixes.css">
-  <link rel="stylesheet" href="/static/studio.css?v=readability-2">
-  <link rel="stylesheet" href="/static/preview-devices.css?v=readability-2">
-  <link rel="stylesheet" href="/static/work-page.css?v=sketch-2">
+  <link rel="preload" href="/static/fonts/noto-sans-sc/noto-sans-sc-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/fonts.css?v=1.1.0">
+  <link rel="stylesheet" href="/static/style.css?v=1.1.0">
+  <link rel="stylesheet" href="/static/platforms.css?v=1.1.0">
+  <link rel="stylesheet" href="/static/platforms-fixes.css?v=1.1.0">
+  <link rel="stylesheet" href="/static/studio.css?v=1.1.0">
+  <link rel="stylesheet" href="/static/preview-devices.css?v=1.1.0">
+  <link rel="stylesheet" href="/static/work-page.css?v=1.1.0">
+  <link rel="stylesheet" href="/static/process.css?v=1.1.0">
+  <link rel="stylesheet" href="/static/typography.css?v=1.1.0">
 </head>
 <body>
   <section id="welcome" class="welcome" aria-labelledby="welcome-title">
@@ -23,7 +27,7 @@
       <p>从产品知识出发，生成有据可查的华为电脑营销图文。</p>
       <button id="enter-studio" class="welcome-enter" type="button">进入体验 <span aria-hidden="true">↗</span></button>
     </div>
-    <span class="welcome-edition">华章有据 · v1.0</span>
+    <span class="welcome-edition">华章有据 · v1.1</span>
   </section>
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <!-- Lucide outline icons, ISC license: https://lucide.dev/license -->
@@ -87,11 +91,11 @@
       </div>
     </section>
     <section id="page-process" class="page page-process" role="tabpanel" aria-labelledby="tab-process" tabindex="0" hidden>
-      <div class="page-heading"><div><h2 id="process-title">好内容，需要一点默契。</h2><p class="page-description">从选材到审核，看看内容如何一步步成形。</p></div><button id="view-result" class="btn-secondary" type="button" data-nav="work" hidden>查看作品 <svg class="icon"><use href="#i-arrow"/></svg></button></div>
-      <div class="process-meta"><div id="runbar" class="runbar" aria-live="polite" hidden></div></div>
+      <div class="page-heading"><div><p class="section-label process-eyebrow">华章有据 <span> / </span> 创作进行时</p><h2 id="process-title">正在处理创作任务</h2><p class="page-description">实时显示资料来源、处理记录与检查结果。</p></div><button id="view-result" class="btn-secondary" type="button" data-nav="work" hidden>查看作品 <svg class="icon"><use href="#i-arrow"/></svg></button></div>
       <div id="need" class="need-container" aria-live="polite"></div>
+      <div id="runbar" class="process-network-note" role="status" hidden></div>
+      <div class="rotation-footer"><div class="rotation-live"><span id="process-live">等待开始</span><span id="process-elapsed"></span></div><div class="phase-track-scroll"><div id="phase-track" class="phase-track" role="list" aria-label="创作环节进度"></div></div></div>
       <div id="dbg-flow" class="process-content"><div id="flow"></div></div>
-      <div class="process-footer"><div class="process-progress" role="progressbar" aria-label="生成进度" aria-valuemin="0" aria-valuemax="8" aria-valuenow="0"><span id="process-progress-fill"></span></div><span id="progress-count">0 / 8</span></div>
     </section>
     <section id="page-work" class="page page-work" role="tabpanel" aria-labelledby="tab-work" tabindex="0" hidden>
       <div id="work-empty" class="empty-state"><svg class="empty-icon"><use href="#i-pen"/></svg><h2>还没有作品</h2><button type="button" class="btn-secondary" data-nav="create">去写创作简报 <svg class="icon"><use href="#i-arrow"/></svg></button></div>
@@ -149,6 +153,6 @@
   <dialog id="options-dialog" class="studio-dialog options-dialog" aria-labelledby="options-title"><div class="dialog-heading"><div><h2 id="options-title">内容偏好</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭内容偏好"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="options-fields"><div class="form-group"><label for="goal">希望读者看完做什么</label><input id="goal" placeholder="例如：到店体验、私信咨询；留空由场景决定"></div><div class="form-group"><label for="constraints">有哪些不能写的内容</label><input id="constraints" value="不要提价格" placeholder="用逗号分隔，例如：不要提价格，不编造使用经历"></div><div class="form-group"><label for="extra">还有什么想补充</label><textarea id="extra" rows="3" placeholder="真实痛点、语气偏好，或希望优先突出的卖点"></textarea></div><div class="form-group"><label for="speed">创作档位</label><select id="speed"><option value="quality">质量优先</option><option value="fast">快速创作</option></select></div><button id="save-options" class="btn-primary" type="button">保存偏好 <svg class="icon"><use href="#i-check"/></svg></button></div></dialog>
   <dialog id="step-dialog" class="studio-dialog" aria-labelledby="step-dialog-title"><div class="dialog-heading"><div><p id="step-dialog-meta" class="section-label"></p><h2 id="step-dialog-title"></h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭执行详情"><svg class="icon"><use href="#i-close"/></svg></button></div><p id="step-dialog-note" class="dialog-copy"></p><div id="step-dialog-body" class="step-dialog-body"></div></dialog>
   <!-- Bump the progress asset versions together when changing the handoff UI. -->
-  <script src="/static/dom.js"></script><script src="/static/flow-playback.js?v=handoff-2"></script><script src="/static/flow.js?v=handoff-2"></script><script src="/static/preview.js?v=devices-1"></script><script src="/static/preview-xhs.js?v=devices-1"></script><script src="/static/preview-wx.js?v=devices-1"></script><script src="/static/preview-mm.js?v=devices-1"></script><script src="/static/preview-poster.js"></script><script src="/static/studio.js?v=sketch-1"></script><script src="/static/app.js?v=readability-1"></script>
+  <script src="/static/dom.js"></script><script src="/static/process-state.js?v=1.1.0"></script><script src="/static/stage-rotation.js?v=1.1.0"></script><script src="/static/bot-portrait.js?v=1.1.0"></script><script src="/static/process-clock.js?v=1.1.0"></script><script src="/static/review-status.js?v=1.1.0"></script><script src="/static/process-activity.js?v=1.1.0"></script><script src="/static/flow.js?v=1.1.0"></script><script src="/static/preview.js?v=1.1.0"></script><script src="/static/preview-xhs.js?v=1.1.0"></script><script src="/static/preview-wx.js?v=1.1.0"></script><script src="/static/preview-mm.js?v=1.1.0"></script><script src="/static/preview-poster.js"></script><script src="/static/studio.js?v=1.1.0"></script><script src="/static/font-assets.js?v=1.1.0"></script><script src="/static/app.js?v=1.1.0"></script>
 </body>
 </html>

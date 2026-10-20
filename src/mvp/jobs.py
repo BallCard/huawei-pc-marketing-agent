@@ -4,8 +4,23 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+import time
 from contextlib import closing
 from pathlib import Path
+
+
+def public_snapshot(job: dict, now: float | None = None) -> dict:
+    """Advance the live clock between progress events; freeze completed jobs at their result time."""
+    snapshot = {k: job.get(k) for k in ("id", "state", "steps", "events", "artifacts", "elapsed_ms", "result", "error")}
+    elapsed = job.get("elapsed_ms") or 0
+    if job["state"] == "running":
+        started = job.get("started_at", job.get("t"))
+        if started is not None:
+            elapsed = max(elapsed, int(((time.time() if now is None else now) - started) * 1000))
+    else:
+        elapsed = (job.get("result") or {}).get("total_ms", elapsed)
+    snapshot["elapsed_ms"] = max(0, elapsed)
+    return snapshot
 
 
 class JobStore:

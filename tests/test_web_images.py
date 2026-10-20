@@ -124,7 +124,29 @@ class WebImageTests(unittest.TestCase):
         lookup.assert_not_called()
         self.assertEqual(result["images"], [hero])
 
+    def test_activity_records_follow_actual_requests_and_cached_assets_do_not_claim_network(self):
+        activities = []
+        with patch.object(web_images.llm, "describe_image", return_value=PASS):
+            result = web_images.find_hero(self.doc, on_activity=activities.append)
+        self.assertEqual(result["status"], "verified")
+        self.assertTrue(any(a.get("url") == PAGE and a["status"] == "running" for a in activities))
+        self.assertTrue(any(a["operation"] == "image" and a["status"] == "done" for a in activities))
+        self.assertTrue(all(a.get("url") != PAGE or PAGE in self.requests for a in activities))
+        self.requests.clear()
+        activities.clear()
+        self.assertEqual(web_images.find_hero(self.doc, on_activity=activities.append)["status"], "cached")
+        self.assertEqual(self.requests, [])
+        self.assertEqual([a["source_kind"] for a in activities], ["cache"])
 
+    def test_local_retrieval_activity_is_not_reported_as_web_search(self):
+        hero = Image("local.jpg", NAME, Path("local.jpg"), "整机", PAGE, ASSET, kind="device", shows_device=True)
+        self.doc.images = [hero]
+        activities = []
+        with patch.object(web_images, "find_hero") as lookup:
+            pipeline.retrieve(SimpleNamespace(load=lambda _: self.doc), self.doc.id, {}, on_activity=activities.append)
+        lookup.assert_not_called()
+        self.assertEqual([a["status"] for a in activities], ["running", "done"])
+        self.assertTrue(all(a["source_kind"] == "knowledge" for a in activities))
 
     def test_network_failure_or_exhausted_lookup_budget_preserves_missing_state(self):
         with patch.object(web_images, "_fetch", side_effect=httpx.ConnectError("offline")):

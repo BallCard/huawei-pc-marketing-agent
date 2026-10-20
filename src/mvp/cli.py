@@ -23,15 +23,16 @@ def main():
             "constraints": [c for c in a.constraints.replace("，", ",").split(",") if c.strip()]}
 
     def cb(u):
-        s = u["steps"][-1]
-        print(f"  · {s['label']} [{s['status']}] {s['ms']}ms", file=sys.stderr)
+        event = (u.get("events") or [{}])[-1]
+        if event.get("label"):
+            print(f"  · {event['label']}", file=sys.stderr)
 
     r = pipeline.run(task, a.instruction or None, on_update=cb)
     if a.json:
         print(json.dumps(r, ensure_ascii=False, indent=1, default=str))
         return
     print("STATUS:", r["status"])
-    if r["status"] == "need_info":
+    if r["status"] in ("need_info", "budget_exceeded"):
         print("追问:", r["questions"])
         return
     art = r["article"]

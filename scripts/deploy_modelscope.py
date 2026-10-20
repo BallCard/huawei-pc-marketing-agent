@@ -52,6 +52,26 @@ def show_status():
     print(json.dumps(detail, ensure_ascii=False)[:8000], flush=True)
 
 
+def sync_source(checkout: Path, source_commit: str):
+    """Overlay the recorded source and remove files deleted since the previous release."""
+    archive = subprocess.run(["git", "archive", "--format=zip", source_commit], cwd=ROOT,
+                             capture_output=True, check=True)
+    with zipfile.ZipFile(io.BytesIO(archive.stdout)) as source:
+        current = {item.filename for item in source.infolist() if not item.is_dir()}
+        record = checkout / "deployment-source.json"
+        previous = json.loads(record.read_text(encoding="utf-8")) if record.exists() else {}
+        if previous.get("source_commit"):
+            old_files = git(["ls-tree", "-r", "--name-only", previous["source_commit"]], ROOT).splitlines()
+            root = checkout.resolve()
+            for name in set(old_files) - current:
+                target = (root / name).resolve()
+                if not target.is_relative_to(root) or name.startswith((".git/", "deployment-data/")):
+                    raise RuntimeError("源代码删除路径超出部署代码范围，已停止")
+                if target.is_file():
+                    target.unlink()
+        source.extractall(checkout)
+
+
 def deploy():
     cfg = config()
     source_commit = git(["rev-parse", "HEAD"], ROOT)
@@ -95,10 +115,7 @@ def deploy():
             raise RuntimeError("部署工作目录的远端与目标不一致，已停止")
         git(["pull", "--ff-only"], checkout, env)
     # Deploy the recorded commit, even when another chat is editing this checkout.
-    archive = subprocess.run(["git", "archive", "--format=zip", source_commit], cwd=ROOT,
-                             capture_output=True, check=True)
-    with zipfile.ZipFile(io.BytesIO(archive.stdout)) as source:
-        source.extractall(checkout)
+    sync_source(checkout, source_commit)
     shutil.copy2(checkout / "deploy/modelscope/Dockerfile", checkout / "Dockerfile")
     shutil.copy2(checkout / "deploy/modelscope/README.md", checkout / "README.md")
     (checkout / ".dockerignore").write_text(".git\n.env*\nmodel.txt\ndata\n**/__pycache__\n", encoding="utf-8")
@@ -121,7 +138,7 @@ def deploy():
     git(["push", "origin", "HEAD:master"], checkout, env)
     print("私有源码与资料包已同步，源代码版本：" + source_commit[:8], flush=True)
     variables = {k: v for k, v in cfg.items() if k.startswith(("LLM_", "FAST_", "WRITER_", "JUDGE_"))
-                 or k in ("AUTH_USERNAME", "AUTH_PASSWORD", "MAX_CONCURRENT_JOBS")}
+                 or k in ("AUTH_USERNAME", "AUTH_PASSWORD", "MAX_CONCURRENT_JOBS", "GENERATION_BUDGET_SECONDS")}
     variables.update(HOST="0.0.0.0", PORT="7860", COOKIE_SECURE="1", KB_BACKEND="local",
                      KB_DIR="/app/data/kb", CACHE_DIR="/app/data/cache",
                      JOB_DB="/mnt/workspace/huazhang-youju/jobs.sqlite3")

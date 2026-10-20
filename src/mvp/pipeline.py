@@ -1,39 +1,57 @@
-"""营销软文智能体流水线。
+"""证据约束的策划、写作与独立评审，由 Python 控制依赖和一次定向修订。
 
-场景解析(LLM) → 平台策略(规则) → 型号确定/推荐 → 资料检索(代码) → 事实点提取(LLM)
-→ 图文编排与生成(LLM) → 确定性核验 + 独立审核模型 → 必要时修订 → 输出四段结果。
-
-每一步都会记录输入摘要、输出摘要和耗时（trace），界面据此展示工作流。
+有序事件与完整产物随任务快照持久化，界面只消费真实结果；终稿复核失败不标通过。
 """
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import re
 import threading
 import time
 from functools import lru_cache
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from typing import Callable
 
 import yaml
 
 from . import llm, settings, verify, web_images
 from .kb import Image, ModelDoc, Snippet, get_kb
+from .progress import Trace
 
 PLATFORMS = ["wechat_article", "xiaohongshu", "moments", "poster"]
-MAX_REPAIR = 1
 TODAY_NOTE = f"事实基准日 {settings.KB_BASE_DATE}；发布前须以华为官方页面和实际销售 SKU 复核。"
+WORKFLOW_VERSION = "evidence-editorial-v2"
+
+
+def context_version(doc=None) -> str:
+    digest = hashlib.sha256(WORKFLOW_VERSION.encode())
+    for path in sorted((settings.PKG / "prompts").glob("*.md")) + sorted((settings.PKG / "config").glob("*.yaml")):
+        digest.update(path.name.encode())
+        digest.update(path.read_bytes())
+    if doc:
+        digest.update(jdump([[s.id, s.kind, s.text, s.path, s.label, s.title] for s in doc.snippets]).encode())
+    return digest.hexdigest()[:20]
 
 
 # ---------- 配置与提示词 ----------
-@lru_cache(maxsize=1)
 def scenes_cfg() -> dict:
-    return yaml.safe_load((settings.PKG / "config" / "scenes.yaml").read_text(encoding="utf-8"))
+    return _config("scenes")
 
 
-@lru_cache(maxsize=1)
 def platforms_cfg() -> dict:
-    return yaml.safe_load((settings.PKG / "config" / "platforms.yaml").read_text(encoding="utf-8"))
+    return _config("platforms")
+
+
+def _config(name):
+    path = settings.PKG / "config" / f"{name}.yaml"
+    return _config_version(path, path.stat().st_mtime_ns)
+
+
+@lru_cache(maxsize=8)
+def _config_version(path, version):
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
 def prompt(name: str) -> str:
@@ -47,7 +65,7 @@ def jdump(o) -> str:
 
 
 # ---------- 同一组输入的重复运行缓存 ----------
-# 一键演示常拿同一组输入连跑多次。场景解析、事实点提取是给定输入后结果不变的 LLM 调用，
+# 重复输入可复用需求理解与内容策划，缓存键同时约束需求、资料与提示词版本。
 # 缓存后这两步可从几十秒降到毫秒；写作与独立审核不缓存，保证每次出稿都是真实调用。
 _CACHE: dict = {}
 _CACHE_LOCK = threading.Lock()
@@ -67,7 +85,7 @@ def _cache_put(key: str, value) -> None:
 
 
 def parse_scene_cached(task: dict, instruction: str | None) -> dict:
-    key = "scene|" + json.dumps([settings.KB_BASE_DATE, task.get("product"), task.get("audience"),
+    key = "scene|" + json.dumps([context_version(), settings.FAST_MODEL, settings.KB_BASE_DATE, task.get("product"), task.get("audience"),
                                  task.get("scenario"), task.get("platform"), task.get("goal"),
                                  task.get("constraints") or [], task.get("extra"), instruction or ""],
                                 ensure_ascii=False, sort_keys=True)
@@ -82,46 +100,16 @@ def parse_scene_cached(task: dict, instruction: str | None) -> dict:
     return out
 
 
-def extract_facts_cached(doc, scene: dict, strat: dict, instruction: str | None) -> tuple[list[dict], bool]:
-    key = "extract|" + json.dumps([doc.id, settings.KB_BASE_DATE, scene.get("top_dims"), scene.get("weights"),
-                                   scene.get("hard_constraints"), scene.get("soft_preferences"),
-                                   strat.get("platform"), strat.get("max_facts"), instruction or ""],
-                                  ensure_ascii=False, sort_keys=True)
+def plan_content_cached(doc, scene, strat, task, instruction=None):
+    stable_scene = {k: v for k, v in scene.items() if k != "cache_hit"}
+    key = "plan|" + json.dumps([context_version(doc), doc.id, stable_scene, _strategy_view(strat), task, instruction,
+                                settings.FAST_MODEL], ensure_ascii=False, sort_keys=True)
     hit = _cache_get(key)
     if hit is not None:
         return hit, True
-    facts = extract_facts(doc, scene, strat)
-    _cache_put(key, facts)
-    return facts, False
-
-
-# ---------- trace ----------
-class Trace:
-    def __init__(self, cb: Callable[[dict], None] | None = None):
-        self.steps: list[dict] = []
-        self.cb = cb
-
-    def run(self, step: str, label: str, fn):
-        rec = {"step": step, "label": label, "status": "running", "ms": 0, "detail": {}}
-        self.steps.append(rec)
-        self._emit()
-        t = time.time()
-        try:
-            detail = fn()
-            rec["detail"] = detail if isinstance(detail, dict) else {"result": detail}
-            rec["status"] = "done"
-            return detail
-        except Exception as e:  # noqa: BLE001
-            rec["status"] = "error"
-            rec["detail"] = {"error": str(e)}
-            raise
-        finally:
-            rec["ms"] = int((time.time() - t) * 1000)
-            self._emit()
-
-    def _emit(self):
-        if self.cb:
-            self.cb({"steps": self.steps})
+    plan = plan_content(doc, scene, strat, task, instruction)
+    _cache_put(key, plan)
+    return plan, False
 
 
 # ---------- 输入检查 ----------
@@ -263,13 +251,19 @@ def decide_model(task: dict, scene: dict, kb) -> dict:
 
 
 # ---------- 检索与事实点提取 ----------
-def retrieve(kb, model_id: str, strat: dict) -> dict:
+def retrieve(kb, model_id: str, strat: dict, on_activity=None) -> dict:
+    def activity(**data):
+        if on_activity:
+            on_activity(data)
+    activity(operation="knowledge", resource=model_id, source_kind="knowledge", status="running", label="正在读取知识库型号资料")
     doc = kb.load(model_id)
+    activity(operation="knowledge", resource=model_id, source_kind="knowledge", status="done", label="知识库型号资料已读取",
+             documents=list(dict.fromkeys(s.path for s in doc.snippets if s.path)), snippets=len(doc.snippets))
     imgs = [i for i in doc.images if verify.image_model_ok(i, doc)]
     dropped = [i.id for i in doc.images if i not in imgs]
     lookup = {"status": "not_needed", "reason": "知识库已有整机图", "pages": []}
     if not any(i.is_hero for i in imgs):
-        lookup = web_images.find_hero(doc)
+        lookup = web_images.find_hero(doc, on_activity=on_activity) if on_activity else web_images.find_hero(doc)
         imgs = lookup.get("images", []) + imgs
     # 整机图排前面，logo/示意图等非产品图排后面；模型只会在“可用图片”里按语义挑，不会被图注带偏
     rank = {"device": 0, "device_scene": 1, "detail": 2, "screen_ui": 3, "diagram": 4, "other": 5, "people": 5, "logo": 6, "": 3}
@@ -279,18 +273,17 @@ def retrieve(kb, model_id: str, strat: dict) -> dict:
             "image_search": {k: v for k, v in lookup.items() if k != "images"}}
 
 
-def _snip_line(s: Snippet) -> str:
-    return f"{s.id} [{s.kind}｜{s.label}] {s.text[:260]}"
-
-
-def extract_facts(doc: ModelDoc, scene: dict, strat: dict) -> list[dict]:
+def plan_content(doc: ModelDoc, scene: dict, strat: dict, task: dict, instruction=None) -> dict:
     snippets: list[Snippet] = list(doc.snippets) + list(strat["price_snippets"])
     payload = {
-        "需求画像": {"user_problem": scene.get("user_problem"), "top_dims": scene["top_dims"],
-                   "weights": scene["weights"], "hard_constraints": scene.get("hard_constraints"),
-                   "soft_preferences": scene.get("soft_preferences")},
+        "原始需求": task,
+        "需求画像": {k: scene.get(k) for k in ("audience", "scenario", "goal", "user_problem", "top_dims",
+                                                      "hard_constraints", "soft_preferences", "tradeoffs", "unmappable")},
         "平台": {"name": strat["platform_name"], "max_facts": strat["max_facts"], "price_policy": strat["price_policy"]},
-        "资料片段": [_snip_line(s) for s in snippets],
+        "资料片段": [{"sid": s.id, "kind": s.kind, "text": s.text, "source": s.label,
+                      "evidence_type": "parameter" if s.kind in ("spec", "price") else "editorial"}
+                     for s in snippets],
+        "修改指令": instruction or "",
     }
     out = llm.ask_json(prompt("extract"), jdump(payload), model=settings.FAST_MODEL, role="fast")
     by_id = {s.id: s for s in snippets}
@@ -300,16 +293,39 @@ def extract_facts(doc: ModelDoc, scene: dict, strat: dict) -> list[dict]:
         if sid in by_id and sid not in seen:
             seen.add(sid)
             picked.append((by_id[sid], it))
-    picked = picked[:strat["max_facts"]]
+    # 限制与待确认资料不占主张额度；它们作为条件和风险单独管理。
+    boundaries = [(s, it) for s, it in picked if s.kind in ("limit", "unfit", "ask")]
+    picked = [(s, it) for s, it in picked if s.kind not in ("limit", "unfit", "ask")][:strat["max_facts"]]
     facts = []
     for n, (s, it) in enumerate(picked, 1):
         facts.append({
             "id": f"F{n}", "sid": s.id, "text": s.text, "kind": s.kind,
             "role": it.get("role", "proof"), "dimension": it.get("dimension", ""), "why": it.get("why", ""),
+            "claim": it.get("claim", ""),
+            "evidence_type": "parameter" if s.kind in ("spec", "price") else "editorial",
+            "conditions": [{"sid": sid, "text": by_id[sid].text, "source": by_id[sid].label}
+                           for sid in it.get("condition_sids", []) if sid in by_id],
             "source": {"title": s.title, "label": s.label, "path": s.path, "snippet": s.id, "model": doc.name}})
     if not facts:
-        raise llm.LLMError("事实点提取为空")
-    return facts
+        raise llm.LLMError("未选出可支持内容的本型号证据，请补充资料或调整需求。")
+    angles = out.get("angles") or []
+    if len(angles) != 2 or len({a.get("id") for a in angles}) != 2:
+        raise llm.LLMError("策划必须给出两个可比较的切入点。")
+    selected = out.get("selected_angle")
+    if selected not in {a.get("id") for a in angles}:
+        raise llm.LLMError("策划未选定有效切入点。")
+    for angle in angles:
+        angle["sids"] = [sid for sid in angle.get("sids", []) if sid in by_id]
+    risks = [{"sid": s.id, "text": s.text, "source": s.label} for s, _ in boundaries]
+    return {"facts": facts, "angles": angles, "selected_angle": selected,
+            "decision_reason": out.get("decision_reason", ""), "reader_task": out.get("reader_task", ""),
+            "goal": out.get("goal") or scene.get("goal") or task.get("goal", ""),
+            "unsupported_requests": out.get("unsupported_requests") or [],
+            "critical_gaps": out.get("critical_gaps") or [], "risks": risks}
+
+
+def style_examples(platform):
+    return _config("style_examples")[platform]
 
 
 # ---------- 图文编排与生成 ----------
@@ -322,27 +338,35 @@ def image_catalog(images: list[Image]) -> list[dict]:
 
 def compose(task: dict, scene: dict, strat: dict, facts: list[dict], images: list[Image],
             instruction: str | None, previous: dict | None = None, issues: list[str] | None = None,
-            writer_model: str | None = None) -> dict:
+            writer_model: str | None = None, plan: dict | None = None) -> dict:
     payload = {
         "需求画像": {k: scene.get(k) for k in ("audience", "scenario", "user_problem", "goal", "stage",
                                             "hard_constraints", "soft_preferences", "tradeoffs", "unmappable",
-                                            "strategy_notes")},
+                                            )},
         "用户限制": task.get("constraints") or [],
         "补充": task.get("extra") or "",
         "平台策略": {k: strat[k] for k in ("platform_name", "reader", "structure", "tone", "cta_style", "images",
                                           "chars", "tags", "price_policy", "writing_limits")},
-        "已选事实": [{"id": f["id"], "角色": f["role"], "text": f["text"], "来源": f["source"]["label"]} for f in facts],
+        "已选事实": facts,
         "可用图片": image_catalog(images),
         "修改指令": instruction or "",
     }
+    if plan:
+        payload["内容主张"] = {k: plan[k] for k in ("reader_task", "goal", "unsupported_requests", "critical_gaps", "risks")}
+        payload["内容主张"]["选定切入点"] = next(a for a in plan["angles"] if a["id"] == plan["selected_angle"])
+    payload["风格正反例（不是产品依据）"] = style_examples(strat["platform"])
+    mdl = writer_model or settings.WRITER_MODEL
     if previous is not None:
+        # 修订只接收定向问题、证据和须保留的主张，不重复作者自评。
+        payload.pop("需求画像", None)
         payload["上一版"] = previous
         payload["核验意见"] = issues or []
-        sys_p, mdl = prompt("repair"), settings.FAST_MODEL
+        payload["必须保留"] = "选定立意、未被指出问题的句段、单一行动目标以及已有适用条件"
+        sys_p = prompt("repair")
     else:
-        sys_p, mdl = prompt("compose"), (writer_model or settings.WRITER_MODEL)
+        sys_p = prompt("compose")
     return llm.ask_json(sys_p, jdump(payload), model=mdl,
-                        role="fast" if previous is not None or mdl == settings.FAST_MODEL else "writer")
+                        role="fast" if mdl == settings.FAST_MODEL else "writer")
 
 
 def normalize_article(raw: dict, facts: list[dict], images: list[Image]) -> dict:
@@ -354,34 +378,38 @@ def normalize_article(raw: dict, facts: list[dict], images: list[Image]) -> dict
             iid = b.get("image_id")
             if iid in id2img and iid not in used:
                 used.add(iid)
-                blocks.append({"type": "image", "image_id": iid, "caption": (b.get("caption") or id2img[iid].caption).strip()})
+                blocks.append({"type": "image", "image_id": iid, "caption": (b.get("caption") or id2img[iid].caption).strip(),
+                               "fact_refs": [r for r in b.get("fact_refs", []) if r in fids]})
         elif b.get("type") == "text" and (b.get("text") or "").strip():
             blocks.append({"type": "text", "text": b["text"].strip(),
                            "fact_refs": [r for r in b.get("fact_refs", []) if r in fids]})
     tags = [t if t.startswith("#") else f"#{t}" for t in (raw.get("tags") or []) if str(t).strip()]
     return {"title": (raw.get("title") or "").strip(), "title_options": raw.get("title_options") or [],
             "lead": (raw.get("lead") or "").strip(), "blocks": blocks, "cta": (raw.get("cta") or "").strip(),
-            "tags": tags, "pending_confirm": [p for p in (raw.get("pending_confirm") or []) if str(p).strip()]}
+            "tags": tags, "pending_confirm": [p for p in (raw.get("pending_confirm") or []) if str(p).strip()],
+            "fact_refs": {k: [r for r in (raw.get("fact_refs") or {}).get(k, []) if r in fids]
+                          for k in ("title", "lead", "cta")}}
 
 
 # ---------- 核验 ----------
 def deterministic_check(article: dict, facts: list[dict], doc: ModelDoc, strat: dict,
                         images: list[Image]) -> dict:
     by_id = {f["id"]: f for f in facts}
-    all_text = " ".join(f["text"] for f in facts)
+    all_text = " ".join(f["text"] + " " + " ".join(c["text"] for c in f.get("conditions", [])) for f in facts)
     all_nums = set(re.findall(r"\d+(?:\.\d+)?", all_text.replace(",", "")))
     issues: list[dict] = []   # {where, index, kind, detail}
 
     def scan(where: str, idx: int, text: str, refs: list[str] | None):
         if not text:
             return
-        sup = all_nums if not refs else set(re.findall(
-            r"\d+(?:\.\d+)?", " ".join(by_id[r]["text"] for r in refs if r in by_id).replace(",", "")))
+        sup = all_nums if refs is None else set(re.findall(
+            r"\d+(?:\.\d+)?", " ".join(by_id[r]["text"] + " " + " ".join(c["text"] for c in by_id[r].get("conditions", []))
+                                          for r in refs if r in by_id).replace(",", "")))
         if refs is not None and not refs:
             sup = set()
         for h in verify.scan_compliance(text, all_text):
             issues.append({"where": where, "index": idx, "kind": "compliance", "rule": h["rule"], "detail": h["hit"]})
-        bad = verify.check_numbers(text, sup | (all_nums if where != "body" else set()))
+        bad = verify.check_numbers(text, sup)
         for n in bad:
             issues.append({"where": where, "index": idx, "kind": "number", "detail": f"数字 {n} 不在所引用事实中"})
         for m in verify.check_model_mentions(text, doc):
@@ -390,16 +418,15 @@ def deterministic_check(article: dict, facts: list[dict], doc: ModelDoc, strat: 
             for p in verify.price_leak(text):
                 issues.append({"where": where, "index": idx, "kind": "price", "detail": f"本平台/本次不允许价格：{p}"})
 
-    scan("title", -1, article["title"], None)
-    scan("lead", -1, article["lead"], None)
-    scan("cta", -1, article["cta"], None)
+    for where in ("title", "lead", "cta"):
+        scan(where, -1, article[where], article.get("fact_refs", {}).get(where))
     for i, b in enumerate(article["blocks"]):
         if b["type"] == "text":
             scan("body", i, b["text"], b.get("fact_refs", []))
             if re.search(r"\d", b["text"]) and not b.get("fact_refs") and verify.unit_numbers(b["text"]):
                 issues.append({"where": "body", "index": i, "kind": "no_ref", "detail": "含参数数字但没有 fact_refs"})
         else:
-            scan("caption", i, b.get("caption", ""), None)
+            scan("caption", i, b.get("caption", ""), b.get("fact_refs"))
     id2img = {f"I{n}": im for n, im in enumerate(images, 1)}
     img_checks = []
     img_at = []
@@ -424,19 +451,63 @@ def deterministic_check(article: dict, facts: list[dict], doc: ModelDoc, strat: 
 
 
 def judge(article: dict, facts: list[dict], strat: dict, det: dict, judge_model: str | None = None,
-          images: list[Image] | None = None) -> dict:
+          images: list[Image] | None = None, task: dict | None = None, risks: list[dict] | None = None) -> dict:
     payload = {
         "平台策略": {"name": strat["platform_name"], "price_policy": strat["price_policy"], "tone": strat["tone"],
                      "structure": strat["structure"], "chars": strat["chars"], "writing_limits": strat["writing_limits"]},
-        "已选事实": [{"id": f["id"], "text": f["text"]} for f in facts],
+        "原始需求": task or {},
+        "相关风险与待确认原文": risks or [],
+        "已选事实": [{k: f.get(k) for k in ("id", "text", "conditions", "source", "evidence_type")} for f in facts],
         "配图资料": image_catalog(images or []),
         "软文": {"title": article["title"], "lead": article["lead"], "cta": article["cta"], "tags": article["tags"],
-                "blocks": [{"index": i, **{k: v for k, v in b.items()}} for i, b in enumerate(article["blocks"])]},
-        "规则表命中数": len(det["issues"]),
+                "fact_refs": article.get("fact_refs", {}),
+                "blocks": [{"index": i, "where": "body" if b["type"] == "text" else "caption", **b}
+                           for i, b in enumerate(article["blocks"])]},
     }
     selected = judge_model or settings.JUDGE_MODEL
-    return llm.ask_json(prompt("judge"), jdump(payload), model=selected,
-                        role="fast" if selected == settings.FAST_MODEL else "judge")
+    result = llm.ask_json(prompt("judge"), jdump(payload), model=selected,
+                         role="fast" if selected == settings.FAST_MODEL else "judge")
+    # 旧格式仍兼容；表达意见最多两项，事实/需求问题不设截断。
+    must = result.get("must_fix", result.get("problems", []))
+    # 语义评审不负责心算长度。对明确的计数意见用本地同一口径验证，避免无效返修。
+    dismissed, confirmed = [], []
+    for p in must:
+        where, index = p.get("where"), p.get("index", -1)
+        key = "text_block" if where == "body" else where
+        text = (article.get(where, "") if index < 0 else
+                article["blocks"][index].get("text", article["blocks"][index].get("caption", ""))
+                if 0 <= index < len(article["blocks"]) else "")
+        limit = strat["writing_limits"].get(key)
+        if p.get("type") == "platform" and re.search(r"字数|字符|字.{0,8}上限|单段", p.get("detail", "")) and limit and len(re.sub(r"\s+", "", text)) <= limit:
+            dismissed.append({**p, "reason": f"代码计数 {len(re.sub(r'\s+', '', text))} 字，未超过 {limit} 字"})
+        else:
+            confirmed.append(p)
+    must = confirmed
+    improvements = (result.get("improvements") or [])[:2]
+    result["must_fix"], result["improvements"] = must, improvements
+    result["problems"] = must + improvements
+    result["dismissed_counting_notes"] = dismissed
+    if dismissed and not result["problems"]:
+        result["overall"] = "pass"
+    expected = {(key, -1) for key in ("title", "lead", "cta") if article.get(key)}
+    expected.update(("body" if b["type"] == "text" else "caption", i) for i, b in enumerate(article["blocks"])
+                    if b.get("text") or b.get("caption"))
+    for claim in result.get("claims", []):
+        index = claim.get("index", -1)
+        if 0 <= index < len(article["blocks"]) and claim.get("where") in ("body", "caption", "image"):
+            claim["where"] = "body" if article["blocks"][index]["type"] == "text" else "caption"
+        if claim.get("verdict") in ("unsupported", "overclaim") and not any(
+                p.get("where") == claim.get("where") and p.get("index", -1) == index for p in result["problems"]):
+            issue = {"where": claim.get("where"), "index": index, "type": claim["verdict"],
+                     "detail": "独立评审判定该句缺乏支持或超过原文支持范围。", "direction": "依据原文补回条件，不能成立就删除承诺。"}
+            result["must_fix"].append(issue)
+            result["problems"].append(issue)
+            result["overall"] = "needs_fix"
+    actual = {(c.get("where"), c.get("index", -1)) for c in result.get("claims", [])}
+    if not expected.issubset(actual):
+        result["overall"] = "incomplete"
+        result.setdefault("pending_confirm", []).append("独立评审未覆盖全部可见句段，需人工复核。")
+    return result
 
 
 def collect_issues(det: dict, jd: dict | None) -> list[str]:
@@ -446,124 +517,239 @@ def collect_issues(det: dict, jd: dict | None) -> list[str]:
     msgs += [f"[平台] {p}" for p in det["platform_issues"]]
     if jd:
         for p in jd.get("problems", []):
-            msgs.append(f"[{p.get('where', 'body')}#{p.get('index', -1)}] 审核模型（{p.get('type', '')}）：{p.get('detail', '')}")
+            msgs.append(f"[{p.get('where', 'body')}#{p.get('index', -1)}] 审核模型（{p.get('type', '')}）："
+                        f"{p.get('quote', '')} {p.get('detail', '')}；修改方向：{p.get('direction', '按原始证据修正')}")
+        if jd.get("overall") not in ("pass", "ok") and not jd.get("problems"):
+            msgs.append("独立评审未通过或未完成，需要复核。")
     return msgs
 
 
-def strip_bad_blocks(article: dict, det: dict, jd: dict | None) -> tuple[dict, list[dict]]:
-    """修订仍未通过时的兜底：删除仍有问题的正文块/图片，不带伤发布。"""
-    bad = {it["index"] for it in det["issues"] if it["where"] in ("body", "caption", "image") and it["index"] >= 0}
-    removed = []
-    keep = []
-    for i, b in enumerate(article["blocks"]):
-        if i in bad:
-            removed.append({"index": i, "preview": (b.get("text") or b.get("image_id") or "")[:50]})
-        else:
-            keep.append(b)
-    article = {**article, "blocks": keep}
-    return article, removed
-
-
 # ---------- 主流程 ----------
-def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], None] | None = None) -> dict:
-    tr = Trace(on_update)
+def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], None] | None = None,
+        *, enable_revision: bool = True) -> dict:
+    tr = Trace(on_update, budget_seconds=settings.GENERATION_BUDGET_SECONDS)
     kb = get_kb()
-    t0 = time.time()
     task = {**task, "constraints": list(task.get("constraints") or [])}
-    # 生成档位：quality 保持写作/审核 high；fast 全部降到 FAST_MODEL，用于现场演示
     fast = (task.get("speed") or "").strip().lower() == "fast"
     writer_model = settings.FAST_MODEL if fast else settings.WRITER_MODEL
     judge_model = settings.FAST_MODEL if fast else settings.JUDGE_MODEL
+    pool = ThreadPoolExecutor(max_workers=3, thread_name_prefix="editorial")
+    article = None
+    plan = None
+    attempts, revisions = [], []
+    det = {"issues": [], "platform_issues": [], "images": []}
+    jd = {"overall": "not_reviewed", "problems": []}
+    budget_hit = False
+
+    def await_result(future):
+        try:
+            return future.result(timeout=max(.001, tr.deadline - time.monotonic()))
+        except FutureTimeout:
+            raise llm.BudgetExceeded("已达到 90 秒总预算，尚未完成的审核保留待复核状态。") from None
+
+    def parallel(*calls):
+        futures = [pool.submit(call) for call in calls]
+        return [await_result(f) for f in futures]
+
+    def perform(*args, **kwargs):
+        # Even a provider that ignores its socket timeout cannot hold the task snapshot open.
+        return await_result(pool.submit(lambda: tr.run(*args, **kwargs)))
+
+    def review(version):
+        suffix = "" if version == 1 else "re"
+        checks, review0 = parallel(
+            lambda: tr.run(suffix + "verify", "规则检查" if version == 1 else "终稿规则复核",
+                           lambda: deterministic_check(article, facts, doc, strat, images),
+                           inputs=f"稿件 v{version} · 数字、型号、图片与平台规格", depends_on=[f"draft:{version}"]),
+            lambda: tr.run("judge" if version == 1 else "rejudge", "独立评审" if version == 1 else "独立复审实际终稿",
+                           lambda: judge(article, facts, strat, {}, judge_model, images, task, plan.get("risks", [])),
+                           inputs=f"原始需求 · 稿件 v{version} · 完整证据 · 平台规则", depends_on=[f"draft:{version}"]))
+        tr.publish(f"rules:{version}", checks, "verify", "规则检查已完成", version=version)
+        tr.publish(f"review:{version}", review0, "reviewer", "独立评审已完成", version=version)
+        return checks, review0
 
     def fin(res: dict) -> dict:
-        res["trace"] = tr.steps
         res["task"] = task
-        res["total_ms"] = int((time.time() - t0) * 1000)
+        res["total_ms"] = int((time.monotonic() - tr.started) * 1000)
         res["kb"] = kb.whoami()
-        if on_update:
-            on_update({"steps": tr.steps, "result": res})
+        res["budget"] = {"limit_seconds": settings.GENERATION_BUDGET_SECONDS, "exhausted": budget_hit}
+        res["llm_calls"] = copy.deepcopy(tr.calls)
+        with tr.lock:
+            tr.emit("workflow_finished", "controller", label="作品已就绪" if res.get("article") else "流程已结束",
+                    status=res["status"])
+            snapshot = tr.snapshot()
+            res["trace"] = snapshot["steps"]
+            res.update({k: snapshot[k] for k in ("events", "artifacts")})
+            tr.closed = True
+        pool.shutdown(wait=False, cancel_futures=True)
         return res
 
     miss = check_task(task)
+    tr.publish("request", {k: task.get(k) for k in ("product", "audience", "scenario", "platform", "goal", "constraints", "extra")},
+               "controller", "创作简报已接收")
     if miss:
         return fin(miss)
 
-    scene = tr.run("scene", "场景解析（规则先验 + 模型推理）", lambda: parse_scene_cached(task, instruction))
-    if scene["need_info"].get("blocking") and scene["need_info"].get("questions"):
-        return fin({"status": "need_info", "questions": scene["need_info"]["questions"], "scene_judgement": scene})
-
-    dm = tr.run("model", "确定型号（指定 / 按需求推荐）", lambda: decide_model(task, scene, kb))
-    if dm["status"] != "ok":
-        return fin({"status": "need_info", "questions": dm["questions"], "candidates": dm.get("candidates", []),
-                    "candidate_ids": dm.get("candidate_ids", []), "scene_judgement": scene})
-    model_id = dm["model_id"]
-
-    strat = tr.run("strategy", "平台策略（规则表）", lambda: plan_strategy(task, scene, kb, model_id))
-    tr.steps[-1]["detail"] = _strategy_view(strat)
-    tr.steps[-1]["detail"]["price_policy_note"] = {
-        "forbid": "本次不出现价格", "conditional": "可引用官方价格快照，须带类型/时间/条件",
-        "none_in_kb": "知识库无该型号价格快照 → 只写以官方渠道为准"}.get(strat["price_policy"], "")
-
-    # 只检索一次：之前为了写 trace 摘要会重复调用 retrieve
-    docs_holder: dict = {}
-
-    def _retrieve_once():
-        r0 = retrieve(kb, model_id, strat)
-        docs_holder["r"] = r0
-        return {"model": model_id, "backend": kb.backend,
-                "snippets": len(r0["doc"].snippets), "images": len(r0["images"]),
-                "dropped_images_model_mismatch": r0["dropped_images"], "hero_images": r0["hero_count"],
-                "image_kinds": {i.id[-28:]: i.kind or "未标注" for i in r0["images"]},
-                "sources": [s["url"] for s in r0["doc"].sources][:3], "image_search": r0["image_search"]}
-
-    tr.run("retrieve", "读取本型号资料，缺图时检索官网并核验", _retrieve_once)
-    r = docs_holder["r"]
-    doc, images = r["doc"], r["images"]
-
-    def _extract():
-        facts0, hit = extract_facts_cached(doc, scene, strat, instruction)
-        return {"facts": facts0, "cache_hit": hit}
-
-    facts = tr.run("extract", "事实点提取（按画像权重选片段）", _extract)["facts"]
-
-    raw = tr.run("compose", "图文编排与软文生成",
-                 lambda: {"article": compose(task, scene, strat, facts, images, instruction,
-                                             writer_model=writer_model)})["article"]
-    article = normalize_article(raw, facts, images)
-
-    attempts = []
-    det = None
-    # 1) 确定性核验是毫秒级，先循环修到通过（最多 MAX_REPAIR 次），不调用慢模型
-    for rnd in range(MAX_REPAIR + 1):
-        det = tr.run("verify", f"确定性核验（第{rnd + 1}轮：数字/型号/图片/价格/规则表/平台）",
-                     lambda: deterministic_check(article, facts, doc, strat, images))
-        msgs = collect_issues(det, None)
-        attempts.append({"round": rnd + 1, "issues": msgs})
-        if not msgs or rnd == MAX_REPAIR:
-            break
-        raw = tr.run("repair", f"按意见修订（第{rnd + 1}次）", lambda: {
-            "article": compose(task, scene, strat, facts, images, instruction, previous=article,
-                               issues=msgs, writer_model=writer_model)})["article"]
+    try:
+        # 平台规范和风格示范无需等待模型理解需求。
+        prep = pool.submit(lambda: tr.run("style", "准备平台规范与风格样例", lambda: {
+            "spec": platforms_cfg()[task["platform"]], "examples": style_examples(task["platform"])},
+            inputs=task["platform"]))
+        scene = perform("scene", "理解人群与具体任务", lambda: parse_scene_cached(task, instruction),
+                       inputs=" · ".join(str(task.get(k) or "") for k in ("audience", "scenario", "extra", "goal") if task.get(k)))
+        tr.publish("brief", scene, "planner", "需求已整理")
+        if scene["need_info"].get("blocking"):
+            return fin({"status": "need_info", "questions": scene["need_info"].get("questions", []), "scene_judgement": scene})
+        dm = perform("model", "匹配指定型号" if task.get("product") else "按需求推荐型号",
+                    lambda: decide_model(task, scene, kb), inputs=task.get("product") or scene.get("user_problem", ""))
+        if dm["status"] != "ok":
+            return fin({"status": "need_info", "questions": dm["questions"], "candidates": dm.get("candidates", []),
+                        "candidate_ids": dm.get("candidate_ids", []), "scene_judgement": scene})
+        model_id = dm["model_id"]
+        if dm["mode"] == "given":
+            tr.skip("recommend", "按需求推荐", "已指定并匹配型号，无需模型推荐")
+        tr.publish("model", dm, "model", "型号已确定")
+        strat, retrieved = parallel(
+            lambda: tr.run("strategy", "应用平台规格与价格政策", lambda: plan_strategy(task, scene, kb, model_id),
+                           view=_strategy_view, inputs=f"{task['platform']} · {model_id}"),
+            lambda: tr.run("retrieve", "读取本型号资料与登记图片", lambda: retrieve(kb, model_id, {},
+                           on_activity=lambda data: tr.emit("tool_activity", "retrieve", step="retrieve", **data)),
+                           view=lambda r: {"model": model_id, "snippets": len(r["doc"].snippets), "images": len(r["images"]),
+                                           "image_search": r.get("image_search")},
+                           inputs=model_id, depends_on=["model"]))
+        await_result(prep)
+        doc, images = retrieved["doc"], retrieved["images"]
+        tr.publish("sources", {"model": doc.name, "model_id": doc.id, "snippets": [{"sid": s.id, "text": s.text, "kind": s.kind,
+            "source": {"label": s.label, "title": s.title, "path": s.path, "model": doc.name}} for s in doc.snippets],
+            "images": image_catalog(images), "image_search": retrieved.get("image_search")}, "retrieve", "本型号资料已读取")
+        plan, hit = perform("extract", "比较两个切入点并选择证据",
+                           lambda: plan_content_cached(doc, scene, strat, task, instruction),
+                           view=lambda r: {"selected_angle": r[0]["selected_angle"], "facts": len(r[0]["facts"]), "cache_hit": r[1]},
+                           inputs="需求画像 · 完整候选证据 · 平台目标", depends_on=["brief", "sources", "style"])
+        facts = plan["facts"]
+        tr.publish("evidence", {"facts": facts, "risks": plan["risks"]}, "planner", "证据已选定")
+        tr.publish("plan", {**plan, "cache_hit": hit}, "planner", "立意已确定", to="editor")
+        raw = perform("compose", "按选定立意创作完整稿件",
+                     lambda: compose(task, scene, strat, facts, images, instruction, writer_model=writer_model, plan=plan),
+                     view=lambda a: {"title": a.get("title"), "blocks": len(a.get("blocks", []))},
+                     inputs="选定立意 · 证据及条件 · 图片候选 · 平台风格", depends_on=["plan", "evidence"])
         article = normalize_article(raw, facts, images)
-
-    # 2) 先删去规则仍未通过的片段，独立审核必须看到实际展示的终稿。
-    removed = []
-    if collect_issues(det, None):
-        article, removed = strip_bad_blocks(article, det, None)
-        det = tr.run("verify", "删去未通过片段后复核",
-                     lambda: deterministic_check(article, facts, doc, strat, images))
-
-    # 独立审核意见进入结果供人确认，不触发整篇重写。
-    jd = tr.run("judge", f"独立审核（{judge_model}）", lambda: judge(
-        article, facts, strat, det, judge_model=judge_model, images=images))
-    attempts.append({"round": len(attempts) + 1, "issues": collect_issues({"issues": [], "platform_issues": []}, jd),
-                     "source": "judge"})
-    res = build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, attempts, removed, kb)
-    res["image_search"] = r["image_search"]
+        tr.publish("draft:1", article, "editor", "初稿已完成", version=1, to="reviewer")
+        det, jd = review(1)
+        msgs = collect_issues(det, jd)
+        attempts.append({"round": 1, "issues": msgs, "version": 1})
+        if msgs and jd.get("overall") != "incomplete" and enable_revision:
+            tr.emit("route_selected", "controller", label="评审发现问题，定向修订", reason="；".join(msgs),
+                    **{"from": "reviewer", "to": "editor"})
+            gaps = [p for p in jd.get("problems", []) if p.get("type") in ("unsupported", "evidence_gap")]
+            if gaps:
+                lookup = perform("lookup", "补查本型号资料", lambda: supplement_evidence(kb, doc, facts, gaps),
+                                inputs="评审指出的缺证据句段，仅查当前型号", depends_on=["review:1"])
+                facts = lookup["facts"]
+                tr.publish("lookup", lookup, "retrieve", "补查已完成", to="editor")
+                tr.publish("evidence", {"facts": facts, "risks": plan["risks"]}, "planner", "证据包已更新")
+                msgs.append("补查结论：" + lookup["reason"] + "。无法获得原文支持的承诺必须删除，不能用委婉措辞保留。")
+            else:
+                tr.skip("lookup", "补查本型号资料", "问题可用已有证据或表达修改解决")
+            before = copy.deepcopy(article)
+            raw = perform("repair", "按具体问题定向修订（最多一次）",
+                         lambda: compose(task, scene, strat, facts, images, instruction, previous=before,
+                                         issues=msgs, writer_model=writer_model, plan=plan),
+                         view=lambda a: {"title": a.get("title"), "blocks": len(a.get("blocks", []))},
+                         inputs="当前稿件 · 具体问题 · 相关证据 · 必须保留内容", depends_on=["review:1", "rules:1"])
+            article = normalize_article(raw, facts, images)
+            revisions = article_changes(before, article, jd, facts)
+            tr.publish("revision", {"changes": revisions, "issues": msgs}, "editor", "修订已完成", version=2, to="reviewer")
+            tr.publish("draft:2", article, "editor", "修订稿已完成", version=2)
+            # 先撤销初稿通过状态，复审超时也不能借用初稿的评审。
+            jd = {"overall": "not_reviewed", "problems": []}
+            det = deterministic_check(article, facts, doc, strat, images)
+            det, jd = review(2)
+            attempts.append({"round": 2, "issues": collect_issues(det, jd), "version": 2})
+        else:
+            for step, label in (("repair", "定向修订"), ("lookup", "补查本型号资料"), ("rejudge", "修订稿复审")):
+                reason = "评测仅提示词优化版，不执行修订" if not enable_revision and msgs else "评审覆盖不完整，保留待复核状态" if msgs else "初稿规则检查与独立评审通过，直接交付"
+                tr.skip(step, label, reason)
+    except llm.BudgetExceeded:
+        budget_hit = True
+        with tr.lock:
+            for step in tr.steps:
+                if step["status"] == "running":
+                    step.update(status="error", detail={"error": "时间预算耗尽，结果未返回"},
+                                ms=max(0, int((time.monotonic() - tr.started) * 1000) - step.get("started_ms", 0)))
+        tr.emit("budget_exhausted", "controller", label="时间预算已用尽，未完成审核需人工复核")
+        if article is None:
+            return fin({"status": "budget_exceeded", "questions": ["已达到创作时间预算，尚无完整稿件。请调整需求后重试。"]})
+        det = deterministic_check(article, facts, doc, strat, images)
+    except Exception:
+        with tr.lock:
+            tr.closed = True
+        pool.shutdown(wait=False, cancel_futures=True)
+        raise
+    res = build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, attempts, [], kb)
+    res["image_search"] = retrieved.get("image_search", {})
+    if budget_hit:
+        res["status"] = "ok_with_flags"
+        res["verification"]["remaining"].append("时间预算耗尽，必要修订或复核尚未完成。")
+    res["planning"] = {k: v for k, v in plan.items() if k != "facts"}
+    if plan.get("critical_gaps"):
+        res["status"] = "ok_with_flags"
+        res["verification"]["remaining"] += [f"关键需求无法从本型号资料确认：{gap}" for gap in plan["critical_gaps"]]
+    res["evidence"]["risks"] = plan.get("risks", [])
+    res["revisions"] = revisions
+    res["workflow_version"] = WORKFLOW_VERSION
+    res["context_version"] = context_version(doc)
+    res["verification"]["article_version"] = 2 if revisions or "draft:2" in tr.artifacts else 1
+    res["verification"]["state"] = "passed" if res["status"] == "ok" else "needs_review"
     res["verification"]["judge"]["model"] = judge_model
     res["models_used"] = {"writer": writer_model, "judge": judge_model, "fast": settings.FAST_MODEL,
                           "speed": "fast" if fast else "quality"}
+    tr.publish("final", {"article": article, "state": res["verification"]["state"],
+                         "remaining": res["verification"]["remaining"], "version": res["verification"]["article_version"]},
+               "controller", "终稿已就绪" if res["status"] == "ok" else "稿件已就绪，待复核")
     return fin(res)
+
+
+def supplement_evidence(kb, doc, facts, problems):
+    """按问题原句检索同型号片段；找到候选不等于已证明，由复审判断支持关系。"""
+    refreshed = kb.load(doc.id)
+    if refreshed.id != doc.id:
+        raise ValueError("补查不能跨型号")
+    query = " ".join(str(p.get("quote", "")) + " " + str(p.get("detail", "")) for p in problems)
+    terms = set(re.findall(r"[A-Za-z][\w.-]+|[\u4e00-\u9fff]{2,}", query))
+    terms |= {word[i:i + 2] for word in list(terms) if re.search(r"[\u4e00-\u9fff]", word)
+              for i in range(len(word) - 1)}
+    used = {f["sid"] for f in facts}
+    ranked = sorted(((sum(t.lower() in s.text.lower() for t in terms), s) for s in refreshed.snippets
+                     if s.id not in used and s.kind not in ("position", "fit", "unfit", "ask")), key=lambda pair: -pair[0])
+    added = []
+    for score, s in ranked[:3]:
+        if score < 2:
+            continue
+        added.append({"id": f"F{len(facts) + len(added) + 1}", "sid": s.id, "text": s.text, "kind": s.kind,
+                      "role": "supplement", "why": "评审缺口的同型号候选资料，仍需复审核实", "conditions": [],
+                      "source": {"title": s.title, "label": s.label, "path": s.path, "snippet": s.id, "model": doc.name}})
+    return {"facts": facts + added, "added": [f["id"] for f in added], "model": doc.name,
+            "reason": f"找到 {len(added)} 条同型号候选，修订与复审须判断是否真正支持" if added else "未找到新的相关依据，删除相应承诺"}
+
+
+def article_changes(before, after, review, facts):
+    def parts(a):
+        return {(key, -1): a.get(key, "") for key in ("title", "lead", "cta")} | {
+            ("body" if b["type"] == "text" else "caption", i): b.get("text", b.get("caption", ""))
+            for i, b in enumerate(a["blocks"])}
+    old, new = parts(before), parts(after)
+    changes = []
+    for where, index in sorted(old.keys() | new.keys()):
+        if old.get((where, index)) == new.get((where, index)):
+            continue
+        problems = [p for p in review.get("problems", []) if p.get("where") == where and p.get("index", -1) == index]
+        refs = (after.get("fact_refs", {}).get(where, []) if index < 0 else
+                after["blocks"][index].get("fact_refs", []) if index < len(after["blocks"]) else [])
+        changes.append({"where": where, "index": index, "before": old.get((where, index), ""),
+                        "after": new.get((where, index), ""), "problems": problems, "fact_refs": refs,
+                        "evidence": [f["id"] for f in facts if f["id"] in refs]})
+    return changes
 
 
 # ---------- 结果组装（对应手册统一输出四段）----------
@@ -597,12 +783,20 @@ def build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, a
     if len(img_out) < spec_imgs[0]:
         reason = "知识库可用图片不足" if len(images) < spec_imgs[0] else "请补充配图或重新生成"
         notice.append(f"{strat['platform_name']}建议 {spec_imgs[0]}-{spec_imgs[1]} 张图，当前仅配 {len(img_out)} 张（{reason}）。")
-    used_fids = {r for b in article["blocks"] if b["type"] == "text" for r in b.get("fact_refs", [])}
+    used_fids = {r for b in article["blocks"] for r in b.get("fact_refs", [])}
+    used_fids.update(r for refs in article.get("fact_refs", {}).values() for r in refs)
     claim_rows = []
-    for b in article["blocks"]:
-        if b["type"] == "text":
-            claim_rows.append({"claim": b["text"][:60], "fact_ids": b.get("fact_refs", []),
-                               "verdict": "supported" if b.get("fact_refs") else "no_fact_claim"})
+    semantic = {(c.get("where"), c.get("index", -1)): c for c in (jd or {}).get("claims", [])}
+    fields = [(where, -1, article.get(where, ""), article.get("fact_refs", {}).get(where, [])) for where in ("title", "lead", "cta")]
+    fields += [("body" if b["type"] == "text" else "caption", i, b.get("text", b.get("caption", "")), b.get("fact_refs", []))
+               for i, b in enumerate(article["blocks"])]
+    for where, index, text, refs in fields:
+        if text:
+            verdict = semantic.get((where, index), {}).get("verdict", "not_reviewed")
+            checked = semantic.get((where, index), {})
+            mapped = [fid for fid in checked.get("fact_ids", refs) if fid in {f["id"] for f in facts}]
+            used_fids.update(mapped)
+            claim_rows.append({"where": where, "index": index, "claim": text, "fact_ids": mapped, "verdict": verdict})
     comp = [{"rule": h.get("rule"), "hit": h.get("hit"), "action": "rewritten"}
             for a in attempts[:-1] for h in []]
     # 记录修订过程里命中过的合规项（第 1 轮之后被改写）
@@ -619,8 +813,6 @@ def build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, a
     if jd:
         pend += [p for p in jd.get("pending_confirm", []) if p]
     remaining = collect_issues(det, jd)
-    if jd and jd.get("overall") not in ("pass", "ok") and not jd.get("problems"):
-        remaining.append("独立审核未通过，请人工复核后发布。")
     status = "ok" if not remaining else "ok_with_flags"
     res = {
         "status": status,
@@ -635,8 +827,7 @@ def build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, a
         "model": {"id": doc.id, "name": doc.name, "mode": dm["mode"], "recommendation": dm.get("recommendation"),
                   "alternatives": dm.get("alt_names", [])},
         "evidence": {"models": [doc.name], "backend": kb.backend,
-                     "facts": [{"id": f["id"], "text": f["text"], "role": f["role"], "why": f["why"],
-                                "used": f["id"] in used_fids, "source": f["source"]} for f in facts],
+                     "facts": [{**f, "used": f["id"] in used_fids} for f in facts],
                      "sources": doc.sources},
         "article": {**article},
         "images": img_out,
@@ -650,7 +841,8 @@ def build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, a
             "remaining": remaining,
             "repair_rounds": [{"round": a["round"], "issues": a["issues"]} for a in attempts],
             "judge": {"model": settings.JUDGE_MODEL, "overall": (jd or {}).get("overall"),
-                      "problems": (jd or {}).get("problems", [])},
+                      "problems": (jd or {}).get("problems", []), "must_fix": (jd or {}).get("must_fix", []),
+                      "improvements": (jd or {}).get("improvements", [])},
             "pending_confirm": list(dict.fromkeys(pend))},
     }
     return res

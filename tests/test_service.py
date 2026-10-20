@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 from fastapi.testclient import TestClient
 
-from src.mvp import app as service
+from src.mvp import __version__, app as service
 from src.mvp.jobs import JobStore
 from src.mvp.pipeline import build_result
 
@@ -91,7 +91,7 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(self.client.post("/api/login", json={"username": "tester", "password": "wrong"}).status_code, 401)
         response = self.login()
         self.assertIn("HttpOnly", response.headers["set-cookie"])
-        self.assertEqual(self.client.get("/api/info").json()["version"], "1.0.0")
+        self.assertEqual(self.client.get("/api/info").json()["version"], __version__)
         self.assertEqual(self.client.get("/").headers["cache-control"], "no-store")
         self.client.post("/logout", follow_redirects=False)
         self.assertEqual(self.client.get("/api/info").status_code, 401)

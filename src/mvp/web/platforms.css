@@ -992,7 +992,7 @@ figcaption.wx-caption {
 }
 
 .po-brand {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.26em;
@@ -1031,7 +1031,7 @@ figcaption.wx-caption {
 }
 
 .po-title {
-  font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+  font-family: var(--font-serif);
   font-size: 23px;
   font-weight: 600;
   line-height: 1.25;
@@ -1097,7 +1097,7 @@ figcaption.wx-caption {
 }
 
 .po-item-spec {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.02em;
   color: var(--poster-ink-tertiary);
@@ -1155,7 +1155,7 @@ figcaption.wx-caption {
 .po-cta::after {
   content: "→";
   margin-left: 5px;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-sans);
   font-size: 11px;
   line-height: 1;
 }
@@ -1325,7 +1325,7 @@ figcaption.wx-caption {
 }
 
 .pv-missing-hero-label {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.18em;
@@ -1355,7 +1355,7 @@ figcaption.wx-caption {
   height: 18px;
   padding: 0 6px;
   box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
   font-size: 9.5px;
   font-weight: 600;
   letter-spacing: 0.06em;

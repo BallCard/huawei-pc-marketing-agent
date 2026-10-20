@@ -208,11 +208,15 @@ def _verify_candidate(client, doc, page, url, deadline):
                 temp_path.unlink(missing_ok=True)
 
 
-def find_hero(doc):
+def find_hero(doc, on_activity=None):
+    def activity(**data):
+        if on_activity:
+            on_activity(data)
     if not settings.WEB_IMAGE_SEARCH:
         return {"images": [], "status": "disabled", "reason": "联网补图已关闭", "pages": []}
     cached = cached_images(doc)
     if cached:
+        activity(operation="image_cache", resource=doc.id, source_kind="cache", status="done", label="复用已核验的官方图片")
         return {"images": cached, "status": "cached", "reason": "复用已核验的官方整机图", "pages": [i.page for i in cached]}
     deadline = time.monotonic() + min(settings.WEB_IMAGE_TIMEOUT, max(0, llm.remaining() - 10))
     pages = list(dict.fromkeys(s.get("url", "") for s in doc.sources if trusted_url(s.get("url", ""), PAGE_HOSTS)))
@@ -225,8 +229,13 @@ def find_hero(doc):
                     break
                 searched = True
                 try:
+                    activity(operation="search", resource=doc.id, source_kind="web", status="running", label="正在联网检索官网图片",
+                             url="https://www.bing.com/search", detail=f'site:consumer.huawei.com/cn/laptops/ "{doc.name}"')
                     pages = _search_pages(client, doc.name, deadline)
+                    activity(operation="search", resource=doc.id, source_kind="web", status="done", label="官网图片检索已返回",
+                             url="https://www.bing.com/search", detail=f"找到 {len(pages)} 个候选页面")
                 except (httpx.HTTPError, ValueError, TimeoutError, ElementTree.ParseError) as exc:
+                    activity(operation="search", resource=doc.id, source_kind="web", status="error", label="官网图片检索失败", detail=str(exc))
                     errors.append(str(exc))
                     break
             if not pages:
@@ -238,13 +247,16 @@ def find_hero(doc):
             if len(checked) >= 4:
                 break
             try:
+                activity(operation="page", resource=page, source_kind="web", status="running", label="正在读取华为官网页面", url=page)
                 final_page, html = _fetch(client, page, PAGE_HOSTS, deadline, 2_000_000)
+                activity(operation="page", resource=page, source_kind="web", status="done", label="华为官网页面已读取", url=final_page)
                 checked.append(final_page)
                 for url, _ in page_candidates(html.decode("utf-8", errors="replace"), final_page, doc.name)[:3]:
                     if attempts >= 3 or time.monotonic() >= deadline:
                         break
                     attempts += 1
                     try:
+                        activity(operation="image", resource=url, source_kind="web", status="running", label="正在核验官网候选图片", url=final_page)
                         row = _verify_candidate(client, doc, final_page, url, deadline)
                         folder = _folder(doc)
                         try:
@@ -256,11 +268,14 @@ def find_hero(doc):
                             json.dump(rows, f, ensure_ascii=False)
                             manifest = Path(f.name)
                         manifest.replace(folder / "verified.json")
+                        activity(operation="image", resource=url, source_kind="web", status="done", label="官网候选图片已通过核验", url=final_page)
                         return {"images": cached_images(doc), "status": "verified", "reason": "官方页面型号与整机画面均已核验", "pages": checked}
                     except (httpx.HTTPError, ValueError, TimeoutError, OSError, llm.LLMError,
                             PILImage.DecompressionBombWarning, PILImage.DecompressionBombError) as exc:
+                        activity(operation="image", resource=url, source_kind="web", status="error", label="官网候选图片未通过核验", url=final_page, detail=str(exc))
                         errors.append(str(exc))
             except (httpx.HTTPError, ValueError, TimeoutError) as exc:
+                activity(operation="page", resource=page, source_kind="web", status="error", label="华为官网页面读取失败", url=page, detail=str(exc))
                 errors.append(str(exc))
             if attempts >= 3:
                 break

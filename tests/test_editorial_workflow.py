@@ -1,0 +1,252 @@
+import copy
+import json
+import tempfile
+import threading
+import time
+import unittest
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
+
+from src.mvp import llm, pipeline
+from src.mvp.kb import ModelDoc, Snippet
+from src.mvp.progress import Trace
+
+
+def scene():
+    return dict(audience="大学新生", scenario="图书馆", user_problem="每天带电脑查资料", goal="到店体验",
+                hard_constraints=["不提价格"], soft_preferences=[], tradeoffs=[], unmappable=[],
+                weights={}, prior_weights={}, llm_weights={}, top_dims=["portability"],
+                need_info={"blocking": False, "questions": []})
+
+
+def review(problems=()):
+    return {"overall": "needs_fix" if problems else "pass", "problems": list(problems)}
+
+
+class WorkflowTests(unittest.TestCase):
+    def setUp(self):
+        self.doc = ModelDoc("test", "测试电脑", "", Path("."), snippets=[
+            Snippet("S1", "spec", "重量", "约 1.3 kg，仅配置 A", "facts.md"),
+            Snippet("S2", "spec", "接口", "配备 USB-A 接口", "facts.md")])
+        self.facts = [{"id": "F1", "sid": "S1", "text": self.doc.snippets[0].text,
+                       "role": "proof", "why": "便携", "source": {"label": "重量", "model": self.doc.name}}]
+        self.plan = dict(facts=self.facts, angles=[{"id": "A", "title": "携带"}, {"id": "B", "title": "接口"}],
+                         selected_angle="A", decision_reason="证据支持携带", reader_task="每天查资料", goal="到店体验",
+                         unsupported_requests=[], critical_gaps=[], risks=[])
+        self.article = dict(title="去图书馆", lead="课本已经够重", blocks=[{"type": "text", "text": "配置 A 约 1.3 kg。", "fact_refs": ["F1"]}],
+                            cta="到店体验", tags=[], pending_confirm=[])
+        self.task = dict(product="测试电脑", audience="大学新生", scenario="图书馆", platform="moments", constraints=[])
+        self.det = dict(issues=[], platform_issues=[], images=[])
+        self.kb = Mock(backend="local")
+        self.kb.resolve.return_value = ("ok", ["test"])
+        self.kb.whoami.return_value = {"backend": "local"}
+        self.kb.load.return_value = self.doc
+        self.kb.prices.return_value = []
+        patches = [patch.object(pipeline, "get_kb", return_value=self.kb),
+                   patch.object(pipeline, "parse_scene_cached", return_value=scene()),
+                   patch.object(pipeline, "plan_content_cached", return_value=(self.plan, False)),
+                   patch.object(pipeline, "compose", return_value=self.article),
+                   patch.object(pipeline, "deterministic_check", return_value=self.det),
+                   patch.object(pipeline, "judge", return_value=review()),
+                   patch.object(pipeline.web_images, "find_hero", return_value={"images": [], "status": "unavailable", "pages": []})]
+        self.mocks = [p.start() for p in patches]
+        for p in patches:
+            self.addCleanup(p.stop)
+
+    def test_specified_model_skips_recommend_and_direct_pass_skips_revision(self):
+        with patch.object(pipeline.llm, "ask_json") as model:
+            result = pipeline.run(self.task)
+        model.assert_not_called()
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(self.mocks[3].call_count, 1)
+        skipped = {s["step"] for s in result["trace"] if s["status"] == "skip"}
+        self.assertTrue({"recommend", "repair", "lookup", "rejudge"}.issubset(skipped))
+        self.assertEqual(result["verification"]["article_version"], 1)
+
+    def test_semantic_feedback_drives_one_revision_and_reviews_displayed_final(self):
+        issue = {"where": "lead", "index": -1, "type": "expression", "quote": "课本已经够重", "detail": "切入泛", "direction": "落到查资料"}
+        self.mocks[5].side_effect = [review([issue]), review()]
+        after = {**self.article, "lead": "去图书馆，把要看的资料带齐。"}
+        self.mocks[3].side_effect = [self.article, after]
+        result = pipeline.run(self.task)
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(self.mocks[3].call_count, 2)
+        self.assertIn("落到查资料", " ".join(self.mocks[3].call_args.kwargs["issues"]))
+        self.assertEqual(self.mocks[5].call_args.args[0], result["article"])
+        self.assertEqual(result["artifacts"]["draft:2"], result["article"])
+        self.assertEqual(result["verification"]["article_version"], 2)
+        self.assertEqual(result["revisions"][0]["before"], self.article["lead"])
+
+    def test_evidence_lookup_without_result_instructs_deletion(self):
+        issue = {"where": "body", "index": 0, "type": "unsupported", "quote": "全天续航", "detail": "缺续航实测"}
+        self.mocks[5].side_effect = [review([issue]), review()]
+        with patch.object(pipeline, "supplement_evidence", return_value={"facts": self.facts, "added": [], "reason": "未找到依据，删除承诺"}) as lookup:
+            result = pipeline.run(self.task)
+        self.assertEqual(lookup.call_count, 1)
+        self.assertEqual(lookup.call_args.args[1].id, "test")
+        self.assertIn("删除", " ".join(self.mocks[3].call_args.kwargs["issues"]))
+        self.assertEqual(result["artifacts"]["lookup"]["added"], [])
+
+    def test_failed_re_review_stays_flagged_without_second_revision_or_silent_deletion(self):
+        issue = {"where": "body", "index": 0, "type": "overclaim", "detail": "缺少配置条件"}
+        self.mocks[5].side_effect = [review([issue]), review([issue])]
+        result = pipeline.run(self.task)
+        self.assertEqual(self.mocks[3].call_count, 2)
+        self.assertEqual(self.mocks[5].call_count, 2)
+        self.assertEqual(result["status"], "ok_with_flags")
+        self.assertEqual(result["verification"]["state"], "needs_review")
+        self.assertEqual(result["artifacts"]["final"]["article"], result["article"])
+        self.assertEqual(len(result["article"]["blocks"]), 1)
+
+    def test_re_review_budget_cannot_reuse_original_review(self):
+        issue = {"where": "lead", "index": -1, "type": "expression", "detail": "切入泛"}
+        self.mocks[5].side_effect = [review([issue]), llm.BudgetExceeded("budget")]
+        result = pipeline.run(self.task)
+        self.assertEqual(result["verification"]["judge"]["overall"], "not_reviewed")
+        self.assertEqual(result["status"], "ok_with_flags")
+        self.assertEqual(result["verification"]["article_version"], 2)
+        self.assertIn("budget_exhausted", [e["type"] for e in result["events"]])
+
+    def test_budget_before_draft_has_no_fake_article(self):
+        self.mocks[3].side_effect = llm.BudgetExceeded("budget")
+        result = pipeline.run(self.task)
+        self.assertEqual(result["status"], "budget_exceeded")
+        self.assertNotIn("article", result)
+
+    def test_unresponsive_provider_is_bounded_and_late_completion_cannot_change_result(self):
+        release = threading.Event()
+        def blocked(*a, **kw):
+            release.wait(2)
+            return self.article
+        self.mocks[3].side_effect = blocked
+        try:
+            with patch.object(pipeline.settings, "GENERATION_BUDGET_SECONDS", .08):
+                result = pipeline.run(self.task)
+            frozen = copy.deepcopy(result)
+            self.assertEqual(result["status"], "budget_exceeded")
+            self.assertTrue(result["budget"]["exhausted"])
+            self.assertLess(result["total_ms"], 500)
+            release.set()
+            self.assertEqual(result, frozen)
+        finally:
+            release.set()
+
+    def test_parallel_review_and_check_and_monotonic_persistent_events(self):
+        barrier = threading.Barrier(2)
+        self.mocks[4].side_effect = lambda *a: (barrier.wait(2), copy.deepcopy(self.det))[1]
+        self.mocks[5].side_effect = lambda *a: (barrier.wait(2), review())[1]
+        snapshots = []
+        result = pipeline.run(self.task, on_update=snapshots.append)
+        self.assertEqual(result["status"], "ok")
+        seqs = [e["seq"] for e in result["events"]]
+        self.assertEqual(seqs, list(range(1, len(seqs) + 1)))
+        lengths = [len(s["events"]) for s in snapshots]
+        self.assertEqual(lengths, sorted(lengths))
+        self.assertTrue(any(sum(s["status"] == "running" for s in snap["steps"]) >= 2 for snap in snapshots))
+        self.assertIn("final", snapshots[-1]["artifacts"])
+
+    def test_critical_requirement_gap_cannot_pass(self):
+        self.plan["critical_gaps"] = ["专业软件兼容性未确认"]
+        result = pipeline.run(self.task)
+        self.assertEqual(result["status"], "ok_with_flags")
+        self.assertIn("关键需求", " ".join(result["verification"]["remaining"]))
+
+
+class EvidenceTests(unittest.TestCase):
+    def test_scene_cache_marker_does_not_invalidate_the_content_plan(self):
+        doc = ModelDoc("cache-test", "型号", "", Path("."))
+        profile = {**scene(), "cache_hit": False}
+        strategy = {"price_snippets": []}
+        pipeline._CACHE.clear()
+        self.addCleanup(pipeline._CACHE.clear)
+        with patch.object(pipeline, "plan_content", return_value={"facts": []}) as plan:
+            _, first = pipeline.plan_content_cached(doc, profile, strategy, {})
+            _, second = pipeline.plan_content_cached(doc, {**profile, "cache_hit": True}, strategy, {})
+        self.assertFalse(first)
+        self.assertTrue(second)
+        self.assertEqual(plan.call_count, 1)
+
+    def test_request_is_counted_even_when_no_response_arrives_before_budget(self):
+        calls = []
+        def no_response(*args, **kwargs):
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0]["status"], "running")
+            raise llm.BudgetExceeded("budget")
+        with patch.object(llm.httpx, "post", side_effect=no_response):
+            with llm.budget(time.monotonic()+1, calls.append):
+                with self.assertRaises(llm.BudgetExceeded):
+                    llm.chat([], retries=0)
+        self.assertEqual(len(calls), 1)
+    def test_full_original_and_conditions_do_not_consume_two_claim_slots(self):
+        doc = ModelDoc("m", "型号", "", Path("."), snippets=[
+            Snippet("S1", "spec", "重量", "原文" * 200 + "仅限配置A", "f.md"),
+            Snippet("S2", "spec", "接口", "USB-A", "f.md"),
+            Snippet("S3", "limit", "条件", "仅支持设备A", "f.md")])
+        selected = {"selected": [{"sid": "S1", "condition_sids": ["S3"]}, {"sid": "S2"}, {"sid": "S3"}],
+                    "angles": [{"id": "A", "sids": ["S1"]}, {"id": "B", "sids": ["S2"]}], "selected_angle": "A"}
+        with patch.object(pipeline.llm, "ask_json", return_value=selected) as call:
+            plan = pipeline.plan_content(doc, scene(), {"price_snippets": [], "platform_name": "小红书", "max_facts": 2, "price_policy": "forbid"}, {})
+        self.assertIn("仅限配置A", call.call_args.args[1])
+        self.assertEqual(len(plan["facts"]), 2)
+        self.assertEqual(plan["facts"][0]["conditions"][0]["text"], "仅支持设备A")
+        self.assertEqual(len(plan["risks"]), 1)
+
+    def test_cache_versions_follow_evidence_content(self):
+        doc = ModelDoc("m", "型号", "", Path("."), snippets=[Snippet("S1", "spec", "x", "旧资料", "f")])
+        old = pipeline.context_version(doc)
+        doc.snippets[0].text = "新资料"
+        self.assertNotEqual(old, pipeline.context_version(doc))
+
+    def test_judge_gets_original_request_without_author_defense_and_limits_expression_notes(self):
+        article = dict(title="任务", lead="场景", cta="咨询", tags=[], blocks=[])
+        strategy = dict(platform_name="朋友圈", price_policy="forbid", tone="自然", structure=[], chars=[40, 90], writing_limits={})
+        out = {"overall": "needs_fix", "must_fix": [], "improvements": [{"detail": str(i)} for i in range(4)]}
+        with patch.object(pipeline.llm, "ask_json", return_value=out) as model:
+            result = pipeline.judge(article, [], strategy, {"issues": [{"author_defense": "辩护"}]}, task={"extra": "原始要求"},
+                                    risks=[{"text": "仅配置 A 支持"}])
+        payload = json.loads(model.call_args.args[1])
+        self.assertEqual(payload["原始需求"]["extra"], "原始要求")
+        self.assertNotIn("辩护", model.call_args.args[1])
+        self.assertEqual(payload["相关风险与待确认原文"][0]["text"], "仅配置 A 支持")
+        self.assertEqual(len(result["improvements"]), 2)
+        self.assertEqual(result["overall"], "incomplete")
+
+    def test_trace_closed_snapshot_cannot_accept_late_artifacts(self):
+        trace = Trace()
+        trace.publish("draft", {"v": 1}, "editor", "初稿")
+        snap = trace.snapshot()
+        trace.closed = True
+        trace.publish("draft", {"v": 2}, "editor", "晚到数据")
+        self.assertEqual(trace.snapshot(), snap)
+
+    def test_review_field_location_is_normalized_by_unambiguous_block_index(self):
+        article = dict(title="", lead="", cta="", tags=[], blocks=[{"type": "image", "image_id": "I1", "caption": "外观"}])
+        strategy = dict(platform_name="朋友圈", price_policy="forbid", tone="自然", structure=[], chars=[40,90], writing_limits={})
+        with patch.object(pipeline.llm, "ask_json", return_value={"overall":"pass", "must_fix":[], "claims":[{"where":"body", "index":0,"verdict":"no_fact_claim"}]}):
+            result = pipeline.judge(article, [], strategy, {})
+        self.assertEqual(result["overall"], "pass")
+        self.assertEqual(result["claims"][0]["where"], "caption")
+
+    def test_code_rejects_reviewers_false_length_alarm(self):
+        article = dict(title="正好四个字", lead="", cta="", tags=[], blocks=[])
+        strategy = dict(platform_name="朋友圈", price_policy="forbid", tone="自然", structure=[], chars=[40,90], writing_limits={"title":5})
+        out = {"overall":"needs_fix", "must_fix":[{"where":"title","index":-1,"type":"platform","detail":"标题字符超过上限"}],
+               "claims":[{"where":"title","index":-1,"verdict":"no_fact_claim"}]}
+        with patch.object(pipeline.llm, "ask_json", return_value=out):
+            result = pipeline.judge(article, [], strategy, {})
+        self.assertEqual(result["overall"], "pass")
+        self.assertEqual(result["problems"], [])
+        self.assertEqual(len(result["dismissed_counting_notes"]), 1)
+
+    def test_unsupported_claim_cannot_pass_with_an_empty_problem_list(self):
+        article = dict(title="全天续航", lead="", cta="", tags=[], blocks=[])
+        strategy = dict(platform_name="朋友圈", price_policy="forbid", tone="自然", structure=[], chars=[40,90], writing_limits={})
+        with patch.object(pipeline.llm, "ask_json", return_value={"overall":"pass", "must_fix":[], "claims":[{"where":"title","index":-1,"verdict":"unsupported"}]}):
+            result = pipeline.judge(article, [], strategy, {})
+        self.assertEqual(result["overall"], "needs_fix")
+        self.assertEqual(result["problems"][0]["type"], "unsupported")
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -123,13 +123,7 @@ let startedAt = 0;
 let pollGeneration = 0;
 let flowSteps = [];
 let flowBackendRunning = false;
-const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const flowPlayback = new window.FlowPlayback({
-  minActiveMs: reducedMotion ? 180 : 650,
-  handoffMs: reducedMotion ? 0 : 180,
-  finishMs: reducedMotion ? 0 : 280,
-  onChange: state => showFlow(flowSteps, flowBackendRunning, state)
-});
+let flowSnapshot = {};
 
 async function init() {
   Studio.init();
@@ -321,7 +315,8 @@ async function submit(instruction) {
     pollTimer = null;
   }
   const generation = ++pollGeneration;
-  flowPlayback.reset();
+  window.ProcessView.reset();
+  flowSnapshot = {};
   flowSteps = [];
   flowBackendRunning = true;
 
@@ -383,6 +378,8 @@ async function submit(instruction) {
   } catch (err) {
     if (generation !== pollGeneration) return;
     unlock();
+    flowSnapshot = { state: "error", steps: [] };
+    showFlow([], false);
     const runbar = UI.$("#runbar");
     if (runbar) runbar.hidden = true;
     Studio.stopRun();
@@ -402,7 +399,7 @@ function poll(jid, restorePage = null) {
   const generation = ++pollGeneration;
   const restoring = restorePage !== null;
   let firstSnapshot = true;
-  flowPlayback.reset();
+  window.ProcessView.reset();
   let failures = 0;
   const tick = async () => {
     try {
@@ -410,8 +407,9 @@ function poll(jid, restorePage = null) {
       if (generation !== pollGeneration) return;
       if (res.status === 404) {
         pollTimer = null;
-        flowPlayback.reset();
         unlock();
+        flowSnapshot = { ...flowSnapshot, state: "error" };
+        showFlow(flowSteps, false);
         Studio.stopRun();
         UI.$("runbar").hidden = true;
         sessionStorage.removeItem("studio-active-job");
@@ -426,16 +424,13 @@ function poll(jid, restorePage = null) {
       if (isRunning) restorePage = null;
       flowSteps = j.steps || [];
       flowBackendRunning = isRunning;
-      flowPlayback.update(window.buildFlow.summarize(flowSteps, isRunning).map(stage => stage.status), {
-        immediate: (restoring && firstSnapshot) || j.state === "error" || j.result?.status === "need_info"
-      });
+      flowSnapshot = j;
+      showFlow(flowSteps, isRunning, { restore: restoring && firstSnapshot });
       failures = 0;
       firstSnapshot = false;
 
       if (j.state === "done") {
         pollTimer = null;
-        await flowPlayback.whenSettled();
-        if (generation !== pollGeneration) return;
         unlock();
         showResult(j.result);
         if (restorePage && j.result?.status !== "need_info") Studio.navigate(restorePage, false);
@@ -458,13 +453,11 @@ function poll(jid, restorePage = null) {
       }
     } catch (err) {
       if (generation !== pollGeneration) return;
-      flowPlayback.pause();
       console.warn("读取或展示生成进度失败", err);
       failures += 1;
       UI.$("runbar").hidden = false;
       UI.$("runbar").textContent = `进度暂未更新，正在重试（${failures}）`;
       if (failures >= 10) {
-        flowPlayback.reset();
         unlock();
         Studio.stopRun();
         UI.$("need").replaceChildren(UI.el("p", {}, `无法获取进度：${err.message}。刷新页面可尝试恢复这次创作。`));
@@ -485,31 +478,12 @@ function unlock() {
 
 function showFlow(steps, running, presentation = null) {
   const runbar = UI.$("#runbar");
-  if (runbar) {
-    if (running || presentation?.pending) {
-      runbar.hidden = false;
-      const lastStep = steps && steps.length > 0 ? steps[steps.length - 1] : null;
-      const names = { scene: "场景分析", model: "匹配产品", strategy: "平台策划", retrieve: "查找资料", extract: "提炼事实", compose: "图文创作", verify: "事实核验", repair: "修订内容", judge: "独立审阅" };
-      const presentedIndex = presentation?.activeIndex >= 0 ? presentation.activeIndex : presentation?.handoffFrom;
-      const presentedStep = presentedIndex != null ? window.buildFlow.stageIds[presentedIndex] : null;
-      const stepLabel = presentedStep ? names[presentedStep] : lastStep ? (names[lastStep.step] || "处理中") : "准备中";
-      const doneCount = presentation ? presentation.states.filter(status => status === "done").length : steps ? steps.filter(s => s.status === "done").length : 0;
-      const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
-
-      runbar.replaceChildren(
-        UI.el("span", { class: "runbar-spin" }),
-        UI.el("b", { class: "runbar-step" }, [stepLabel]),
-        UI.el("span", { class: "runbar-meta" }, [`已完成 ${doneCount} 步 · 已用 ${elapsedSec} 秒`])
-      );
-    } else {
-      runbar.hidden = true;
-    }
-  }
+  if (runbar) runbar.hidden = true;
 
   const flowBox = UI.$("#flow");
   const dbgFlow = UI.$("#dbg-flow");
 
-  const flowRes = typeof window.buildFlow === "function" ? window.buildFlow(steps, running, presentation) : null;
+  const flowRes = window.ProcessView.update({ ...flowSnapshot, steps, state: flowSnapshot.state || (running ? "running" : "idle") }, presentation || {});
   if (flowBox && flowRes) {
     const node = (flowRes instanceof Node) ? flowRes : flowRes.node;
     if (node && flowBox.firstChild !== node) flowBox.replaceChildren(node);
@@ -522,12 +496,12 @@ function showResult(r) {
   current = r;
   if (!r) return;
 
-  if (r.status === "need_info") {
+  if (r.status === "need_info" || r.status === "budget_exceeded") {
     const stage = UI.$("#stage");
     if (stage) stage.hidden = true;
     showNeedInfo(r);
     Studio.stopRun();
-    UI.$("process-title").textContent = "再补充一点，就能继续。";
+    UI.$("process-title").textContent = r.status === "budget_exceeded" ? "本次创作已到时间预算。" : "再补充一点，就能继续。";
     return;
   }
 
@@ -724,17 +698,13 @@ async function exportHtml() {
     }
   }));
 
-  let styles = "";
-  for (const sheet of Array.from(document.styleSheets)) {
-    try {
-      if (sheet.cssRules) {
-        for (const rule of Array.from(sheet.cssRules)) {
-          styles += rule.cssText + "\n";
-        }
-      }
-    } catch {
-      // 忽略同源跨域样式限制
-    }
+  let styles;
+  try {
+    styles = await window.FontAssets.exportStyles(preview);
+  } catch (error) {
+    console.warn("导出字体失败", error);
+    Studio.toast("字体未能打包，请重试导出。");
+    return;
   }
 
   const headHtml = `<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>华章有据 · 营销图文</title>\n<style>\n${styles}\n</style>`;
@@ -763,8 +733,8 @@ function renderChips(r) {
   chips.textContent = "";
 
   const vf = (r && r.verification) || {};
-  const rem = vf.remaining || [];
-  chips.appendChild(UI.tag("事实与规则 " + (rem.length ? "待人工复核" : "核验通过"), rem.length ? "warn" : "ok"));
+  const reviewStatus = window.processReviewStatus(r,r.artifacts || {},r.trace || []);
+  chips.appendChild(UI.tag(reviewStatus.label,reviewStatus.needsReview ? "warn" : "ok"));
 
   const vfImages = vf.images || [];
   const imgMatch = vfImages.length > 0 && vfImages.every(i => i.model_match);
@@ -786,8 +756,8 @@ function renderChips(r) {
   const judge = vf.judge || {};
   const overall = judge.overall || "-";
   const judgeOk = overall === "pass" || overall === "ok";
-  const judgeLabels = { pass: "通过", ok: "通过", needs_fix: "需人工复核", fail: "需人工复核", warn: "需关注", "-": "未完成" };
-  chips.appendChild(UI.tag(`审核 ${judgeLabels[overall] || "需关注"}`, judgeOk ? "ok" : "warn"));
+  const judgeLabels = { pass: "通过", ok: "通过", needs_fix: "发现问题", fail: "未通过", warn: "需关注", incomplete: "未完整覆盖", not_reviewed: "未完成", "-": "未完成" };
+  chips.appendChild(UI.tag(`自动评审 ${judgeLabels[overall] || "需关注"}`, judgeOk ? "ok" : "warn"));
 
 }
 
@@ -1065,19 +1035,21 @@ function renderVerify(r) {
   if (dbg) dbg.hidden = false;
 
   const vf = (r && r.verification) || {};
-  const remaining = vf.remaining || [];
-  const judgeOverall = vf.judge?.overall;
+  const review = window.processReviewStatus(r,r.artifacts || {},r.trace || []);
+  const remaining = (vf.remaining || []).filter(s=>review.state !== "incomplete" || typeof s !== "string" || !/独立评审未通过或未完成|预算/.test(s));
   const vfSum = document.getElementById("vf-sum");
   if (vfSum) {
-    vfSum.textContent = remaining.length ? `${remaining.length} 项待人工关注` : judgeOverall && !["pass", "ok"].includes(judgeOverall) ? "独立审核建议人工复核" : "事实核验通过";
+    vfSum.textContent = review.label;
+    vfSum.title = review.detail;
   }
 
   const container = document.getElementById("verify") || dbg;
   container.textContent = "";
+  if (review.state === "incomplete") container.appendChild(UI.el("p", {}, review.detail));
 
   if (remaining.length > 0) {
     const pRem = document.createElement("p");
-    pRem.textContent = "仍需人工关注：";
+    pRem.textContent = "自动流程尚未解决的事项：";
     container.appendChild(pRem);
 
     const ulRem = document.createElement("ul");
@@ -1124,7 +1096,7 @@ function renderVerify(r) {
   if (problems.length > 0) {
     const det = document.createElement("details");
     const sum = document.createElement("summary");
-    sum.textContent = "审核模型提示（需人工确认，未自动改写）";
+    sum.textContent = "实际终稿的评审意见";
     det.appendChild(sum);
 
     const ul = document.createElement("ul");

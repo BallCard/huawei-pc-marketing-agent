@@ -128,6 +128,7 @@ class LocalKB:
             raise FileNotFoundError(f"找不到知识库目录：{self.p1}（设置 KB_DIR 或把副本放到 data/kb）")
         self._infos: list[ModelInfo] = []
         self._docs: dict[str, ModelDoc] = {}
+        self._doc_versions: dict[str, tuple] = {}
         self._vision = self._load_vision()
         self._scan()
 
@@ -185,12 +186,14 @@ class LocalKB:
 
     # ---------- 型号资料 ----------
     def load(self, model_id: str) -> ModelDoc:
-        if model_id in self._docs:
-            return self._docs[model_id]
         info = self.info(model_id)
         if not info:
             raise KeyError(model_id)
         d = info.dir
+        paths = [d / name for name in ("产品事实.md", "卖点与限制.md", "来源清单.csv", "图片索引.csv")]
+        version = tuple((p.stat().st_mtime_ns, p.stat().st_size) if p.exists() else None for p in paths)
+        if model_id in self._docs and self._doc_versions.get(model_id) == version:
+            return self._docs[model_id]
         rel = lambda p: str(p.relative_to(self.root)).replace("\\", "/")  # noqa: E731
         doc = ModelDoc(model_id, info.name, info.group, d)
         n = 0
@@ -227,6 +230,7 @@ class LocalKB:
                 vision_consistent=v.get("consistent"), kind=v.get("kind", ""),
                 shows_device=v.get("shows_device"), angle=v.get("angle", ""), color=v.get("color", "")))
         self._docs[model_id] = doc
+        self._doc_versions[model_id] = version
         return doc
 
     def image_file(self, model_id: str, filename: str) -> Path | None:
@@ -239,7 +243,6 @@ class LocalKB:
         return img.path if img else None
 
     # ---------- 价格（仅官方公开价格快照）----------
-    @lru_cache(maxsize=1)
     def _price_rows(self) -> list[dict]:
         return _csv(self.p1 / PRICE_CSV)
 

@@ -4,6 +4,8 @@ import io
 import json
 import re
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 import httpx
 
@@ -14,9 +16,31 @@ class LLMError(RuntimeError):
     pass
 
 
+class BudgetExceeded(LLMError):
+    pass
+
+
+_deadline = ContextVar("generation_deadline", default=None)
+_recorder = ContextVar("generation_call_recorder", default=None)
+
+
+@contextmanager
+def budget(deadline, recorder=None):
+    token = _deadline.set(deadline)
+    record_token = _recorder.set(recorder)
+    try:
+        yield
+    finally:
+        _deadline.reset(token)
+        _recorder.reset(record_token)
+
+
 def remaining() -> float:
-    """单次模型请求可用时限，供联网补图预算检查使用。"""
-    return settings.LLM_TIMEOUT
+    end = _deadline.get()
+    seconds = settings.LLM_TIMEOUT if end is None else end - time.monotonic()
+    if seconds <= 0:
+        raise BudgetExceeded("已达到创作时间预算，未完成的审核不能视为通过。")
+    return min(settings.LLM_TIMEOUT, seconds)
 
 
 def _headers(api_key: str | None = None) -> dict:
@@ -39,19 +63,37 @@ def chat(messages: list, model: str | None = None, json_mode: bool = False,
     body.update(config["extra"])
     last = None
     for i in range(retries + 1):
+        started = time.monotonic()
+        usage, status = {}, "error"
+        entry = None
         try:
             request_timeout = min(remaining(), timeout) if timeout is not None else remaining()
+            entry = {"role": role, "model": body["model"], "status": "running", "ms": 0,
+                     "prompt_tokens": None, "completion_tokens": None}
+            recorder = _recorder.get()
+            if recorder:
+                recorder(entry)
             r = httpx.post(f"{config['base_url']}/chat/completions", json=body,
                            headers=_headers(config["api_key"]), timeout=request_timeout)
             r.raise_for_status()
-            text = r.json()["choices"][0]["message"].get("content") or ""
+            response = r.json()
+            usage = response.get("usage") or {}
+            text = response["choices"][0]["message"].get("content") or ""
             if not text.strip():
                 raise LLMError("模型返回空内容")
+            status = "ok"
             return text
+        except BudgetExceeded:
+            raise
         except Exception as e:  # noqa: BLE001
             last = e
+            left = remaining()
             if i < retries:
-                time.sleep(1.5 * (i + 1))
+                time.sleep(min(1.5 * (i + 1), left))
+        finally:
+            if entry is not None:
+                entry.update(status=status, ms=int((time.monotonic() - started) * 1000),
+                             prompt_tokens=usage.get("prompt_tokens"), completion_tokens=usage.get("completion_tokens"))
     raise LLMError(f"LLM 调用失败：{last}")
 
 
@@ -74,7 +116,10 @@ def ask_json(system: str, user: str, model: str | None = None, retries: int = 2,
     for _ in range(retries + 1):
         raw = chat(msgs, model=model, json_mode=True, role=role)
         try:
-            return parse_json(raw)
+            out = parse_json(raw)
+            if not isinstance(out, dict):
+                raise ValueError("模型必须返回 JSON 对象")
+            return out
         except json.JSONDecodeError as e:
             last = e
             msgs += [{"role": "assistant", "content": raw},

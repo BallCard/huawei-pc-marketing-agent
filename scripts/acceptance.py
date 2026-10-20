@@ -16,17 +16,18 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base", default="http://127.0.0.1:7880")
     parser.add_argument("--quick", action="store_true", help="仅验证一个平台及缺少输入")
+    parser.add_argument("--speed", choices=("quality", "fast"), default="quality")
     args = parser.parse_args()
     client = httpx.Client(base_url=args.base, timeout=30)
     if settings.AUTH_PASSWORD:
         response = client.post("/api/login", json={"username": settings.AUTH_USERNAME, "password": settings.AUTH_PASSWORD})
         response.raise_for_status()
     base_task = dict(product="HUAWEI MateBook 14（鸿蒙版）", audience="大学新生", scenario="开学季",
-                     platform="xiaohongshu", constraints=["不要提价格"], goal="到店体验", speed="quality")
+                     platform="xiaohongshu", constraints=["不要提价格"], goal="到店体验", speed=args.speed)
     cases = [("xiaohongshu", base_task), ("missing-input", {})]
     if not args.quick:
         cases += [(platform, {**base_task, "platform": platform}) for platform in ("wechat_article", "moments", "poster")]
-        cases += [("sentence-auto-recommend", {"product": "", "platform": "xiaohongshu", "speed": "quality",
+        cases += [("sentence-auto-recommend", {"product": "", "platform": "xiaohongshu", "speed": args.speed,
                    "extra": "为经常带电脑去图书馆的大学新生推荐一款华为笔记本，写小红书种草内容，重点便携与接口，不要提价格。"}),
                   ("missing-hero", {**base_task, "product": "HUAWEI MateBook D 16 2024"}),
                   ("revision", {**base_task, "instruction": "写得更生活化，突出背电脑去图书馆的场景，不要提价格。"})]

@@ -1,14 +1,20 @@
-# v1.0 部署与配置
+# v1.1 部署与配置
 
 华章有据是 FastAPI + 原生网页的单实例应用，生成任务运行在后台线程，任务与结果存 SQLite。面向本人及小范围展示，使用共享访问账号。只运行一个进程，不能使用多个 worker 或多个副本。
 
 ## 本次发布记录
 
+v1.1.0（2026-10-20）包含证据策划与有界修订、Bot 单环节轮转、横向实时进展与计时修复，以及随应用提供的字体。沿用魔搭模型与访问配置。对应源提交以 Git 标签 `v1.1.0` 和创空间 `deployment-source.json` 为准。
+
+本地 51 项 Python 测试、21 项前端测试通过；实际浏览器验证四平台、任务恢复、预算提示、手机布局、自托管字体与离线 HTML。性能与质量边界见 [验收记录](editorial-validation.md)，未将自动检查通过视为人工盲评结论。
+
+以下保留 v1.0 的首次部署记录：
+
 2026-10-19 首次部署：应用代码 `5f7dda9` 已推送 GitHub，创空间 [BallCard/huazhang-youju](https://modelscope.cn/studios/BallCard/huazhang-youju) 返回 **Running**。初始配置为魔搭 Qwen 与 DeepSeek 官方 API，线上样例约 23 秒。
 
-后续按作者选择改为全魔搭：`Qwen/Qwen3.5-35B-A3B` 负责解析与提取，`deepseek-ai/DeepSeek-V4.1-Flash-1017` 负责写作与独立审核。当前应用提交 `8ca62d3` 已在创空间运行；线上完整小红书样例 31 秒，事实规则与独立审核通过，三张图片可访问，缺输入返回补充提示。本机完整样例约 30 秒，其真实界面截图已收录到 README，作品图已更新为新版电脑布局。
+后续按作者选择改为全魔搭：`Qwen/Qwen3.5-35B-A3B` 负责解析与提取，`deepseek-ai/DeepSeek-V4.1-Flash-1017` 负责写作与独立审核。v1.0 应用提交 `8ca62d3` 曾在创空间运行；线上完整小红书样例 31 秒，事实规则与独立审核通过，三张图片可访问，缺输入返回补充提示。本机完整样例约 30 秒，其真实界面截图已收录到 README，作品图已更新为新版电脑布局。
 
-最终应用提交的 13 项 Python 检查与 9 项前端接力检查通过。首发混合接口配置下完成 8 种真实流程（四平台、缺输入、自动推荐、缺整机图、修改），全魔搭配置另验证了本机与线上完整小红书生成，以及线上缺输入流程。内容仍可能有审核异议或篇幅超限，保留待人工复核提示，未将生成成功当作所有稿件审核通过。资料包缺少 D 16 2024 等型号的整机图，已验证缺图提示。
+v1.0 发布时的 13 项 Python 检查与 9 项前端接力检查通过。首发混合接口配置下完成 8 种真实流程（四平台、缺输入、自动推荐、缺整机图、修改），全魔搭配置另验证了本机与线上完整小红书生成，以及线上缺输入流程。内容仍可能有审核异议或篇幅超限，保留待人工复核提示，未将生成成功当作所有稿件审核通过。资料包缺少 D 16 2024 等型号的整机图，已验证缺图提示。
 
 当前访问目标为 `protected`（保护模式）：应用入口可访问，代码仓库隐藏。访问者只需工作台演示账号，不需要魔搭账号；管理令牌不会放进浏览器 URL。
 
@@ -74,6 +80,7 @@ Vercel 的主要障碍是任务和存储方式，并非不能运行 Python。GPT
 | `CACHE_DIR` | `/app/data/cache`，需匹配资料包的 `vision.json` |
 | `JOB_DB` | `/mnt/workspace/huazhang-youju/jobs.sqlite3`，使用魔搭持久目录 |
 | `MAX_CONCURRENT_JOBS` | `1` |
+| `GENERATION_BUDGET_SECONDS` | 默认 `90`，最多一次修订；预算不足不会宣称审核通过 |
 | `MODELSCOPE_API_KEY` | 仅本机部署工具使用的魔搭管理令牌，不整份上传本机配置 |
 
 未配置单独角色接口时复用 `LLM_*`；写作和审核同样支持 `WRITER_LLM_*`、`JUDGE_LLM_*` 覆盖。没有静默切换供应商的回退。“质量优先”按三个角色配置运行；“快速创作”写作和审核也使用 FAST 模型。DeepSeek 官方密钥仅保留在本机忽略的 `model.txt`，部署版不再调用官方接口，消耗魔搭推理配额或资源。
@@ -92,7 +99,7 @@ python -X utf8 scripts/deploy_modelscope.py deploy
 python -X utf8 scripts/deploy_modelscope.py status
 ```
 
-先提交主项目代码。工具固定读取启动时的 Git 提交，在忽略的 `data/deploy/modelscope` 准备独立检出，将代码与产品资料同步到代码隐藏的创空间；`deployment-source.json` 记录源提交，工作区内尚未提交的编辑不会混入部署。仅复制产品资料与 `vision.json`，不上传本机历史作品。密钥经 Secret API 写入，Git 认证通过进程环境和 askpass，远端 URL 不含令牌。
+先提交主项目代码。工具固定读取启动时的 Git 提交，在忽略的 `data/deploy/modelscope` 准备独立检出，将代码与产品资料同步到代码隐藏的创空间；`deployment-source.json` 记录源提交，工作区内尚未提交的编辑不会混入部署。同步时移除上次源提交中已删除的代码文件；仅复制产品资料与 `vision.json`，不上传本机历史作品。密钥经 Secret API 写入，Git 认证通过进程环境和 askpass，远端 URL 不含令牌。
 
 不要把带资料包的创空间改为 `public`。对他人展示时单独告知演示账号；调整 `AUTH_PASSWORD` 并重新部署可以使旧会话失效。免费 CPU 资源与模型推理配额不是一回事，推理资源与并发限制以账号当前规则为准。改名或迁移可能影响持久目录，重要结果请导出或备份。
 
@@ -111,7 +118,7 @@ Compose 只绑定主机 `127.0.0.1:7860`，由 HTTPS 代理转发；知识库和
 
 ```powershell
 python -X utf8 -m unittest discover -s tests -v
-node --test tests/test_flow_playback.cjs
+node --test tests/test_process_state.cjs tests/test_stage_rotation.cjs tests/test_process_activity.cjs tests/test_process_clock.cjs tests/test_review_status.cjs
 python -X utf8 scripts/preflight.py --check-model
 # 另启本机部署配置服务后执行真实生成验收：
 python -X utf8 scripts/acceptance.py --base http://127.0.0.1:7880

@@ -183,14 +183,13 @@
     UI.$("evidence-empty").hidden = false;
     UI.$("insights").hidden = true;
     UI.$("view-result").hidden = true;
-    UI.$("process-title").textContent = "好内容，正在成形。";
+    UI.$("process-title").textContent = "正在处理创作任务";
     document.querySelector(".nav-indicator").hidden = false;
     navigate("process");
   }
   function stopRun() { document.querySelector(".nav-indicator").hidden = true; }
   function finishRun(result) {
     stopRun();
-    UI.$("step-dialog").close();
     UI.$("process-title").textContent = "作品已就绪。";
     UI.$("work-empty").hidden = true;
     UI.$("evidence-empty").hidden = true;
@@ -201,14 +200,14 @@
     UI.$("result-platform").textContent = result.platform_spec?.platform_name || platformNames[platform] || "图文作品";
     UI.$("result-model").textContent = result.model?.name || "";
     setPlatformMark(platform);
-    const verification = result.verification || {};
-    const judge = verification.judge?.overall;
-    const needsReview = (verification.remaining || []).length > 0 || !["pass", "ok"].includes(judge);
-    UI.$("work-review-status").textContent = needsReview ? "待人工复核" : "核验通过";
+    const review = window.processReviewStatus(result,result.artifacts || {},result.trace || []);
+    const needsReview = review.needsReview;
+    UI.$("work-review-status").textContent = review.label;
+    UI.$("work-review-status").title = review.detail;
     UI.$("work-review-status").dataset.state = needsReview ? "warn" : "ok";
+    UI.$("process-title").textContent = needsReview ? `稿件已生成 · ${review.label}` : "创作任务已完成";
     UI.$("instr").value = "";
     selectRefinement(null);
-    navigate("work");
   }
   window.Studio = { init, navigate, setMode, getMode: () => mode, syncPlatform, syncOptions, toast, startRun, stopRun, finishRun, renderPreview };
 })();

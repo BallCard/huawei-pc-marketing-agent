@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import __version__, pipeline, settings
-from .jobs import JobStore
+from .jobs import JobStore, public_snapshot
 from .kb import get_kb
 
 STORE = JobStore(settings.JOB_DB)
@@ -54,17 +54,20 @@ def valid_session(token: str) -> bool:
 
 @app.middleware("http")
 async def access_control(request: Request, call_next):
-    public = {"/healthz", "/about", "/login", "/api/login", "/static/style.css", "/static/login.css",
+    public = {"/healthz", "/about", "/login", "/api/login", "/static/style.css", "/static/login.css", "/static/fonts.css", "/static/typography.css",
               "/static/login.js", "/static/brand/logo-mark.svg", "/static/brand/app-icon.svg",
               "/static/gallery/welcome.jpg", "/static/gallery/brief.jpg", "/static/gallery/workflow.jpg",
               "/static/gallery/result.jpg", "/static/gallery/evidence.jpg"}
-    if settings.AUTH_PASSWORD and request.url.path not in public:
+    public_font = request.url.path.startswith("/static/fonts/") and request.url.path.endswith((".woff2", "/OFL.txt"))
+    if settings.AUTH_PASSWORD and request.url.path not in public and not public_font:
         if not valid_session(request.cookies.get("studio-session", "")):
             if request.url.path == "/":
                 return RedirectResponse("/login", status_code=303)
             return JSONResponse({"detail": "登录已失效，请刷新页面重新登录"}, status_code=401,
                                 headers={"Cache-Control": "no-store"})
     response = await call_next(request)
+    if public_font and request.url.path.endswith(".woff2") and response.status_code == 200:
+        response.headers["Content-Type"] = "font/woff2"
     if request.url.path.startswith(("/api/", "/img/")) or request.url.path in ("/", "/login", "/logout"):
         response.headers["Cache-Control"] = "no-store"
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -127,7 +130,8 @@ def _start(task: dict, instruction: str | None) -> str:
     if not JOB_SLOTS.acquire(blocking=False):
         raise HTTPException(429, "已有创作正在运行，请完成后再试", headers={"Retry-After": "10"})
     jid = uuid.uuid4().hex
-    job = {"id": jid, "state": "running", "steps": [], "result": None, "error": None, "t": time.time()}
+    job = {"id": jid, "state": "running", "steps": [], "events": [], "artifacts": {},
+           "result": None, "error": None, "t": time.time()}
     try:
         STORE.create(job)
     except Exception:
@@ -135,7 +139,7 @@ def _start(task: dict, instruction: str | None) -> str:
         raise
 
     def cb(u: dict):
-        STORE.update(jid, steps=u.get("steps", []))
+        STORE.update(jid, **{k: u[k] for k in ("steps", "events", "artifacts", "elapsed_ms", "started_at") if k in u})
 
     def work():
         try:
@@ -177,7 +181,7 @@ def job(jid: str):
     j = STORE.get(jid)
     if not j:
         raise HTTPException(404, "任务不存在")
-    return JSONResponse({k: j[k] for k in ("id", "state", "steps", "result", "error")})
+    return JSONResponse(public_snapshot(j))
 
 
 @app.get("/healthz")
