@@ -545,7 +545,8 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
         try:
             return future.result(timeout=max(.001, tr.deadline - time.monotonic()))
         except FutureTimeout:
-            raise llm.BudgetExceeded("已达到 90 秒总预算，尚未完成的审核保留待复核状态。") from None
+            raise llm.BudgetExceeded(
+                f"已达到 {settings.GENERATION_BUDGET_SECONDS:g} 秒总预算，尚未完成的审核保留待复核状态。") from None
 
     def parallel(*calls):
         futures = [pool.submit(call) for call in calls]
@@ -557,15 +558,22 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
 
     def review(version):
         suffix = "" if version == 1 else "re"
-        checks, review0 = parallel(
-            lambda: tr.run(suffix + "verify", "规则检查" if version == 1 else "终稿规则复核",
-                           lambda: deterministic_check(article, facts, doc, strat, images),
-                           inputs=f"稿件 v{version} · 数字、型号、图片与平台规格", depends_on=[f"draft:{version}"]),
-            lambda: tr.run("judge" if version == 1 else "rejudge", "独立评审" if version == 1 else "独立复审实际终稿",
-                           lambda: judge(article, facts, strat, {}, judge_model, images, task, plan.get("risks", [])),
-                           inputs=f"原始需求 · 稿件 v{version} · 完整证据 · 平台规则", depends_on=[f"draft:{version}"]))
-        tr.publish(f"rules:{version}", checks, "verify", "规则检查已完成", version=version)
-        tr.publish(f"review:{version}", review0, "reviewer", "独立评审已完成", version=version)
+
+        def check_rules():
+            checks = tr.run(suffix + "verify", "规则检查" if version == 1 else "终稿规则复核",
+                            lambda: deterministic_check(article, facts, doc, strat, images),
+                            inputs=f"稿件 v{version} · 数字、型号、图片与平台规格", depends_on=[f"draft:{version}"])
+            tr.publish(f"rules:{version}", checks, "verify", "规则检查已完成", version=version)
+            return checks
+
+        def check_semantics():
+            review0 = tr.run("judge" if version == 1 else "rejudge", "独立评审" if version == 1 else "独立复审实际终稿",
+                             lambda: judge(article, facts, strat, {}, judge_model, images, task, plan.get("risks", [])),
+                             inputs=f"原始需求 · 稿件 v{version} · 完整证据 · 平台规则", depends_on=[f"draft:{version}"])
+            tr.publish(f"review:{version}", review0, "reviewer", "独立评审已完成", version=version)
+            return review0
+
+        checks, review0 = parallel(check_rules, check_semantics)
         return checks, review0
 
     def fin(res: dict) -> dict:

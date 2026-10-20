@@ -12,7 +12,7 @@
     const blocks = Array.isArray(article.blocks) ? article.blocks : [];
 
     // 1. .xhs-head
-    const ava = PV.publisherAvatar("xhs-ava");
+    const ava = PV.publisherAvatar("xhs-ava", true);
     const name = UI.el("span", { className: "xhs-name" }, "华为PC门店");
     const user = UI.el("div", { className: "xhs-user" }, ava, name);
     const follow = UI.el("button", { type: "button", className: "xhs-follow" }, "关注");

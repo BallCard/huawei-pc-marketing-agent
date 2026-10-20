@@ -146,6 +146,31 @@ class WorkflowTests(unittest.TestCase):
         self.assertTrue(any(sum(s["status"] == "running" for s in snap["steps"]) >= 2 for snap in snapshots))
         self.assertIn("final", snapshots[-1]["artifacts"])
 
+    def test_completed_rules_are_published_while_independent_review_is_waiting(self):
+        rules_ready = threading.Event()
+        snapshots = []
+        def on_update(snapshot):
+            snapshots.append(snapshot)
+            if "rules:1" in snapshot["artifacts"]:
+                rules_ready.set()
+        def waiting_review(*a, **kw):
+            self.assertTrue(rules_ready.wait(2), "规则检查不能被模型评审阻塞")
+            return review()
+        self.mocks[5].side_effect = waiting_review
+        result = pipeline.run(self.task, on_update=on_update)
+        self.assertEqual(result["status"], "ok")
+        self.assertTrue(any("rules:1" in s["artifacts"] and "review:1" not in s["artifacts"] for s in snapshots))
+
+    def test_review_budget_retains_completed_rules_and_does_not_claim_pass(self):
+        def waiting_review(*a, **kw):
+            raise llm.BudgetExceeded("review timed out")
+        self.mocks[5].side_effect = waiting_review
+        result = pipeline.run(self.task)
+        self.assertIn("rules:1", result["artifacts"])
+        self.assertNotIn("review:1", result["artifacts"])
+        self.assertEqual(result["verification"]["judge"]["overall"], "not_reviewed")
+        self.assertEqual(result["status"], "ok_with_flags")
+
     def test_critical_requirement_gap_cannot_pass(self):
         self.plan["critical_gaps"] = ["专业软件兼容性未确认"]
         result = pipeline.run(self.task)
@@ -154,6 +179,17 @@ class WorkflowTests(unittest.TestCase):
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_editorial_claim_cannot_supply_a_resolution_missing_from_original_evidence(self):
+        doc = ModelDoc("m", "型号", "", Path("."))
+        facts = [{"id": "F1", "text": "分辨率 3120 × 2080，刷新率 120 Hz", "claim": "3.1K 屏幕"}]
+        article = dict(title="", lead="", cta="", tags=["#屏幕"], blocks=[
+            {"type": "text", "text": "3.1K 屏幕，最高 120 Hz。", "fact_refs": ["F1"]}])
+        strategy = {"platform": "xiaohongshu", "price_policy": "forbid"}
+        check = pipeline.deterministic_check(article, facts, doc, strategy, [])
+        self.assertEqual([i["detail"] for i in check["issues"]], ["数字 3.1 不在所引用事实中"])
+        article["blocks"][0]["text"] = "分辨率 3120 × 2080，最高 120 Hz。"
+        self.assertEqual(pipeline.deterministic_check(article, facts, doc, strategy, [])["issues"], [])
+
     def test_scene_cache_marker_does_not_invalidate_the_content_plan(self):
         doc = ModelDoc("cache-test", "型号", "", Path("."))
         profile = {**scene(), "cache_hit": False}

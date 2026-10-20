@@ -28,7 +28,7 @@ WRITER_MODEL = os.environ.get("WRITER_MODEL", "gemini-3.8-flash-high")  # 写作
 FAST_MODEL = os.environ.get("FAST_MODEL", "gemini-3.8-flash-low")
 JUDGE_MODEL = os.environ.get("JUDGE_MODEL", "gemini-3.8-flash-medium")
 LLM_TIMEOUT = float(os.environ.get("LLM_TIMEOUT", "180"))
-GENERATION_BUDGET_SECONDS = float(os.environ.get("GENERATION_BUDGET_SECONDS", "90"))
+GENERATION_BUDGET_SECONDS = float(os.environ.get("GENERATION_BUDGET_SECONDS", "240"))
 LLM_THINKING = os.environ.get("LLM_THINKING", "auto")
 
 

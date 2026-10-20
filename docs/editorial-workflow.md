@@ -1,6 +1,6 @@
 # 第二页与证据约束创作
 
-三个能力单元：内容策划、创作编辑、独立评审。Python 控制依赖、90 秒总预算及最多一次修订；型号匹配、知识库、平台规范和规则检查是工具。保留 FastAPI、SQLite、现有模型配置与原生前端。
+三个能力单元：内容策划、创作编辑、独立评审。Python 控制依赖、240 秒总预算及最多一次修订；型号匹配、知识库、平台规范和规则检查是工具。保留 FastAPI、SQLite、现有模型配置与原生前端。
 
 ## 生成
 
@@ -68,6 +68,6 @@ python -X utf8 scripts/evaluate_editorial.py --variants baseline,prompts,full
 
 每次保留完整文稿、事实与审核记录、耗时、实际 HTTP 请求次数、供应商返回的 token 用量（若提供）。结果位于忽略的 `data/evaluation/`；生成 `blind.md`、`blind-ratings.csv` 和单独的 `unblind.json`。人工评分保持空白，需由评审对切入点、平台感、自然度、说服力分别打分，事实错误单列。运行完成与自动审核通过都不能替代人工质量结论。
 
-默认 `GENERATION_BUDGET_SECONDS=90`，目标质量模式约一分钟。实际耗时取决于现有模型、推理档位、排队与是否返修；达到预算不会省略审核再宣称通过。动画没有模型调用。预算停止控制器等待，已发出的供应商请求仍由 HTTP 超时收束；晚到结果不能修改已交付快照。
+默认 `GENERATION_BUDGET_SECONDS=240`，为慢速质量模型的独立评审及一次修订/复审留出时间；这是上限，完成即返回。原 90 秒上限曾在写作完成后仅剩 5.7 秒用于评审。约一分钟的目标尚未达到，实际耗时取决于现有模型、推理档位、排队与是否返修。达到预算不会省略审核再宣称通过；规则与模型评审各自完成即发布产物，不互相等待。动画没有模型调用。预算停止控制器等待，已发出的供应商请求仍由 HTTP 超时收束；晚到结果不能修改已交付快照。
 
 架构参考：[简单可组合的工作流](https://www.anthropic.com/engineering/building-effective-agents)、[精选高信号上下文](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)。

@@ -6,7 +6,7 @@
 
 v1.1.0（2026-10-20）包含证据策划与有界修订、Bot 单环节轮转、横向实时进展与计时修复，以及随应用提供的字体。沿用魔搭模型与访问配置。对应源提交以 Git 标签 `v1.1.0` 和创空间 `deployment-source.json` 为准。
 
-本地 51 项 Python 测试、21 项前端测试通过；实际浏览器验证四平台、任务恢复、预算提示、手机布局、自托管字体与离线 HTML。性能与质量边界见 [验收记录](editorial-validation.md)，未将自动检查通过视为人工盲评结论。
+本地 54 项 Python 测试、21 项前端测试通过；实际浏览器验证四平台、任务恢复、预算提示、手机布局、自托管字体与离线 HTML。性能与质量边界见 [验收记录](editorial-validation.md)，未将自动检查通过视为人工盲评结论。
 
 以下保留 v1.0 的首次部署记录：
 
@@ -80,7 +80,7 @@ Vercel 的主要障碍是任务和存储方式，并非不能运行 Python。GPT
 | `CACHE_DIR` | `/app/data/cache`，需匹配资料包的 `vision.json` |
 | `JOB_DB` | `/mnt/workspace/huazhang-youju/jobs.sqlite3`，使用魔搭持久目录 |
 | `MAX_CONCURRENT_JOBS` | `1` |
-| `GENERATION_BUDGET_SECONDS` | 默认 `90`，最多一次修订；预算不足不会宣称审核通过 |
+| `GENERATION_BUDGET_SECONDS` | 默认 `240` 秒上限，为质量模型评审及一次修订/复审留出时间；旧配置若显式设为 `90` 需同步调整，预算不足不会宣称审核通过 |
 | `MODELSCOPE_API_KEY` | 仅本机部署工具使用的魔搭管理令牌，不整份上传本机配置 |
 
 未配置单独角色接口时复用 `LLM_*`；写作和审核同样支持 `WRITER_LLM_*`、`JUDGE_LLM_*` 覆盖。没有静默切换供应商的回退。“质量优先”按三个角色配置运行；“快速创作”写作和审核也使用 FAST 模型。DeepSeek 官方密钥仅保留在本机忽略的 `model.txt`，部署版不再调用官方接口，消耗魔搭推理配额或资源。
