@@ -38,7 +38,8 @@ def main():
         response = client.post("/api/run", json=task)
         response.raise_for_status()
         jid = response.json()["job"]
-        deadline = time.monotonic() + 300
+        deadline = time.monotonic() + (settings.GENERATION_BUDGET_SECONDS + settings.POSTER_IMAGE_TIMEOUT + settings.POSTER_REVIEW_TIMEOUT + 30
+                                      if task.get("platform") == "poster" else 300)
         while time.monotonic() < deadline:
             response = client.get("/api/job/" + jid)
             response.raise_for_status()

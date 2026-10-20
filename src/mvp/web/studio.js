@@ -205,6 +205,7 @@
     UI.$("work-review-status").textContent = review.label;
     UI.$("work-review-status").title = review.detail;
     UI.$("work-review-status").dataset.state = needsReview ? "warn" : "ok";
+    UI.$("work-review-questions").hidden = !needsReview && !result.human_review;
     UI.$("instr").value = "";
     selectRefinement(null);
   }

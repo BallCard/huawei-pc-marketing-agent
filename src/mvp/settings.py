@@ -33,6 +33,9 @@ LLM_THINKING = os.environ.get("LLM_THINKING", "auto")
 
 
 def llm_config(role: str = "writer") -> dict:
+    if role == "poster_review":
+        return {"base_url": POSTER_REVIEW_BASE_URL, "api_key": POSTER_REVIEW_API_KEY,
+                "thinking": "auto", "extra": {"enable_thinking": False}}
     prefix = {"writer": "WRITER", "fast": "FAST", "judge": "JUDGE"}[role]
     extra = json.loads(os.environ.get(f"{prefix}_LLM_EXTRA_BODY") or "{}")
     if not isinstance(extra, dict) or {"model", "messages", "stream"} & extra.keys():
@@ -76,8 +79,27 @@ COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "1" if HOST not in ("127.0.0.1",
 JOB_DB = Path(os.environ.get("JOB_DB") or str(ROOT / "data" / "state" / "jobs.sqlite3"))
 MAX_CONCURRENT_JOBS = int(os.environ.get("MAX_CONCURRENT_JOBS", "1"))
 
+# 生图与成图审核独立于本机文本反代；部署可复用同一魔搭推理令牌。
+POSTER_IMAGE_ENABLED = os.environ.get("POSTER_IMAGE_ENABLED", "1") == "1"
+POSTER_IMAGE_PROVIDER = os.environ.get("POSTER_IMAGE_PROVIDER", "modelscope")
+POSTER_WORKER_TOKEN = os.environ.get("POSTER_WORKER_TOKEN", "")
+POSTER_IMAGE_AUTH_MODE = os.environ.get("POSTER_IMAGE_AUTH_MODE", "bearer")
+POSTER_IMAGE_BASE_URL = os.environ.get("POSTER_IMAGE_BASE_URL", "https://api-inference.modelscope.cn/v1").rstrip("/")
+POSTER_IMAGE_API_KEY = os.environ.get("POSTER_IMAGE_API_KEY", "")
+POSTER_IMAGE_MODEL = os.environ.get("POSTER_IMAGE_MODEL", "Qwen/Qwen-Image-Edit-2511")
+POSTER_REVIEW_MODEL = os.environ.get("POSTER_REVIEW_MODEL", "Qwen/Qwen3.5-35B-A3B")
+POSTER_REVIEW_BASE_URL = os.environ.get("POSTER_REVIEW_BASE_URL", "https://api-inference.modelscope.cn/v1").rstrip("/")
+POSTER_REVIEW_API_KEY = os.environ.get("POSTER_REVIEW_API_KEY") or (POSTER_IMAGE_API_KEY if POSTER_IMAGE_PROVIDER == "modelscope" else os.environ.get("FAST_LLM_API_KEY", ""))
+POSTER_IMAGE_TIMEOUT = float(os.environ.get("POSTER_IMAGE_TIMEOUT", "600"))
+POSTER_REVIEW_TIMEOUT = float(os.environ.get("POSTER_REVIEW_TIMEOUT", "60"))
+POSTER_DIR = Path(os.environ.get("POSTER_DIR") or str(JOB_DB.parent / "posters"))
+
 
 def validate_runtime() -> None:
+    if POSTER_IMAGE_AUTH_MODE not in ("bearer", "basic"):
+        raise RuntimeError("POSTER_IMAGE_AUTH_MODE 仅支持 bearer、basic")
+    if POSTER_IMAGE_PROVIDER not in ("modelscope", "gemini_web_proxy", "chatgpt_web_proxy", "private_worker"):
+        raise RuntimeError("POSTER_IMAGE_PROVIDER 仅支持 modelscope、gemini_web_proxy、chatgpt_web_proxy、private_worker")
     if KB_BACKEND != "local":
         raise RuntimeError("v1.0 只支持 KB_BACKEND=local；IMA 接入尚未实现")
     if bool(AUTH_USERNAME) != bool(AUTH_PASSWORD):

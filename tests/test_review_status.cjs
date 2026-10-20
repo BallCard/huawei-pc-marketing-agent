@@ -20,3 +20,11 @@ test('a final-version incomplete review cannot borrow the initial pass',()=>{
   const result=review({verification:{judge:{overall:'not_reviewed'}}},{'review:1':{overall:'pass'},'draft:2':{},final:{version:2,state:'needs_review',remaining:[]}},[{step:'rejudge',status:'error',detail:{error:'连接中断'}}]);
   assert.equal(result.state,'incomplete');assert.equal(result.detail,'连接中断');
 });
+
+test('manual adoption is distinct from automatic pass and never rewrites the verdict',()=>{
+  const source={verification:{judge:{overall:'needs_fix',problems:[{detail:'表达问题'}]}},human_review:{state:'adopted'}};
+  const status=review(source);
+  assert.equal(status.state,'human_adopted');assert.equal(status.passed,false);
+  assert.equal(status.needsReview,false);assert.equal(status.automaticPassed,false);
+  assert.equal(source.verification.judge.overall,'needs_fix');
+});

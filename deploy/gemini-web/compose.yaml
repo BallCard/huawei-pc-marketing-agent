@@ -1,0 +1,31 @@
+services:
+  gemini-web-proxy:
+    # 上游源码固定到本次核查的提交；更新版本需重新验证生图与参考图。
+    build:
+      context: https://github.com/Lutiancheng1/gemini-webapi-proxy.git#a2d29d2d2c9ec6aa479cb5eb0c71f0c750b94aab
+      args:
+        GOP_BUILD_HTTP_PROXY: ""
+    image: huazhang-gemini-web:a2d29d2
+    env_file: .env
+    environment:
+      GOP_HOST: 0.0.0.0
+      GOP_PORT: "4982"
+      GOP_COOKIE_SOURCE: env
+      GOP_API_KEY: ${GOP_API_KEY:?Set GOP_API_KEY in the local .env before starting}
+      GOP_DATA_DIR: /app/data
+      GEMINI_COOKIE_PATH: /app/session-cache
+      GOP_IMAGE_TIMEOUT: "540"
+      GOP_PROBE_ON_START: "false"
+      GOP_LOG_LEVEL: WARNING
+      GOP_LOG_FORMAT: json
+    # 同机后端直接访问；跨机时通过自有 HTTPS 反向代理暴露，避免裸露 Cookie 服务。
+    ports:
+      - "127.0.0.1:4982:4982"
+    volumes:
+      - proxy-data:/app/data
+      - proxy-session:/app/session-cache
+    restart: unless-stopped
+
+volumes:
+  proxy-data:
+  proxy-session:

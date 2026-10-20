@@ -7,8 +7,11 @@ import secrets
 import threading
 import time
 import uuid
+import copy
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
@@ -16,12 +19,14 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import __version__, pipeline, settings
+from . import __version__, pipeline, settings, review, poster
 from .jobs import JobStore, public_snapshot
 from .kb import get_kb
+from .poster_channel import PosterChannel
 
 STORE = JobStore(settings.JOB_DB)
 JOB_SLOTS = threading.BoundedSemaphore(max(1, settings.MAX_CONCURRENT_JOBS))
+REVIEW_LOCK = threading.Lock()
 
 
 @asynccontextmanager
@@ -54,6 +59,30 @@ def valid_session(token: str) -> bool:
 
 @app.middleware("http")
 async def access_control(request: Request, call_next):
+    if request.url.path.startswith("/api/poster-worker/"):
+        token = request.headers.get("X-Poster-Worker-Key", "")
+        if not settings.POSTER_WORKER_TOKEN or not secrets.compare_digest(token.encode(), settings.POSTER_WORKER_TOKEN.encode()):
+            return JSONResponse({"detail":"Unauthorized"}, status_code=401)
+        try:
+            size = int(request.headers.get("content-length") or "0")
+        except ValueError:
+            return JSONResponse({"detail":"无效的请求大小"}, status_code=400)
+        if size < 0:
+            return JSONResponse({"detail":"无效的请求大小"}, status_code=400)
+        if size > 29 * 1024 * 1024:
+            return JSONResponse({"detail":"图片交付超出大小限制"}, status_code=413)
+        # 同时约束分块请求，不能只相信 Content-Length。
+        chunks, size = [], 0
+        async for chunk in request.stream():
+            size += len(chunk)
+            if size > 29 * 1024 * 1024:
+                return JSONResponse({"detail":"图片交付超出大小限制"}, status_code=413)
+            chunks.append(chunk)
+        request._body = b"".join(chunks)
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
     public = {"/healthz", "/about", "/login", "/api/login", "/static/style.css", "/static/login.css", "/static/fonts.css", "/static/typography.css",
               "/static/login.js", "/static/brand/logo-mark.svg", "/static/brand/app-icon.svg",
               "/static/gallery/welcome.jpg", "/static/gallery/brief.jpg", "/static/gallery/workflow.jpg",
@@ -93,6 +122,52 @@ class LoginIn(BaseModel):
     password: str = Field(max_length=500)
 
 
+class WorkerHeartbeat(BaseModel):
+    ready: bool
+
+
+class WorkerDelivery(BaseModel):
+    claim_token: str = Field(min_length=20, max_length=100)
+    image: str | None = Field(default=None, max_length=28 * 1024 * 1024)
+    error: Literal["account_not_ready", "generation_failed", "generation_timeout", "invalid_image"] | None = None
+
+
+@app.post("/api/poster-worker/heartbeat")
+def poster_worker_heartbeat(body: WorkerHeartbeat):
+    PosterChannel(STORE.path).heartbeat(body.ready)
+    return {"ok":True}
+
+
+@app.post("/api/poster-worker/claim")
+def poster_worker_claim():
+    channel = PosterChannel(STORE.path)
+    return {"task":channel.claim() if channel.worker_ready() else None}
+
+
+@app.post("/api/poster-worker/{task_id}/result")
+def poster_worker_result(task_id: str, body: WorkerDelivery):
+    if bool(body.image) == bool(body.error):
+        raise HTTPException(400, "只能交付图片或错误之一。")
+    errors = {"account_not_ready":"出图账号尚未完成连接，请联系工作台维护者。", "generation_failed":"网页出图未完成，请核对账号会话或额度后手动重试。",
+              "generation_timeout":"网页出图超时；本次不会自动重新生成。", "invalid_image":"网页未返回有效图片。"}
+    try:
+        return PosterChannel(STORE.path).finish(task_id, body.claim_token, body.image, errors.get(body.error), settings.POSTER_DIR)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+class ReviewAnswer(BaseModel):
+    id: str = Field(max_length=64)
+    choice: Literal["fix", "disagree", "defer"]
+    reason: str = Field(default="", max_length=2000)
+
+
+class ReviewDecision(BaseModel):
+    token: str = Field(max_length=64)
+    answers: list[ReviewAnswer] = Field(max_length=100)
+    resolution: Literal["continue", "adopt", "hold"]
+
+
 @app.get("/login")
 def login_page():
     if not settings.AUTH_PASSWORD:
@@ -127,7 +202,8 @@ def logout():
     return response
 
 
-def _start(task: dict, instruction: str | None) -> str:
+def _start(task: dict, instruction: str | None, *, source: dict | None = None, decision: dict | None = None,
+           poster_only: bool = False, poster_review_only: bool = False) -> str:
     if not JOB_SLOTS.acquire(blocking=False):
         raise HTTPException(429, "已有创作正在运行，请完成后再试", headers={"Retry-After": "10"})
     jid = uuid.uuid4().hex
@@ -144,7 +220,19 @@ def _start(task: dict, instruction: str | None) -> str:
 
     def work():
         try:
-            result = pipeline.run(task, instruction, on_update=cb)
+            if poster_only:
+                result = copy.deepcopy(source)
+                result["poster_parent"] = source.get("job_id")
+                result["trace"] = [s for s in result.get("trace", []) if not s.get("step", "").startswith("poster_")]
+                result["total_ms"] = 0
+                if result.get("human_review"):
+                    result["text_human_review"] = result.pop("human_review")
+            else:
+                result = (pipeline.continue_review(source, decision, on_update=cb) if source is not None else
+                          pipeline.run(task, instruction, on_update=cb))
+            if task.get("platform") == "poster" and result.get("article") and settings.POSTER_IMAGE_ENABLED:
+                result = poster.attach(result, jid, on_update=cb, review_only=poster_review_only, decision=decision)
+            result["job_id"] = jid
             STORE.update(jid, result=result, state="done")
         except Exception as e:  # noqa: BLE001
             STORE.update(jid, error=f"{type(e).__name__}: {e}", state="error")
@@ -165,6 +253,7 @@ def info():
     kb = get_kb()
     return {"name": "华章有据", "version": __version__, "auth_enabled": bool(settings.AUTH_PASSWORD), "kb": kb.whoami(),
             "writer_model": settings.WRITER_MODEL, "judge_model": settings.JUDGE_MODEL,
+            "poster_service": {"provider":settings.POSTER_IMAGE_PROVIDER, **PosterChannel(STORE.path).status()},
             "models": [{"id": m.id, "name": m.name, "group": m.group} for m in kb.models()],
             "platforms": {k: v["name"] for k, v in pipeline.platforms_cfg().items()},
             "scenarios": list(pipeline.scenes_cfg()["scenarios"])}
@@ -182,7 +271,81 @@ def job(jid: str):
     j = STORE.get(jid)
     if not j:
         raise HTTPException(404, "任务不存在")
-    return JSONResponse(public_snapshot(j))
+    snapshot = public_snapshot(j)
+    if snapshot.get("result"):
+        snapshot["result"] = {**snapshot["result"], "job_id": jid}
+    return JSONResponse(snapshot)
+
+
+def _reviewable_job(jid: str) -> dict:
+    job = STORE.get(jid)
+    if not job:
+        raise HTTPException(404, "任务不存在")
+    if job["state"] != "done" or not (job.get("result") or {}).get("article"):
+        raise HTTPException(409, "请等待作品及终审结果返回后再裁定。")
+    return job
+
+
+@app.get("/api/job/{jid}/review")
+def review_questions(jid: str):
+    return review.questions(_reviewable_job(jid)["result"])
+
+
+@app.post("/api/job/{jid}/review")
+def decide_review(jid: str, payload: ReviewDecision):
+    with REVIEW_LOCK:
+        saved = _reviewable_job(jid)
+        result = copy.deepcopy(saved["result"])
+        result["job_id"] = jid
+        try:
+            decision = review.validate_decision(result, payload.model_dump())
+        except review.ReviewConflict as exc:
+            raise HTTPException(409, str(exc)) from None
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+        previous = result.get("human_review") or {}
+        if previous.get("next_job"):
+            raise HTTPException(409, "该稿件已提交后续处理，请打开最新任务再裁定。")
+        decision["actor"] = settings.AUTH_USERNAME or "本机用户"
+        next_job = None
+        if payload.resolution == "continue":
+            only_image = poster.text_approved(result) and all(a["origin"] == "poster" for a in decision["answers"])
+            next_job = _start(result["task"], None, source=result, decision=decision, poster_only=only_image,
+                              poster_review_only=only_image and not any(a["choice"] == "fix" for a in decision["answers"]))
+            decision["next_job"] = next_job
+        elif payload.resolution == "adopt" and result.get("poster", {}).get("status") == "blocked":
+            result["human_review"] = decision
+            next_job = _start(result["task"], None, source=result, poster_only=True)
+            decision["next_job"] = next_job
+        result["human_review"] = decision
+        history = saved.get("review_history", []) + [decision]
+        STORE.update(jid, result=result, review_history=history)
+        return {"result": result, "job": next_job}
+
+
+@app.post("/api/job/{jid}/poster/regenerate")
+def regenerate_poster(jid: str):
+    saved = _reviewable_job(jid)
+    source = {**saved["result"], "job_id":jid}
+    if (source.get("task") or {}).get("platform") != "poster":
+        raise HTTPException(422, "只有门店海报可以重新生图。")
+    if not settings.POSTER_IMAGE_ENABLED:
+        raise HTTPException(409, "生图功能当前未启用。")
+    if not poster.text_approved(source):
+        raise HTTPException(409, "请先在问题详情中修订或裁定文案，再重新生图。")
+    return {"job": _start(source["task"], None, source=source, poster_only=True)}
+
+
+@app.get("/api/job/{jid}/poster/image")
+def poster_image(jid: str, download: bool = False):
+    saved = STORE.get(jid)
+    metadata = ((saved or {}).get("result") or {}).get("poster") or ((saved or {}).get("artifacts") or {}).get("poster") or {}
+    if not saved or not metadata.get("sha256") or not re.fullmatch(r"[a-f0-9]{32}", jid):
+        raise HTTPException(404, "海报尚未生成或未登记。")
+    path = settings.POSTER_DIR / jid / "poster.png"
+    if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != metadata["sha256"]:
+        raise HTTPException(404, "海报文件不可用或与登记结果不一致。")
+    return FileResponse(path, media_type="image/png", filename="门店海报.png" if download else None)
 
 
 @app.get("/healthz")

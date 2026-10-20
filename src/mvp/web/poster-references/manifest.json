@@ -1,0 +1,26 @@
+[
+  {
+    "id": "fresh-green",
+    "name": "清新大留白",
+    "file": "fresh-green.png",
+    "image_url": "https://x0.ifengimg.com/res/2024/2EEB9A97238B45ACF552CC7ED4216B89A2FA4428_size61_w640_h1138.png",
+    "source_url": "https://i.ifeng.com/c/8ZRHVcKxnoT",
+    "style": "浅绿色大留白、产品为主角、疏朗的大标题和少量文字，适合校园与日常携带场景。",
+    "sha256": "0e4ddf254357b3a3cebeebf87195cb07565a693530097cb58499dbe872294aed",
+    "approved_on": "2026-10-20",
+    "approved_by": "user",
+    "usage": "visual_style_only"
+  },
+  {
+    "id": "minimal-product",
+    "name": "极简产品展示",
+    "file": "minimal-product.jpg",
+    "image_url": "https://www-file.huawei.com/-/media/corporate/local-site/fr/image/2024-2/m_768x850.jpg",
+    "source_url": "https://www.huawei.com/fr/",
+    "style": "白色空间、克制的品牌字样、突出的产品轮廓、清晰的标题层级，适合通勤办公与门店展示。",
+    "sha256": "70d3b8449e1650ff177f983e9e0c9bc960a2d70dfe27834125c152998ccafab5",
+    "approved_on": "2026-10-20",
+    "approved_by": "user",
+    "usage": "visual_style_only"
+  }
+]

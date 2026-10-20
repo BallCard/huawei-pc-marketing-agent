@@ -1,0 +1,40 @@
+.review-dialog { position: fixed; z-index: 46; inset: auto 24px 24px auto; margin: 0; width: min(520px, calc(100vw - 32px)); max-height: min(84dvh, 850px); border-radius: 16px; padding: 24px; }
+.review-dialog[open] { display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
+.review-dialog .dialog-heading, .review-dialog .review-question-actions, .review-dialog .review-question-error { flex-shrink: 0; }
+#review-question-body { overflow-y: auto; min-height: 0; padding-right: 4px; scrollbar-width: thin; }
+.review-dialog .dialog-heading h2 { font-size: 24px; outline: none; }
+.review-question-problem { margin: 24px 0 16px; padding-left: 16px; border-left: 2px solid var(--accent-terracotta); }
+.review-question-problem blockquote { font: 500 18px/1.65 var(--font-serif); margin: 12px 0; }
+.review-question-problem p, .review-question-evidence p { font-size: 13px; line-height: 1.9; color: var(--text-muted); }
+.review-direction { margin-top: 8px; }
+.review-question-evidence { font-size: 12px; margin: 0 0 20px 18px; }
+.review-question-evidence summary { cursor: pointer; color: var(--accent-terracotta); }
+.review-question-evidence section { margin-top: 14px; }
+.review-question-evidence b { font-weight: 550; }
+.review-choices { display: grid; gap: 9px; border: 0; padding: 0; margin: 20px 0; min-width: 0; }
+.review-choice { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border: 1px solid var(--border-line); border-radius: 6px; cursor: pointer; }
+.review-choice.is-selected { border-color: var(--accent-terracotta); background: #b35f4208; }
+.review-choice input { width: 16px; height: 16px; flex: 0 0 auto; margin: 3px 0 0; accent-color: var(--accent-terracotta); }
+.review-choice b { display: block; font-size: 14px; font-weight: 550; }
+.review-choice small, .review-resolution small { display: block; margin-top: 4px; font-size: 12px; line-height: 1.65; color: var(--text-muted); }
+.review-dialog textarea { width: 100%; box-sizing: border-box; font: 13px/1.8 var(--font-sans); resize: vertical; }
+.review-question-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 18px; margin-top: 10px; border-top: 1px solid var(--border-line); }
+.review-question-error { color: var(--accent-terracotta); font-size: 12px; line-height: 1.7; margin-top: 12px; min-height: 1.7em; }
+.review-decision-summary { padding-left: 22px; margin: 24px 0; }
+.review-summary-details { margin-top: 20px; font-size: 13px; color: var(--text-muted); }
+.review-summary-details > summary { cursor: pointer; }
+.review-decision-summary li { padding: 12px 0; border-bottom: 1px solid var(--border-line); font-size: 13px; line-height: 1.8; }
+.review-decision-summary b, .review-decision-summary small { display: block; }
+.review-decision-summary b { color: var(--accent-terracotta); font-weight: 500; }
+.review-decision-summary small { color: var(--text-muted); white-space: pre-wrap; }
+.review-resolution { display: grid; gap: 10px; }
+.review-resolution-option { position: relative; padding: 14px 40px 14px 16px; text-align: left; border: 1px solid var(--border-line); border-radius: 6px; }
+.review-resolution-option b { font-size: 14px; font-weight: 550; }
+.review-resolution-option > span { position: absolute; right: 17px; top: 18px; }
+.review-resolution-option:not(:disabled):hover { border-color: var(--accent-terracotta); }
+.review-resolution-option:disabled { opacity: .45; cursor: not-allowed; }
+.review-feedback-entry { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 16px 0; margin-bottom: 12px; border-bottom: 1px solid var(--border-line); }
+.review-feedback-entry p { font-size: 12px; color: var(--text-muted); }
+.work-review .review-question-entry { color: var(--accent-terracotta); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+@media (max-width: 600px) { .review-dialog .dialog-heading h2 { font-size: 21px; } .review-choice { padding: 12px; } .review-question-problem blockquote { font-size: 17px; } }

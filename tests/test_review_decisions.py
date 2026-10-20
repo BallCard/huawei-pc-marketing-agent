@@ -1,0 +1,96 @@
+import copy
+import tempfile
+import threading
+import unittest
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+from fastapi.testclient import TestClient
+
+from src.mvp import app as service, review
+from src.mvp.jobs import JobStore
+
+
+def result_fixture():
+    return {"task": {"platform": "moments"}, "article": {"title": "每天带着走"},
+            "verification": {"article_version": 2, "judge": {"overall": "needs_fix", "problems": [
+                {"where": "title", "index": -1, "quote": "每天带着走", "type": "expression",
+                 "detail": "标题未点明使用场景", "direction": "增加通勤场景"}]},
+                "remaining": ["审核模型：标题未点明使用场景"]}, "evidence": {"facts": []}, "status": "ok_with_flags"}
+
+
+class ReviewQuestionsTests(unittest.TestCase):
+    def test_questions_come_from_actual_final_issues_and_deduplicate_remaining(self):
+        form = review.questions(result_fixture())
+        self.assertEqual(len(form["questions"]), 1)
+        self.assertEqual(form["questions"][0]["quote"], "每天带着走")
+
+    def test_changed_article_rejects_old_token_and_disagreement_needs_reason(self):
+        result = result_fixture()
+        form = review.questions(result)
+        payload = {"token": form["token"], "resolution": "adopt", "answers": [
+            {"id": form["questions"][0]["id"], "choice": "disagree", "reason": ""}]}
+        with self.assertRaisesRegex(ValueError, "理由"):
+            review.validate_decision(result, payload)
+        result["article"]["title"] = "通勤轻一点"
+        with self.assertRaises(review.ReviewConflict):
+            review.validate_decision(result, payload)
+
+
+class ReviewAPITests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.store = JobStore(Path(temporary.name) / "jobs.sqlite3")
+        kb = Mock()
+        kb.whoami.return_value = {}
+        kb.models.return_value = []
+        for patcher in (patch.object(service, "STORE", self.store),
+                        patch.object(service, "JOB_SLOTS", threading.BoundedSemaphore(1)),
+                        patch.object(service, "get_kb", return_value=kb),
+                        patch.multiple(service.settings, AUTH_USERNAME="", AUTH_PASSWORD="", HOST="127.0.0.1")):
+            patcher.start(); self.addCleanup(patcher.stop)
+        self.client = TestClient(service.app)
+        self.client.__enter__(); self.addCleanup(self.client.__exit__, None, None, None)
+        self.original = result_fixture()
+        self.store.create({"id": "source", "t": 1, "state": "done", "result": copy.deepcopy(self.original)})
+
+    def payload(self, choice, resolution, reason=""):
+        form = self.client.get("/api/job/source/review").json()
+        return {"token": form["token"], "resolution": resolution,
+                "answers": [{"id": q["id"], "choice": choice, "reason": reason} for q in form["questions"]]}
+
+    def test_manual_adoption_preserves_automatic_verdict_and_survives_reopen(self):
+        response = self.client.post("/api/job/source/review", json=self.payload("disagree", "adopt", "原稿已明确携带场景，采用原文"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.json()["job"])
+        saved = JobStore(self.store.path).get("source")
+        self.assertEqual(saved["result"]["human_review"]["state"], "adopted")
+        self.assertEqual(saved["result"]["verification"], self.original["verification"])
+        self.assertEqual(saved["result"]["status"], "ok_with_flags")
+        self.assertEqual(len(saved["review_history"]), 1)
+
+    def test_fix_cannot_adopt_unchanged_and_missing_answers_are_rejected(self):
+        payload = self.payload("fix", "adopt")
+        self.assertEqual(self.client.post("/api/job/source/review", json=payload).status_code, 422)
+        payload["answers"] = []
+        self.assertEqual(self.client.post("/api/job/source/review", json=payload).status_code, 422)
+
+    def test_continue_uses_saved_article_and_passes_feedback_to_new_job(self):
+        done = threading.Event()
+        captured = []
+        def resume(source, decision, on_update):
+            captured.append((source, decision)); done.set()
+            return {**result_fixture(), "article": {"title": "通勤轻一点"}}
+        with patch.object(service.pipeline, "continue_review", side_effect=resume):
+            response = self.client.post("/api/job/source/review", json=self.payload("fix", "continue"))
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(done.wait(2))
+            self.assertNotEqual(response.json()["job"], "source")
+            self.assertEqual(captured[0][0]["article"], self.original["article"])
+            self.assertEqual(captured[0][1]["answers"][0]["detail"], "标题未点明使用场景")
+        self.assertEqual(self.client.post("/api/job/source/review", json=self.payload("fix", "continue")).status_code, 409)
+
+
+if __name__ == "__main__":
+    unittest.main()

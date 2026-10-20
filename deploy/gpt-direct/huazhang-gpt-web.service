@@ -1,0 +1,37 @@
+[Unit]
+Description=Huazhang private ChatGPT image gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=huazhang-gpt
+Group=huazhang-gpt
+EnvironmentFile=/etc/huazhang-gpt/gateway.env
+Environment=GOMEMLIMIT=96MiB GOMAXPROCS=1
+ExecStart=/opt/huazhang-gpt/gptweb2api
+WorkingDirectory=/var/lib/huazhang-gpt
+StateDirectory=huazhang-gpt
+UMask=0077
+Restart=on-failure
+RestartSec=10
+MemoryHigh=128M
+MemoryMax=160M
+MemorySwapMax=0
+CPUQuota=40%
+TasksMax=64
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+InaccessiblePaths=-/usr/local/x-ui -/etc/x-ui
+
+[Install]
+WantedBy=multi-user.target

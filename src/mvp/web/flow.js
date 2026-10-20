@@ -6,6 +6,7 @@
   const STATUS = { running: "正在处理", done: "已完成", waiting: "等待补充", error: "需关注", skip: "已跳过", needs_fix:"发现问题", incomplete:"未完成" };
   const WHERE = { title: "标题", lead: "导语", body: "正文", caption: "图注", cta: "行动引导" };
   const PRIMARY = ["scene", "sources", "plan", "compose", "review"];
+  const primary = () => state.artifacts.request?.platform === "poster" || latest.result?.poster ? [...PRIMARY, "poster_image", "poster_review"] : PRIMARY;
   let root, deck, peek, latest = {}, displayed, signature = "", detailStage = null, detailSignature = "";
   const clock = new window.ProcessClock();
   let running = false;
@@ -26,7 +27,7 @@
     return root;
   }
   function makeCard(stage, data) {
-    const index = PRIMARY.indexOf(stage.id);
+    const phases = primary(), index = phases.indexOf(stage.id);
     const avatar = el("div", { class: "bot-avatar", "aria-hidden": "true" }, window.BotPortrait(stage.bot ?? 0, stage.bot === 7 ? "#9ca98f" : "#c28c6c"));
     const rows = el("div", { class: "stage-activities" }, ...data.records.map(record => {
       const mark = el("span", { class: `activity-mark ${record.status}`, "aria-hidden": "true" }, record.status === "running" ? "" : ["error","needs_fix","incomplete"].includes(record.status) ? "!" : "✓");
@@ -39,12 +40,19 @@
     const processing = el("div", { class: "stage-processing" },
       data.note ? el("span", {}, data.note) : null,
       stage.entries.length ? el("time", { "data-phase-id": stage.id }) : null);
-    const meta = el("div", { class: "stage-meta" }, el("span", {}, index >= 0 ? `0${index + 1} / 05` : stage.id === "finish" ? "本次结果" : "质量回流"),
+    const meta = el("div", { class: "stage-meta" }, el("span", {}, index >= 0 ? `${String(index + 1).padStart(2,"0")} / ${String(phases.length).padStart(2,"0")}` : stage.id === "finish" ? "本次结果" : "质量回流"),
       el("span", { class: "stage-role" }, stage.role || "内容策划"), el("span", { class: "stage-status" }, STATUS[stage.status] || "等待开始"));
     return el("article", { class: `turn-card is-current ${stage.status || "idle"} ${data.tone || ""}`, "data-stage": stage.id, "aria-label": stage.label || "创作准备" },
       el("div", { class: "stage-bot" }, avatar, el("span", { class: "bot-caption" }, stage.role || "内容策划")),
-      el("div", { class: "stage-copy" }, meta, el("h3", {}, stage.status === "running" ? el("span", { class: "activity-spinner", "aria-hidden": "true" }) : null, el("span", {}, data.title)), rows, processing,
-        stage.id === "idle" ? null : el("button", { class: "stage-detail", type: "button", onclick: () => openDetail(stage) }, "全部处理记录", el("span", { "aria-hidden": "true" }, "↗"))));
+      el("div", { class: "stage-copy" }, meta, el("h3", {}, stage.status === "running" ? el("span", { class: "activity-spinner", "aria-hidden": "true" }) : null, el("span", {}, data.title)),
+        ["poster_image","poster_review"].includes(stage.id) ? el("div", {class:"poster-process-visual"},
+          state.artifacts.poster?.image_url ? el("img", {src:state.artifacts.poster.image_url, alt:"已返回的海报，审核结论尚待确认"}) :
+          el("div", {class:"poster-skeleton", "aria-label":"等待模型返回海报", role:"img"},
+            el("span", {class:"poster-skeleton-title"}), el("span", {class:"poster-skeleton-visual"}), el("span", {class:"poster-skeleton-line"}), el("span", {class:"poster-skeleton-line short"}))) : null,
+        rows, processing,
+        stage.id === "idle" ? null : el("button", { class: "stage-detail", type: "button", onclick: () => openDetail(stage) }, "全部处理记录", el("span", { "aria-hidden": "true" }, "↗")),
+        latest.state === "done" && ["finish","recheck","review"].includes(stage.id) && latest.result?.article && window.processReviewStatus(latest.result).needsReview ?
+          el("button", {class:"text-button review-question-entry", type:"button", onclick:() => window.dispatchEvent(new CustomEvent("open-review-questions"))}, "问题详情 ↗") : null));
   }
   function render({ stage, next, rotate }) {
     if (!root) makeRoot();
@@ -52,7 +60,7 @@
     const title = UI.$("process-title");
     if (title.textContent !== stage.label) title.textContent = stage.label;
     const data = content(stage);
-    const nextPlanned = { scene: "准备依据", sources: "确定立意", plan: "图文创作", compose: "独立评审", review: "根据评审结果继续", lookup: "定向修订", repair: "终稿复核", recheck: "汇总核验结果" };
+    const nextPlanned = { scene: "准备依据", sources: "确定立意", plan: "图文创作", compose: "独立评审", review: "根据评审结果继续", lookup: "定向修订", repair: "终稿复核", recheck: "汇总核验结果", poster_image:"成图审核", poster_review:"汇总审核结果" };
     const nextText = next?.label || nextPlanned[stage.id];
     peek.textContent = nextText ? `接下来 · ${nextText}` : "";
     peek.hidden = !nextText;
@@ -83,7 +91,7 @@
     const track = UI.$("phase-track");
     if (!track) return;
     const stages = window.deriveStages({ steps: state.steps, state: state.state, result: latest.result });
-    const phases = [...PRIMARY.map(id=>window.PROCESS_PHASES.find(p=>p.id===id)), ...stages.filter(s=>["lookup","repair","recheck"].includes(s.id))];
+    const phases = [...primary().map(id=>window.PROCESS_PHASES.find(p=>p.id===id)), ...stages.filter(s=>["lookup","repair","recheck"].includes(s.id))];
     const active = stages.findLast(s=>s.status === "running");
     const trackSignature = JSON.stringify(stages.map(s => [s.id, s.status]));
     if (track.dataset.signature === trackSignature) return;
@@ -146,7 +154,7 @@
         el("blockquote", {}, fact.text), fact.conditions?.length ? el("p", {}, "适用条件：" + value(fact.conditions)) : null));
     }
     if (["review", "repair", "recheck", "finish"].includes(stage.id)) {
-      const version = stage.id === "review" ? 1 : stage.id === "repair" ? 1 : a["draft:2"] ? 2 : 1;
+      const version = stage.id === "review" ? 1 : stage.id === "repair" ? 1 : a.final?.version || Math.max(1,...Object.keys(a).filter(k=>/^draft:\d+$/.test(k)).map(k=>+k.split(":")[1]));
       for (const p of a[`review:${version}`]?.problems || []) body.append(el("section", { class: "detail-block problem-record" },
         el("h3", {}, `${WHERE[p.where] || "文稿"} · ${p.type === "expression" ? "表达改进" : "必须修改"}`),
         p.quote ? el("blockquote", {}, p.quote) : null, el("p", {}, p.detail), p.direction ? el("p", {}, "修改方向：" + p.direction) : null));
@@ -155,6 +163,8 @@
         el("h3", {}, `${WHERE[change.where] || "文稿"} · 修改前后`),
         el("del", {}, change.before || "（原稿无此句）"), el("ins", {}, change.after || "（删除无依据内容）"),
         change.fact_refs?.length ? el("p", {}, "相关证据：" + change.fact_refs.join("、")) : null));
+      if (latest.state === "done" && latest.result?.article && window.processReviewStatus(latest.result).needsReview)
+        body.append(el("button", {class:"btn-primary", type:"button", onclick:() => window.dispatchEvent(new CustomEvent("open-review-questions"))}, "问题详情 · 逐项裁定 →"));
     }
     if (stage.id === "compose") {
       const draft = a["draft:1"];

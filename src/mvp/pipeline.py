@@ -473,7 +473,8 @@ def deterministic_check(article: dict, facts: list[dict], doc: ModelDoc, strat: 
 
 
 def judge(article: dict, facts: list[dict], strat: dict, det: dict, judge_model: str | None = None,
-          images: list[Image] | None = None, task: dict | None = None, risks: list[dict] | None = None) -> dict:
+          images: list[Image] | None = None, task: dict | None = None, risks: list[dict] | None = None,
+          feedback: list[str] | None = None) -> dict:
     payload = {
         "平台策略": {"name": strat["platform_name"], "price_policy": strat["price_policy"], "tone": strat["tone"],
                      "structure": strat["structure"], "chars": strat["chars"], "writing_limits": strat["writing_limits"]},
@@ -487,6 +488,8 @@ def judge(article: dict, facts: list[dict], strat: dict, det: dict, judge_model:
                            for i, b in enumerate(article["blocks"])]},
     }
     selected = judge_model or settings.JUDGE_MODEL
+    if feedback:
+        payload["用户对上次审核的反馈（不是产品事实依据）"] = feedback
     result = llm.ask_json(prompt("judge"), jdump(payload), model=selected,
                          role="fast" if selected == settings.FAST_MODEL else "judge")
     # 旧格式仍兼容；表达意见最多两项，事实/需求问题不设截断。
@@ -742,6 +745,91 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
                          "remaining": res["verification"]["remaining"], "version": res["verification"]["article_version"]},
                "controller", "终稿已就绪" if res["status"] == "ok" else "稿件已就绪，待复核")
     return fin(res)
+
+
+def continue_review(source: dict, decision: dict, on_update=None) -> dict:
+    """从用户裁定继续修订/复审，不重新解析需求或替换选定立意。"""
+    from .review import instructions
+
+    tr = Trace(on_update, budget_seconds=settings.GENERATION_BUDGET_SECONDS)
+    kb = get_kb()
+    task = copy.deepcopy(source["task"])
+    doc = kb.load(source["model"]["id"])
+    artifacts = source.get("artifacts") or {}
+    scene = artifacts.get("brief") or source["scene_judgement"]
+    dm = source["model"]
+    strat = plan_strategy(task, scene, kb, doc.id)
+    facts = copy.deepcopy(source["evidence"]["facts"])
+    plan = artifacts.get("plan")
+    available = {im.id: im for im in doc.images}
+    available.update({im.id: im for im in web_images.cached_images(doc, require_fresh=False)})
+    catalog = (artifacts.get("sources") or {}).get("images") or source.get("images", [])
+    images, mapping = [], {}
+    for row in catalog:
+        if row["name"] in available:
+            images.append(available[row["name"]])
+            mapping[row["id"]] = f"I{len(images)}"
+    previous = copy.deepcopy(source["article"])
+    for block in previous.get("blocks", []):
+        if block.get("type") == "image":
+            if block["image_id"] not in mapping:
+                raise ValueError("原稿使用的产品图已不可用，请返回简报重新生成。")
+            block["image_id"] = mapping[block["image_id"]]
+    version = (source.get("verification") or {}).get("article_version", 1) + 1
+    fast = task.get("speed") == "fast"
+    writer_model = settings.FAST_MODEL if fast else settings.WRITER_MODEL
+    judge_model = settings.FAST_MODEL if fast else settings.JUDGE_MODEL
+    feedback = instructions(decision)
+    article, changes = previous, []
+    det = {"issues": [], "platform_issues": [], "images": []}
+    jd = {"overall": "not_reviewed", "problems": []}
+    budget_hit = False
+    tr.publish("request", task, "controller", "用户反馈已接收")
+    tr.publish("brief", scene, "planner", "沿用原始需求")
+    tr.publish("sources", {"model": doc.name, "images": image_catalog(images)}, "retrieve", "沿用已登记产品图")
+    tr.publish("evidence", {"facts": facts}, "planner", "沿用原始证据")
+    tr.publish("user_feedback", decision, "controller", "用户已逐项裁定")
+    try:
+        with llm.budget(tr.deadline, tr.record_call):
+            if any(a["choice"] == "fix" for a in decision["answers"]):
+                raw = tr.run("repair", "根据用户选择定向修订", lambda: compose(
+                    task, scene, strat, facts, images, None, previous=previous, issues=feedback,
+                    writer_model=writer_model, plan=plan), view=lambda a: {"title": a.get("title")})
+                article = normalize_article(raw, facts, images)
+                changes = article_changes(previous, article, source["verification"].get("judge", {}), facts)
+                tr.publish("revision", {"changes": changes, "issues": feedback}, "editor", "用户要求的修订已完成")
+            else:
+                tr.skip("repair", "定向修订", "用户要求重新判断原稿，未授权改写")
+            tr.publish(f"draft:{version}", article, "editor", "待复审稿件已就绪", version=version)
+            det = tr.run("reverify", "终稿规则复核", lambda: deterministic_check(article, facts, doc, strat, images))
+            tr.publish(f"rules:{version}", det, "verify", "规则复核已完成", version=version)
+            jd = tr.run("rejudge", "结合用户反馈独立复审", lambda: judge(
+                article, facts, strat, det, judge_model, images, task,
+                (plan or {}).get("risks", []), feedback=feedback), view=lambda r: {"overall": r.get("overall")})
+            tr.publish(f"review:{version}", jd, "reviewer", "用户反馈复审已完成", version=version)
+    except llm.LLMError as exc:
+        budget_hit = isinstance(exc, llm.BudgetExceeded)
+        det = deterministic_check(article, facts, doc, strat, images)
+        jd = {"overall": "not_reviewed", "problems": [], "pending_confirm": ["复审未完成，请重试或人工裁定。"]}
+    attempts = [{"round": version, "issues": collect_issues(det, jd)}]
+    result = build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, attempts, [], kb)
+    deferred = [f"用户尚未确认：{a['detail']}" for a in decision["answers"] if a["choice"] == "defer"]
+    if deferred:
+        result["status"] = "ok_with_flags"
+        result["verification"]["remaining"].extend(deferred)
+    result.update(task=task, revisions=changes, planning=source.get("planning", {}),
+                  workflow_version=WORKFLOW_VERSION, context_version=context_version(doc),
+                  review_parent=source.get("job_id"), total_ms=int((time.monotonic() - tr.started) * 1000),
+                  budget={"limit_seconds": settings.GENERATION_BUDGET_SECONDS, "exhausted": budget_hit},
+                  models_used={"writer": writer_model, "judge": judge_model, "fast": settings.FAST_MODEL})
+    result["verification"].update(article_version=version, state="passed" if result["status"] == "ok" else "needs_review")
+    tr.publish("final", {"article": article, "state": result["verification"]["state"], "version": version,
+                         "remaining": result["verification"]["remaining"]}, "controller", "用户反馈处理已结束")
+    tr.emit("workflow_finished", "controller", label="复审已结束", status=result["status"])
+    snapshot = tr.snapshot()
+    result.update(trace=snapshot["steps"], events=snapshot["events"], artifacts=snapshot["artifacts"], llm_calls=copy.deepcopy(tr.calls))
+    tr.closed = True
+    return result
 
 
 def supplement_evidence(kb, doc, facts, problems):

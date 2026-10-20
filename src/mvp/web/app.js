@@ -128,6 +128,29 @@ let activeJobId = null;
 
 async function init() {
   Studio.init();
+  window.ReviewQuestions.init();
+  UI.$("work-review-questions").addEventListener("click", () => window.ReviewQuestions.open(current));
+  UI.$("poster-regenerate").addEventListener("click", async () => {
+    const button = UI.$("poster-regenerate");
+    if (!current?.job_id || button.disabled) return;
+    button.disabled = true;
+    try {
+      const response = await fetch(`/api/job/${encodeURIComponent(current.job_id)}/poster/regenerate`, {method:"POST"});
+      const data = await response.json();
+      if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : "暂时无法重新生图。");
+      followReview(data.job, current.task);
+    } catch(error) { Studio.toast(error.message); }
+    finally { button.disabled = false; }
+  });
+  window.addEventListener("open-review-questions", () => window.ReviewQuestions.open(current || flowSnapshot.result));
+  window.addEventListener("review-followup", event => followReview(event.detail.job, event.detail.task));
+  window.addEventListener("review-updated", event => {
+    showResult(event.detail.result);
+    flowSnapshot = { ...flowSnapshot, result:event.detail.result };
+    showFlow(flowSteps, false, {restore:true});
+    if (event.detail.job) followReview(event.detail.job, event.detail.result.task);
+    else Studio.toast(event.detail.result.human_review?.state === "adopted" ? "人工裁定已保存" : "已保存，稍后可继续处理");
+  });
   try {
     const res = await fetch("/api/info");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -483,6 +506,15 @@ function unlock() {
   if (btnRedo) btnRedo.disabled = false;
 }
 
+function followReview(jid, task) {
+  if (window.AgentAsk) window.AgentAsk.close({reset:true});
+  UI.$("go").disabled = true; UI.$("redo").disabled = true;
+  startedAt = Date.now();
+  sessionStorage.setItem("studio-active-job", JSON.stringify({id:jid, task, mode:Studio.getMode(), startedAt}));
+  Studio.startRun();
+  poll(jid, "process");
+}
+
 function showFlow(steps, running, presentation = null) {
   const runbar = UI.$("#runbar");
   if (runbar) runbar.hidden = true;
@@ -502,6 +534,15 @@ function showFlow(steps, running, presentation = null) {
 function showResult(r) {
   current = r;
   if (!r) return;
+  const posterDownload = UI.$("poster-download"), posterRedo = UI.$("poster-regenerate");
+  posterDownload.hidden = !r.poster?.image_url;
+  UI.$("dl").disabled = Boolean(r.poster && !r.poster.image_url);
+  if (r.poster?.image_url) {
+    posterDownload.href = r.poster.image_url + "?download=1";
+    posterDownload.textContent = r.poster.status === "passed" ? "下载 PNG" : "下载待复核 PNG";
+  }
+  posterRedo.hidden = !r.poster || r.poster.status === "blocked";
+  posterRedo.textContent = r.poster?.resume_available || r.poster?.status === "error" && r.poster?.task_id && /超时/.test(r.poster?.error || "") ? "继续等待本次生图 ↗" : "重新生图 ↗";
 
   if (r.status === "need_info" || r.status === "budget_exceeded") {
     const stage = UI.$("#stage");
@@ -641,6 +682,7 @@ function showNeedInfo(r) {
 
 function plainText(r) {
   if (!r || !r.article) return "";
+  if (r.poster?.copy?.length) return r.poster.copy.join("\n\n");
   const art = r.article;
   const parts = [];
 
@@ -1083,6 +1125,9 @@ function renderVerify(r) {
 
   const container = document.getElementById("verify") || dbg;
   container.textContent = "";
+  if (review.needsReview || r.human_review) container.appendChild(UI.el("div", {class:"review-feedback-entry"},
+    UI.el("div", {}, UI.el("b", {}, "终审需要你的判断"), UI.el("p", {}, "逐项查看原因，选择修改、复审或人工裁定。")),
+    UI.el("button", {type:"button", class:"btn-secondary", onclick:() => window.ReviewQuestions.open(r)}, "问题详情 ↗")));
   if (review.state === "incomplete") container.appendChild(UI.el("p", {}, review.detail));
 
   if (remaining.length > 0) {

@@ -1,0 +1,24 @@
+services:
+  chatgpt-web:
+    build: .
+    image: huazhang-chatgpt-web:893f553
+    env_file: .env
+    environment:
+      API_KEY: ${API_KEY:?Set API_KEY in the local .env}
+      HUMAN_VERIFICATION_ONLY: "1"
+      BIND_HOST: 0.0.0.0
+      PORT: "3000"
+      MAX_CONCURRENT_JOBS: "1"
+      MAX_BATCH_N: "1"
+      TIER_FALLBACK_PRO: "off"
+    ports:
+      - "127.0.0.1:17888:3000"
+    volumes:
+      - chatgpt-session:/app/auth
+      - chatgpt-images:/app/public/images
+    shm_size: 1gb
+    restart: unless-stopped
+
+volumes:
+  chatgpt-session:
+  chatgpt-images:

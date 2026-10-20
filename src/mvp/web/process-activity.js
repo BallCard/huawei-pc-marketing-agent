@@ -108,7 +108,7 @@
         note = a["draft:1"] ? `已返回 ${a["draft:1"].blocks?.length || 0} 个图文段落` : `${facts.length} 条证据${platform ? ` · ${platform}写作规范` : ""}`;
         break;
       case "review": case "recheck": {
-        const version = stage.id === "review" ? 1 : 2;
+        const version = stage.id === "review" ? 1 : a.final?.version || Math.max(2,...Object.keys(a).filter(k=>/^draft:\d+$/.test(k)).map(k=>+k.split(":")[1]));
         title = active ? `正在检查稿件 v${version}` : `稿件 v${version} 检查已结束`;
         checks(version);
         const review = a[`review:${version}`];
@@ -134,6 +134,25 @@
         if (a.revision) add("修订结果", `已修改 ${a.revision.changes?.length || 0} 处文段`, {kind:"check"});
         if (!records.length && facts[0]) source(facts[0]);
         note = "稿件 v1 → v2";
+        break;
+      }
+      case "poster_image": {
+        const poster = a.poster || result.poster || {};
+        title = active ? ({PENDING:"生图任务等待中", RUNNING:"正在生成整张门店海报"}[poster.provider_status] || "正在等待海报模型返回") : poster.image_url ? "首张海报已返回" : "海报生成已结束";
+        if (poster.reference) add("已选内置参考",poster.reference.name,{kind:"image"});
+        if (poster.product_image) add("本型号外观依据",poster.product_image,{kind:"image"});
+        if (poster.model) add("生图模型",poster.model,{kind:"input"});
+        if (poster.error) add("需要处理",poster.error,{kind:"issue",status:"error"});
+        note = active ? "生成可能较慢；任务持续查询中，图片返回后立即展示。" : "不会自动追加一轮生图，可查看结果后手动重生。";
+        break;
+      }
+      case "poster_review": {
+        const poster = a.poster || result.poster || {};
+        title = active ? "正在检查实际成图" : poster.status === "passed" ? "成图核验通过" : "成图需要复核";
+        add("文字与事实", "逐字核对型号、数字、卖点与适用条件", {kind:"check",status:active?"running":"done"});
+        add("产品与场景", "对照官方产品图检查外观、配件、场景表达与可读性", {kind:"check",status:active?"running":"done"});
+        for (const p of poster.review?.problems?.slice(0,2) || []) add("成图问题",p.detail,{kind:"issue",status:"needs_fix"});
+        note = poster.error || "审核绑定本次实际图片；重新生图后会重新审核。";
         break;
       }
       case "finish": {

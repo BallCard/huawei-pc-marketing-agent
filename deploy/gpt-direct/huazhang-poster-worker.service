@@ -1,0 +1,36 @@
+[Unit]
+Description=Huazhang outbound-only poster task worker
+After=network-online.target huazhang-gpt-web.service
+Wants=network-online.target huazhang-gpt-web.service
+
+[Service]
+User=huazhang-poster
+Group=huazhang-poster
+EnvironmentFile=/etc/huazhang-gpt/worker.env
+ExecStart=/usr/bin/python3 -B /opt/huazhang-gpt/worker.py
+StateDirectory=huazhang-poster-worker
+WorkingDirectory=/var/lib/huazhang-poster-worker
+UMask=0077
+Restart=on-failure
+RestartSec=10
+MemoryHigh=128M
+MemoryMax=160M
+MemorySwapMax=0
+CPUQuota=15%
+TasksMax=16
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+InaccessiblePaths=-/usr/local/x-ui -/etc/x-ui
+
+[Install]
+WantedBy=multi-user.target

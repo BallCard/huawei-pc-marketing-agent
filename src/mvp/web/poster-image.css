@@ -1,0 +1,17 @@
+.pv-generated-poster { width: min(100%, 540px); margin: 0 auto; padding: 0; }
+.pv-generated-poster > img { display: block; width: 100%; height: auto; max-height: none; object-fit: contain; box-shadow: 0 14px 40px #25241f14; }
+.pv-generated-poster > figcaption { margin-top: 12px; font-size: 11px; color: var(--text-muted); text-align: right; }
+.poster-unavailable { min-height: 460px; padding: 34px; display: flex; flex-direction: column; justify-content: center; background: var(--bg-canvas); border: 1px solid var(--border-line); }
+.poster-unavailable h3 { font: 500 24px/1.6 var(--font-serif); }
+.poster-unavailable p { margin-top: 18px; font-size: 14px; line-height: 1.9; color: var(--text-muted); }
+.poster-process-visual { float: right; width: 136px; margin: 0 0 12px 22px; }
+.poster-process-visual > img { width: 100%; height: auto; max-height: 220px; object-fit: contain; }
+.poster-skeleton { position: relative; aspect-ratio: 3 / 4; overflow: hidden; padding: 18px 13px; background: #fdfcf8; border: 1px solid #dcd4c4; box-shadow: 0 8px 20px #25241f0a; }
+.poster-skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 20%, #ffffffaa 46%, transparent 72%); transform: translateX(-100%); animation: poster-wait 2.7s ease-in-out infinite; }
+.poster-skeleton-title, .poster-skeleton-line { display: block; height: 6px; width: 65%; background: #d3d8c9; border-radius: 2px; }
+.poster-skeleton-visual { display: block; height: 66px; margin: 18px 0; background: #e9eadd; border-radius: 2px; transform: rotate(-7deg) scale(.95); }
+.poster-skeleton-line { height: 4px; width: 88%; margin-top: 8px; background: #e2dfd6; }
+.poster-skeleton-line.short { width: 58%; }
+@keyframes poster-wait { 0% { transform: translateX(-100%); } 85%, 100% { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .poster-skeleton::after { animation: none; display: none; } }
+@media (max-width: 600px) { .poster-process-visual { width: 105px; margin-left: 14px; } .poster-unavailable { min-height: 320px; padding: 24px; } }

@@ -1,6 +1,6 @@
 (function () {
   "use strict";
-  function reviewStatus(result = {}, artifacts = {}, steps = [], version) {
+  function automaticStatus(result = {}, artifacts = {}, steps = [], version) {
     const verification = result.verification || {}, final = artifacts.final;
     version ||= final?.version || verification.article_version || (artifacts["draft:2"] ? 2 : 1);
     const review = artifacts[`review:${version}`] || verification.judge || {};
@@ -18,6 +18,25 @@
     if (!["pass", "ok"].includes(overall)) return {state:"needs_fix",label:"自动评审发现问题",detail:problems[0]?.detail || "自动评审未通过，请查看具体问题。",passed:false,needsReview:true};
     if (remaining.length || final?.state === "needs_review") return {state:budget ? "incomplete" : "needs_fix",label:budget ? "修订或复核未完成" : "有待核对项",detail:remaining.find(s=>!s.includes("独立评审未通过或未完成")) || "请核对尚未解决的问题。",passed:false,needsReview:true};
     return {state:"passed",label:"自动核验通过",detail:"规则检查与自动评审已完成。",passed:true,needsReview:false};
+  }
+  function reviewStatus(result = {}, artifacts = {}, steps = [], version) {
+    let automatic = automaticStatus(result, artifacts, steps, version);
+    const poster = result.poster;
+    if (poster && poster.status !== "passed") automatic = {...automatic, passed:false, needsReview:true,
+      state:poster.status === "blocked" ? automatic.state : "poster_needs_review",
+      label:poster.status === "error" ? "海报生成未完成" : poster.status === "blocked" ? automatic.label : "成图待复核",
+      detail:poster.error || poster.review?.problems?.[0]?.detail || "实际成图尚未通过完整审核。"};
+    const human = result.human_review;
+    if (human?.state === "adopted") return { ...automatic, state:"human_adopted", label:"人工裁定采用", passed:false,
+      needsReview:false, automaticPassed:automatic.passed, detail:"使用者已逐项裁定采用本稿；原始自动审核结论与异议仍保留。" };
+    if (human?.state === "deferred") return { ...automatic, state:"deferred", label:"已暂缓，待复核", needsReview:true,
+      detail:"使用者已选择暂缓处理，问题及自动审核结论已保留。" };
+    if (human?.state === "continuing") return { ...automatic, state:"continuing", label:"已提交后续复审", needsReview:true,
+      detail:"用户反馈已保存，请查看后续任务的修订和复审结果。" };
+    if (result.text_human_review?.state === "adopted" && poster?.status === "passed") return { ...automatic,
+      state:"human_adopted", label:"文案人工采用 · 成图核验通过", passed:false, needsReview:false,
+      detail:"文案已由使用者裁定采用，本次成图的独立审核已通过。"};
+    return automatic;
   }
   if (typeof module !== "undefined" && module.exports) module.exports=reviewStatus;
   else window.processReviewStatus=reviewStatus;

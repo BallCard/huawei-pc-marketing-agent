@@ -137,17 +137,18 @@ def deploy():
              "commit", "-m", f"Deploy Huazhang Youju {source_commit[:8]}"], checkout)
     git(["push", "origin", "HEAD:master"], checkout, env)
     print("私有源码与资料包已同步，源代码版本：" + source_commit[:8], flush=True)
-    variables = {k: v for k, v in cfg.items() if k.startswith(("LLM_", "FAST_", "WRITER_", "JUDGE_"))
+    variables = {k: v for k, v in cfg.items() if k.startswith(("LLM_", "FAST_", "WRITER_", "JUDGE_", "POSTER_"))
                  or k in ("AUTH_USERNAME", "AUTH_PASSWORD", "MAX_CONCURRENT_JOBS", "GENERATION_BUDGET_SECONDS")}
     variables.update(HOST="0.0.0.0", PORT="7860", COOKIE_SECURE="1", KB_BACKEND="local",
                      KB_DIR="/app/data/kb", CACHE_DIR="/app/data/cache",
-                     JOB_DB="/mnt/workspace/huazhang-youju/jobs.sqlite3")
+                     JOB_DB="/mnt/workspace/huazhang-youju/jobs.sqlite3",
+                     POSTER_DIR="/mnt/workspace/huazhang-youju/posters")
     for kind in ("variables", "secrets"):
         current = api("GET", f"/studios/{REPO}/{kind}")
         entries = current.get(kind, current.get("items", [])) if isinstance(current, dict) else current
         existing = {item.get("key") for item in (entries or []) if isinstance(item, dict)}
         for key, value in variables.items():
-            secret = key.endswith("API_KEY") or key == "AUTH_PASSWORD"
+            secret = key.endswith(("API_KEY", "TOKEN")) or key == "AUTH_PASSWORD"
             if secret != (kind == "secrets"):
                 continue
             api("PUT" if key in existing else "POST", f"/studios/{REPO}/{kind}", payload={"key": key, "value": value})

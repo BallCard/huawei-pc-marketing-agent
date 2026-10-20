@@ -8,7 +8,9 @@
     { id: "review", label: "独立评审", role: "独立评审", bot: 7, steps: ["verify", "judge"] },
     { id: "lookup", label: "补查证据", role: "内容策划", bot: 0, steps: ["lookup"] },
     { id: "repair", label: "定向修订", role: "创作编辑", bot: 5, steps: ["repair"] },
-    { id: "recheck", label: "终稿复核", role: "独立评审", bot: 7, steps: ["reverify", "rejudge"] }
+    { id: "recheck", label: "终稿复核", role: "独立评审", bot: 7, steps: ["reverify", "rejudge"] },
+    { id: "poster_image", label: "海报生成", role: "视觉创作", bot: 5, steps: ["poster_prepare", "poster_image"] },
+    { id: "poster_review", label: "成图审核", role: "独立评审", bot: 7, steps: ["poster_review"] }
   ];
 
   function deriveStages(snapshot) {

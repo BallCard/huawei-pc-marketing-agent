@@ -8,6 +8,7 @@ __pycache__/
 .env.*
 !.env.example
 model.txt
+deploy/gpt-direct/auth.json
 deployment-data/
 
 # 知识库副本与缓存（举办方资料，不入库）
