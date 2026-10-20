@@ -66,6 +66,22 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(result["scene_judgement"]["hard_constraints"], [])
         self.assertFalse(any("价格" in item for item in result["verification"]["pending_confirm"]))
 
+    def test_first_clarification_round_can_still_block(self):
+        self.mocks[1].return_value = {**scene(), "need_info": {"blocking": True, "questions": ["请提供需要运行的软件名称和版本。"]}}
+        result = pipeline.run({**self.task, "clarify_round": 0})
+        self.assertEqual(result["status"], "need_info")
+        self.assertEqual(result["questions"], ["请提供需要运行的软件名称和版本。"])
+
+    def test_exhausted_clarification_proceeds_and_keeps_questions_as_pending(self):
+        question = "请提供需要运行的软件名称和版本。"
+        self.mocks[1].return_value = {**scene(), "need_info": {"blocking": True, "questions": [question]}}
+        result = pipeline.run({**self.task, "clarify_round": 1})
+        self.assertEqual(result["status"], "ok")
+        self.assertFalse(result["artifacts"]["brief"]["need_info"]["blocking"])
+        self.assertIn(question, result["artifacts"]["brief"]["need_info"]["questions"])
+        self.assertIn(question, result["verification"]["pending_confirm"])
+        self.assertEqual(result["task"]["clarify_round"], 1)
+
     def test_semantic_feedback_drives_one_revision_and_reviews_displayed_final(self):
         issue = {"where": "lead", "index": -1, "type": "expression", "quote": "课本已经够重", "detail": "切入泛", "direction": "落到查资料"}
         self.mocks[5].side_effect = [review([issue]), review()]

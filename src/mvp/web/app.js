@@ -575,15 +575,19 @@ function showNeedInfo(r) {
   const info = r.need_info || r.scene_judgement?.need_info || {};
   const questions = (r.questions || info.questions || []).map(q => String(q || "").trim()).filter(Boolean);
   const candidates = info.candidates || r.candidates || [];
+  const round = Math.max(0, Number(r.task?.clarify_round || 0) || 0);
+  const modelChoice = Array.isArray(candidates) && candidates.length > 0;
+  // 场景追问只消耗一轮；型号选择仍可继续，因为它是可点选的具体决定。
+  const exhausted = round >= 1 && !modelChoice;
 
   // 一次一个问题的悬浮追问；主页面不新增内容，Bot 仍然一屏显示。
-  if (questions.length > 0 && window.AgentAsk) {
+  if (questions.length > 0 && !exhausted && window.AgentAsk) {
     window.AgentAsk.open({
       jobId: activeJobId || "",
       questions,
       candidates,
       task: r.task || readTask(),
-      onComplete: (answers, task) => submit("", task),
+      onComplete: (answers, task) => submit("", { ...task, clarify_round: modelChoice ? round : round + 1 }),
       onBack: () => Studio.navigate("create"),
       onProgress: () => {
         if (current?.status !== "need_info") return;
@@ -598,8 +602,12 @@ function showNeedInfo(r) {
   if (!need) return;
 
   const card = UI.el("div", { class: "card need-card" }, [
-    UI.el("h3", {}, [r.status === "budget_exceeded" ? "本次未在时间预算内完成" : "需要补充信息"])
+    UI.el("h3", {}, [r.status === "budget_exceeded" ? "本次未在时间预算内完成" : exhausted ? "还需要确认这些信息" : "需要补充信息"])
   ]);
+
+  if (exhausted) {
+    card.appendChild(UI.el("p", {}, ["已根据你的回答尝试过一次。为避免反复追问，请返回创作简报补充具体信息。"]));
+  }
 
   if (questions.length > 0) {
     const ul = UI.el("ul", { class: "need-questions" });

@@ -23,6 +23,15 @@ from .progress import Trace
 PLATFORMS = ["wechat_article", "xiaohongshu", "moments", "poster"]
 TODAY_NOTE = f"事实基准日 {settings.KB_BASE_DATE}；发布前须以华为官方页面和实际销售 SKU 复核。"
 WORKFLOW_VERSION = "evidence-editorial-v2"
+# 场景追问最多消耗一轮；回答后仍无法判断时按现有信息继续，把问题留在待确认。
+MAX_CLARIFY_ROUNDS = 1
+
+
+def _clarify_round(task: dict) -> int:
+    try:
+        return max(0, int(task.get("clarify_round") or 0))
+    except (TypeError, ValueError):
+        return 0
 
 
 def context_version(doc=None) -> str:
@@ -543,6 +552,7 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
     tr = Trace(on_update, budget_seconds=settings.GENERATION_BUDGET_SECONDS)
     kb = get_kb()
     task = {**task, "constraints": list(task.get("constraints") or [])}
+    clarify_round = _clarify_round(task)
     fast = (task.get("speed") or "").strip().lower() == "fast"
     writer_model = settings.FAST_MODEL if fast else settings.WRITER_MODEL
     judge_model = settings.FAST_MODEL if fast else settings.JUDGE_MODEL
@@ -618,6 +628,9 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
             inputs=task["platform"]))
         scene = perform("scene", "理解人群与具体任务", lambda: parse_scene_cached(task, instruction),
                        inputs=" · ".join(str(task.get(k) or "") for k in ("audience", "scenario", "extra", "goal") if task.get(k)))
+        if clarify_round >= MAX_CLARIFY_ROUNDS and scene.get("need_info", {}).get("blocking"):
+            # 已经追问过一轮：不再反复打断，剩余问题随稿件标为待确认。
+            scene["need_info"] = {**scene.get("need_info", {}), "blocking": False}
         tr.publish("brief", scene, "planner", "需求已整理")
         if scene["need_info"].get("blocking"):
             return fin({"status": "need_info", "questions": scene["need_info"].get("questions", []), "scene_judgement": scene})
@@ -829,6 +842,8 @@ def build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, a
         comp.append({"rule": "核验未通过", "hit": r["preview"], "action": "removed"})
     pend = list(article["pending_confirm"])
     pend.append(TODAY_NOTE)
+    if _clarify_round(task) >= MAX_CLARIFY_ROUNDS:
+        pend += [str(q) for q in (scene.get("need_info", {}).get("questions") or []) if str(q).strip()]
     if jd:
         pend += [p for p in jd.get("pending_confirm", []) if p]
     remaining = collect_issues(det, jd)

@@ -85,6 +85,7 @@ class TaskIn(BaseModel):
     constraints: list[str] = Field(default_factory=list)
     extra: str = ""
     instruction: str = ""
+    clarify_round: int = Field(default=0, ge=0)
 
 
 class LoginIn(BaseModel):
