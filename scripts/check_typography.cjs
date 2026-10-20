@@ -35,6 +35,7 @@ async function main(){
     await page.goto(base);await page.evaluate(()=>document.fonts.ready);
     await fonts(page,'.welcome h1');
     assert.equal(await page.locator('.welcome h1').evaluate(n=>getComputedStyle(n).fontWeight),'650');
+    await page.waitForFunction(()=>getComputedStyle(document.querySelector('#enter-studio')).opacity==='1');
     await page.screenshot({path:path.join(output,'type-welcome.png')});
     await page.locator('#enter-studio').click();await page.locator('#welcome').waitFor({state:'hidden'});
     await fonts(page,'.intro h1');await fonts(page,'.page-nav button');await fonts(page,'label');
