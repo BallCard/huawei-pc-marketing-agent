@@ -15,7 +15,7 @@ from src.mvp.progress import Trace
 
 def scene():
     return dict(audience="大学新生", scenario="图书馆", user_problem="每天带电脑查资料", goal="到店体验",
-                hard_constraints=["不提价格"], soft_preferences=[], tradeoffs=[], unmappable=[],
+                hard_constraints=[], soft_preferences=[], tradeoffs=[], unmappable=[],
                 weights={}, prior_weights={}, llm_weights={}, top_dims=["portability"],
                 need_info={"blocking": False, "questions": []})
 
@@ -63,6 +63,8 @@ class WorkflowTests(unittest.TestCase):
         skipped = {s["step"] for s in result["trace"] if s["status"] == "skip"}
         self.assertTrue({"recommend", "repair", "lookup", "rejudge"}.issubset(skipped))
         self.assertEqual(result["verification"]["article_version"], 1)
+        self.assertEqual(result["scene_judgement"]["hard_constraints"], [])
+        self.assertFalse(any("价格" in item for item in result["verification"]["pending_confirm"]))
 
     def test_semantic_feedback_drives_one_revision_and_reviews_displayed_final(self):
         issue = {"where": "lead", "index": -1, "type": "expression", "quote": "课本已经够重", "detail": "切入泛", "direction": "落到查资料"}

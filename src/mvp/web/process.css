@@ -1,10 +1,7 @@
 /* Original Bot portraits with real operations, sources and indeterminate loading. */
 .page-process { --process-ink: #302d28; --process-accent: #b35f42; max-width: 1400px; padding: 28px clamp(24px, 4vw, 60px) 26px; color: var(--process-ink); gap: 14px; }
-.page-process .page-heading { padding: 0; align-items: center; }
-.process-eyebrow { font-size: 10px; letter-spacing: .13em; color: #938a7b; margin-bottom: 9px; }
-.process-eyebrow span { margin: 0 9px; opacity: .5; }
-.page-process .page-heading h2 { font-size: clamp(27px, 2.4vw, 34px); }
-.page-process .page-description { font-size: 12px; margin-top: 7px; }
+.page-process .page-heading { min-height: 44px; padding: 0; align-items: center; }
+.page-process .page-heading h2 { font-size: 24px; }
 .page-process .process-content { padding: 0; border: 0; background: transparent; overflow: hidden; flex: 1; min-height: 0; }
 .page-process #flow { height: 100%; }
 .page-process:has(#need:not(:empty)) { overflow-y: auto; }
@@ -37,7 +34,7 @@
 .activity-path { color: #9e9382; font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 3px 0 0; }
 .activity-excerpt { font-size: 11px; line-height: 1.8; color: #8c8171; margin: 3px 0 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .turn-card[data-stage="scene"] .activity-excerpt { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.activity-row.incomplete .activity-excerpt, .activity-row.needs_fix .activity-excerpt { white-space: normal; }
+.activity-row.incomplete .activity-excerpt, .activity-row.needs_fix .activity-excerpt { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .activity-state { font-size: 9px; color: #a9a090; line-height: 2.3; white-space: nowrap; }
 .activity-row.running .activity-state { color: #b4774e; }
 .stage-processing { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 16px; margin-top: 17px; color: #aa9d88; font-size: 10px; }
@@ -49,7 +46,7 @@
 .stage-detail span { font-size: 13px; }
 .turn-card.is-entering { z-index: 2; animation: stage-arrive .65s cubic-bezier(.2,.65,.2,1) both; }
 .turn-card.is-leaving { pointer-events: none; z-index: 1; animation: stage-leave .6s cubic-bezier(.4,0,.6,1) both; }
-.rotation-footer { display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: center; gap: 28px; width: 100%; max-width: 1000px; align-self: center; padding: 22px 0 5px; flex-shrink: 0; }
+.rotation-footer { display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: center; gap: 28px; width: 100%; max-width: 1000px; align-self: center; padding: 8px 0 5px; flex-shrink: 0; }
 .rotation-live { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; padding-bottom: 12px; color: #8e7e69; font-size: 12px; }
 #process-elapsed { color: #a99b87; font-size: 11px; padding-left: 12px; font-variant-numeric: tabular-nums; }
 #process-live[data-active="true"]::before { content: ""; display: inline-block; width: 5px; height: 5px; margin: 0 7px 2px 0; border-radius: 50%; background: #b67e57; animation: bot-breathe 3s infinite; }
@@ -99,8 +96,7 @@
 @media (max-width: 700px) {
   .page-process { padding: 20px 20px 18px; gap: 13px; overflow-y: auto; }
   .page-process .page-heading { gap: 16px; }
-  .page-process .page-heading h2 { font-size: 25px; }
-  .page-process .page-description { font-size: 11px; }
+  .page-process .page-heading h2 { font-size: 22px; }
   .page-process .page-heading .btn-primary { padding: 9px 12px; font-size: 11px; min-height: 36px; }
   .page-process .process-content { flex: 1 0 490px; min-height: 490px; overflow: hidden; }
   .rotation-stage { padding: 25px 3px 30px; }

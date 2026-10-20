@@ -27,7 +27,7 @@ pre, code, .mono { font-family: var(--font-mono); font-weight: 450; }
 .page-nav button { font-size: 14px; font-weight: 550; }
 .page-nav button[aria-selected="true"], .input-modes button[aria-selected="true"], .insight-tabs button[aria-selected="true"] { font-weight: 700; }
 .page-description, .page-process .page-description { font-size: 13px; line-height: 1.8; color: var(--text-muted); }
-.page-process .page-heading h2 { font-size: clamp(26px,2.3vw,32px); }
+.page-process .page-heading h2 { font-size: 24px; }
 .welcome p, .login-page > p { font-size: 15px; font-weight: 450; }
 .welcome-enter { font-size: 15px; font-weight: 600; }
 .welcome-edition, .session-exit { font-size: 12px; font-weight: 500; }
@@ -38,7 +38,6 @@ pre, code, .mono { font-family: var(--font-mono); font-weight: 450; }
 .form-error, #login-error { font-size: 13px; font-weight: 550; }
 
 /* Execution details must be readable at a glance, including the quieter source lines. */
-.process-eyebrow { font-size: 11px; font-weight: 600; }
 .stage-copy h3 { font-family: var(--font-sans); font-size: 23px; font-weight: 650; color: var(--text-main); }
 .stage-meta { font-size: 11px; font-weight: 550; color: #7c6e5a; }
 .stage-role, .bot-caption { font-size: 12px; font-weight: 550; color: #7c6e5a; }
@@ -95,16 +94,32 @@ pre, code, .mono { font-family: var(--font-mono); font-weight: 450; }
 .page-process { overflow-y: auto; }
 .page-process .process-content { display: flex; flex: 1 0 auto; min-height: min-content; overflow: visible; }
 .page-process #flow { display: flex; flex: 1; height: auto; }
-.rotation-stage { flex: 1; height: auto; min-width: 0; padding-top: 40px; padding-bottom: 36px; }
+.rotation-stage { flex: 1; height: auto; min-width: 0; align-items: flex-start; padding-top: 32px; padding-bottom: 20px; }
 .page-create { overflow-y: auto; }
 @media (min-width:901px) and (max-height:800px) {
   .stage-copy h3 { font-size: 22px; }
-  .rotation-stage { padding-top: 28px; padding-bottom: 20px; }
+  .rotation-stage { padding-top: 24px; padding-bottom: 8px; }
+  .turn-card { padding-top: 20px; padding-bottom: 18px; }
+  .stage-copy h3 { margin-top: 10px; margin-bottom: 12px; }
+  .stage-detail { margin-top: 12px; }
+  .stage-processing { margin-top: 10px; }
+}
+/* Keep the result controls visible in short desktop windows, including embedded previews. */
+@media (min-width:901px) and (max-height:680px) {
+  .page-process .process-content { flex: 1; min-height: 0; overflow: hidden; }
+  .page-process #flow, .rotation-stage { height: 100%; }
+  .stage-deck { height: 100%; grid-template-rows: minmax(0, 1fr); }
+  .turn-card { min-height: 0; grid-template-rows: minmax(0, 1fr); }
+  .stage-copy { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+  .stage-meta, .stage-copy h3, .stage-processing, .stage-detail { flex-shrink: 0; }
+  .stage-activities { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+  .stage-detail { align-self: flex-start; }
 }
 @media (max-width:700px) {
   .brand b { font-size: 19px; }
   .page-nav button { font-size: 13px; }
   .page-heading h2, .page-process .page-heading h2 { font-size: 25px; }
+  .page-process .page-heading h2 { font-size: 22px; }
   .page-description, .page-process .page-description { font-size: 12px; }
   .stage-copy h3 { font-size: 20px; }
   .activity-label { font-size: 12px; }

@@ -165,7 +165,8 @@ def parse_scene(task: dict, instruction: str | None) -> dict:
         "场景库命中": hit,
         "场景常见痛点": cfg["scenarios"][hit]["pain_points"] if hit else [],
         "购买阶段先验": cfg["scenarios"][hit]["stage"] if hit else "",
-        "配置价值定义": cfg["value_definition"],
+        "性价比定义": cfg["value_definition"],
+        "需求解释规则": cfg.get("requirement_definitions", {}),
     }
     out = llm.ask_json(prompt("scene"), jdump(payload), model=settings.FAST_MODEL, role="fast")
     dims = set(cfg["dimensions"])
@@ -185,20 +186,21 @@ def parse_scene(task: dict, instruction: str | None) -> dict:
 
 
 # ---------- 平台策略 ----------
-def price_policy(task: dict, spec: dict, kb, model_id: str) -> tuple[str, list[Snippet]]:
-    cons = " ".join(task.get("constraints") or []) + " " + (task.get("extra") or "")
-    if re.search(r"不要?提?价|不写价|不报价|别提价|不提价格|不要价格", cons):
+def price_policy(task: dict, spec: dict, kb, model_id: str,
+                 instruction: str | None = None) -> tuple[str, list[Snippet]]:
+    cons = " ".join([*(task.get("constraints") or []), task.get("extra") or "", instruction or ""])
+    if re.search(r"(?:不要|不|别|禁止|不得)\s*(?:再|主动)?\s*(?:提及|提|写|报|展示|显示|出现|包含)?\s*(?:具体)?\s*(?:价格|报价|价钱|售价|金额|价(?!值))", cons):
         return "forbid", []
-    policy = spec.get("price_default", "forbid")
+    policy = spec.get("price_default", "conditional")
     if policy == "conditional":
         ps = kb.prices(model_id)
         return ("conditional", ps) if ps else ("none_in_kb", [])
     return policy, []
 
 
-def plan_strategy(task: dict, scene: dict, kb, model_id: str) -> dict:
+def plan_strategy(task: dict, scene: dict, kb, model_id: str, instruction: str | None = None) -> dict:
     spec = platforms_cfg()[task["platform"]]
-    policy, prices = price_policy(task, spec, kb, model_id)
+    policy, prices = price_policy(task, spec, kb, model_id, instruction)
     return {
         "platform": task["platform"], "platform_name": spec["name"],
         "reader": spec["reader"], "structure": spec["structure"], "tone": spec["tone"],
@@ -242,7 +244,7 @@ def decide_model(task: dict, scene: dict, kb) -> dict:
         st, ids = kb.resolve(str(primary or ""))
         primary = ids[0] if st == "ok" else None
     if not primary:
-        return {"status": "need_info", "questions": ["暂时无法从需求判断合适的型号，请补充使用的软件、系统习惯、预算区间或指定型号。"],
+        return {"status": "need_info", "questions": rec.get("questions") or ["暂时无法从需求判断合适的型号，请补充使用的软件、系统习惯、预算区间或指定型号。"],
                 "candidates": [m.name for m in kb.models()], "candidate_ids": [m.id for m in kb.models()]}
     alts = [a for a in rec.get("alternatives", []) if a in valid and a != primary][:2]
     rec["primary"], rec["alternatives"] = primary, alts
@@ -414,9 +416,20 @@ def deterministic_check(article: dict, facts: list[dict], doc: ModelDoc, strat: 
             issues.append({"where": where, "index": idx, "kind": "number", "detail": f"数字 {n} 不在所引用事实中"})
         for m in verify.check_model_mentions(text, doc):
             issues.append({"where": where, "index": idx, "kind": "model", "detail": f"出现其他型号“{m}”"})
+        price_hits = verify.price_leak(text)
         if strat["price_policy"] in ("forbid", "none_in_kb"):
-            for p in verify.price_leak(text):
-                issues.append({"where": where, "index": idx, "kind": "price", "detail": f"本平台/本次不允许价格：{p}"})
+            reason = "用户要求不提价格" if strat["price_policy"] == "forbid" else "没有可引用的价格依据"
+            for p in price_hits:
+                issues.append({"where": where, "index": idx, "kind": "price", "detail": f"{reason}：{p}"})
+        elif price_hits:
+            price_facts = [by_id[r] for r in (refs or []) if r in by_id and by_id[r].get("kind") == "price"]
+            if not price_facts:
+                issues.append({"where": where, "index": idx, "kind": "price", "detail": "报价未引用已选价格片段"})
+            else:
+                supported = verify.price_amounts(" ".join(f["text"] for f in price_facts))
+                for amount in sorted(verify.price_amounts(text) - supported):
+                    issues.append({"where": where, "index": idx, "kind": "price",
+                                   "detail": f"金额 {amount} 元不在所引用的价格片段中"})
 
     for where in ("title", "lead", "cta"):
         scan(where, -1, article[where], article.get("fact_refs", {}).get(where))
@@ -457,7 +470,7 @@ def judge(article: dict, facts: list[dict], strat: dict, det: dict, judge_model:
                      "structure": strat["structure"], "chars": strat["chars"], "writing_limits": strat["writing_limits"]},
         "原始需求": task or {},
         "相关风险与待确认原文": risks or [],
-        "已选事实": [{k: f.get(k) for k in ("id", "text", "conditions", "source", "evidence_type")} for f in facts],
+        "已选事实": [{k: f.get(k) for k in ("id", "text", "kind", "conditions", "source", "evidence_type")} for f in facts],
         "配图资料": image_catalog(images or []),
         "软文": {"title": article["title"], "lead": article["lead"], "cta": article["cta"], "tags": article["tags"],
                 "fact_refs": article.get("fact_refs", {}),
@@ -618,7 +631,7 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
             tr.skip("recommend", "按需求推荐", "已指定并匹配型号，无需模型推荐")
         tr.publish("model", dm, "model", "型号已确定")
         strat, retrieved = parallel(
-            lambda: tr.run("strategy", "应用平台规格与价格政策", lambda: plan_strategy(task, scene, kb, model_id),
+            lambda: tr.run("strategy", "应用平台规格与价格政策", lambda: plan_strategy(task, scene, kb, model_id, instruction),
                            view=_strategy_view, inputs=f"{task['platform']} · {model_id}"),
             lambda: tr.run("retrieve", "读取本型号资料与登记图片", lambda: retrieve(kb, model_id, {},
                            on_activity=lambda data: tr.emit("tool_activity", "retrieve", step="retrieve", **data)),
@@ -816,8 +829,6 @@ def build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, a
         comp.append({"rule": "核验未通过", "hit": r["preview"], "action": "removed"})
     pend = list(article["pending_confirm"])
     pend.append(TODAY_NOTE)
-    if strat["price_policy"] in ("forbid", "none_in_kb"):
-        pend.append("价格、补贴、库存与活动：本稿不含，发布前以官方渠道为准。")
     if jd:
         pend += [p for p in jd.get("pending_confirm", []) if p]
     remaining = collect_issues(det, jd)

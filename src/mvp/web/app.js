@@ -7,7 +7,7 @@ const DIM = {
   creation: "创作与手写",
   ecosystem: "协同与AI",
   os_compat: "系统与软件兼容",
-  value: "配置价值"
+  value: "预算与价值"
 };
 
 const PRESETS = [
@@ -20,8 +20,8 @@ const PRESETS = [
       scenario: "开学季",
       platform: "xiaohongshu",
       goal: "种草并引导到店咨询",
-      constraints: "不要提价格，语气轻松",
-      extra: "经常背去图书馆，希望轻一点"
+      constraints: "",
+      extra: "经常背去图书馆，希望轻一点，语气轻松"
     }
   },
   {
@@ -46,7 +46,7 @@ const PRESETS = [
       scenario: "内容创作",
       platform: "xiaohongshu",
       goal: "收藏清单并到店体验",
-      constraints: "不要提价格",
+      constraints: "",
       extra: ""
     }
   },

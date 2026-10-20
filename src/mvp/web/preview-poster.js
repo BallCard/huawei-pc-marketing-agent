@@ -115,20 +115,17 @@
         : "到店体验真机";
     const ctaEl = UI.el("div", { className: "po-cta" }, ctaText);
 
-    let noteText = "";
+    const noteTexts = [];
     for (const tb of rawTextBlocks) {
       const text = tb && typeof tb.text === "string" ? tb.text.trim() : "";
       if (isDisclaimerOrActivity(text)) {
-        noteText = text;
-        break;
+        noteTexts.push(text);
       }
     }
-    if (!noteText) {
-      noteText = "产品具体配置、价格与当前活动请以官方渠道为准。";
+    const action = UI.el("div", { className: "po-action" }, ctaEl);
+    if (noteTexts.length) {
+      action.appendChild(UI.el("div", { className: "po-note" }, noteTexts.join("\n")));
     }
-    const noteEl = UI.el("div", { className: "po-note" }, noteText);
-
-    const action = UI.el("div", { className: "po-action" }, ctaEl, noteEl);
 
     const qrDots = [];
     for (let i = 0; i < 15; i++) {

@@ -183,14 +183,13 @@
     UI.$("evidence-empty").hidden = false;
     UI.$("insights").hidden = true;
     UI.$("view-result").hidden = true;
-    UI.$("process-title").textContent = "正在处理创作任务";
+    UI.$("process-title").textContent = "创作准备";
     document.querySelector(".nav-indicator").hidden = false;
     navigate("process");
   }
   function stopRun() { document.querySelector(".nav-indicator").hidden = true; }
   function finishRun(result) {
     stopRun();
-    UI.$("process-title").textContent = "作品已就绪。";
     UI.$("work-empty").hidden = true;
     UI.$("evidence-empty").hidden = true;
     UI.$("insights").hidden = false;
@@ -205,7 +204,6 @@
     UI.$("work-review-status").textContent = review.label;
     UI.$("work-review-status").title = review.detail;
     UI.$("work-review-status").dataset.state = needsReview ? "warn" : "ok";
-    UI.$("process-title").textContent = needsReview ? `稿件已生成 · ${review.label}` : "创作任务已完成";
     UI.$("instr").value = "";
     selectRefinement(null);
   }

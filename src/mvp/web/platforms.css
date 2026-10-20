@@ -1166,9 +1166,8 @@ figcaption.wx-caption {
   color: var(--poster-ink-tertiary);
   letter-spacing: 0.01em;
   margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 /* CSS 纯抽象二维码阵列（非真码，规避扫码混淆） */

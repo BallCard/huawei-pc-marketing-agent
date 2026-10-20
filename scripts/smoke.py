@@ -25,7 +25,7 @@ def main():
     print("knowledge base:", info["kb"]["models"], "models;", "writer", info["writer_model"], "judge", info["judge_model"])
     job = post("/api/run", {
         "product": "HUAWEI MateBook 14（鸿蒙版）", "audience": "大学新生", "scenario": "开学季",
-        "platform": "xiaohongshu", "goal": "种草", "constraints": ["不要提价格"], "extra": "", "speed": "fast",
+        "platform": "xiaohongshu", "goal": "种草", "constraints": [], "extra": "", "speed": "fast",
     })["job"]
     started = time.time()
     while time.time() - started < 150:

@@ -25,7 +25,7 @@ xiaohongshu:
   chars: [100, 220]
   max_facts: 2
   writing_limits: {title: 20, lead: 35, text_block: 55, cta: 30, caption: 30}
-  price_default: forbid
+  price_default: conditional
   structure:
     - 标题不超过 20 字，点出一个具体场景或好处；不要写成评测或选购避坑标题
     - 首句 15-35 字直接说场景或诉求，不铺垫一大段购买背景
@@ -43,7 +43,7 @@ moments:
   chars: [40, 90]
   max_facts: 3
   writing_limits: {title: 20, lead: 25, text_block: 40, cta: 25, caption: 24}
-  price_default: forbid
+  price_default: conditional
   structure:
     - 总共 3-5 个短行，像门店发给熟客的一条动态，不写小作文
     - 第一句点出场景；只讲一个核心卖点，保留必要的版本或适配条件
@@ -58,12 +58,12 @@ poster:
   chars: [35, 100]
   max_facts: 3
   writing_limits: {title: 16, lead: 25, text_block: 35, cta: 20, caption: 24}
-  price_default: forbid
+  price_default: conditional
   structure:
     - 主标题 8-16 字
     - 副标题一句话点明人群与任务
     - 不超过 2 个核心卖点，每个卖点一行，必要的版本条件紧跟
-    - 一行活动说明：价格与活动以当前官方渠道为准
+    - 价格或活动仅在与本次目标相关且有对应证据时写；报价须保留配置、核验日期与适用条件，不强制加活动说明
   tone: 短句、可扫读，不堆形容词
   cta_style: 扫码或向店员咨询（不写具体二维码内容）
   tags: false

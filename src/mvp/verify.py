@@ -14,7 +14,9 @@ from . import settings
 from .kb import ModelDoc, norm
 
 UNIT = r"(?:mm|cm|kg|g|Wh|W|nits|nit|Hz|GB|TB|MB|英寸|寸|小时|h|ppi|PPI|万|元|克|毫米|厘米|瓦|像素|nm|MP|K|倍|%|％|:|：)"
-NUM_UNIT_RE = re.compile(rf"(\d+(?:[.,]\d+)?)\s*(?:×\s*\d+(?:\.\d+)?\s*)?{UNIT}")
+NUMBER = r"\d+(?:,\d{3})*(?:\.\d+)?"
+NUM_UNIT_RE = re.compile(rf"({NUMBER})\s*(?:×\s*\d+(?:\.\d+)?\s*)?{UNIT}")
+PRICE_AMOUNT_RE = re.compile(rf"[¥￥]\s*(?P<prefix>{NUMBER})|(?P<suffix>{NUMBER})\s*元")
 MODEL_RE = re.compile(r"MateBook(?:\s*(?:Fold|Pro\s?S|Pro|GT|X|D|SE|Ultra|酷睿|\d{2}))+", re.I)
 
 
@@ -122,4 +124,11 @@ def check_platform(article: dict, spec: dict) -> list[str]:
 
 def price_leak(text: str) -> list[str]:
     """价格 forbid 时，文本里不得出现金额。"""
-    return sorted({m.group(0) for m in re.finditer(r"\d[\d,]*(?:\.\d+)?\s*(?:元|¥|￥)|[¥￥]\s*\d[\d,]*|起售价|到手价|售价|价格\s*\d", text or "")})
+    return sorted({m.group(0) for pattern in (PRICE_AMOUNT_RE, re.compile(r"起售价|到手价|售价|价格\s*\d"))
+                   for m in pattern.finditer(text or "")})
+
+
+def price_amounts(text: str) -> set[Decimal]:
+    """提取人民币金额；货币符号、千分位与小数采用相同核验口径。"""
+    return {Decimal((m.group("prefix") or m.group("suffix")).replace(",", ""))
+            for m in PRICE_AMOUNT_RE.finditer(text or "")}

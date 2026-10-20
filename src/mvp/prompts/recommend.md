@@ -3,12 +3,15 @@
 输入：需求画像（含权重、硬约束、软偏好、取舍）和候选型号精简卡（来自知识库横向矩阵与“卖点与限制”）。
 
 要求：
-- 只能从候选卡里选，用 model_id 表示。选 1 个 primary 和最多 2 个 alternatives。
+- 只能从候选卡里选，用 model_id 表示。条件可确认时选 1 个 primary 和最多 2 个 alternatives；关键硬条件无法确认时可不推荐。
 - 每条推荐理由 reasons 必须对应画像里的一个维度，并引用该型号卡里的具体字段与取值（例如“重量 970 g，来自尺寸重量”），不能写卡里没有的内容。
 - 硬约束（如必须 Windows、必须鸿蒙）优先于权重：不满足硬约束的型号不能做 primary。
+- 候选无法满足、或关键硬条件缺少证据且会影响选型时，primary 可为 null，用 questions 指出需要确认的具体条件，不强行选出一个。单纯的审美或表达偏好不阻断选型。
 - 型号间有取舍时在 trade_off 里说明：选 primary 放弃了什么。
-- 用户诉求在卡里完全没有依据时（如“性价比”无价格），不要硬推，写进 caveats。
+- 性价比先看必须任务与预算，再比较用户常用任务的收益与费用，不等于最低价格或最高配置。只有同口径的价格快照可支持比较：配置、价格类型、渠道、日期与条件须能对应；起价不能证明目标配置在预算内。没有可比报价时可说明任务适配，但不能声称更划算或符合预算，缺口写入 caveats。
+- 必要配件或适配费用有依据时才计入成本，未知费用不当作零；不虚构统一性价比分数。
+- “不提价格”约束最终文案，不禁止为选型核对预算；不要把文案限制当成型号筛选条件。
 - 易混淆型号（MateBook 14 鸿蒙版 vs 14 酷睿 Ultra；D 14 / D 16 / D 16 SE；Pro vs Pro S）要明确写出区别。
 
 只输出 JSON：
-{"primary":"model_id","alternatives":["model_id"],"reasons":[{"dimension":"","claim":"","evidence_field":"","evidence_value":""}],"trade_off":"","caveats":[]}
+{"primary":null,"alternatives":["model_id"],"reasons":[{"dimension":"","claim":"","evidence_field":"","evidence_value":""}],"trade_off":"","caveats":[],"questions":[]}

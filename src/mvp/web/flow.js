@@ -33,7 +33,7 @@
       return el("div", { class: `activity-row ${record.kind || "task"} ${record.status}`, "data-kind": record.kind || "task", "data-tool": record.tool }, mark,
         el("div", { class: "activity-content" }, el("div", { class: "activity-label" }, record.sourceType ? el("span", { class: "activity-source-type" }, record.sourceType) : null, record.label),
           record.path ? el("p", { class: "activity-path", title: record.path }, record.path) : null,
-          record.detail ? el("p", { class: "activity-excerpt" }, record.detail) : null),
+          record.detail ? el("p", { class: "activity-excerpt", title: record.detail }, record.detail) : null),
         el("span", { class: "activity-state" }, STATUS[record.status] || ""));
     }));
     const processing = el("div", { class: "stage-processing" },
@@ -49,6 +49,8 @@
   function render({ stage, next, rotate }) {
     if (!root) makeRoot();
     stage ||= { id: "idle", label: "创作准备", role: "内容策划", bot: 0, entries: [] };
+    const title = UI.$("process-title");
+    if (title.textContent !== stage.label) title.textContent = stage.label;
     const data = content(stage);
     const nextPlanned = { scene: "准备依据", sources: "确定立意", plan: "图文创作", compose: "独立评审", review: "根据评审结果继续", lookup: "定向修订", repair: "终稿复核", recheck: "汇总核验结果" };
     const nextText = next?.label || nextPlanned[stage.id];
