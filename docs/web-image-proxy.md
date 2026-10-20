@@ -16,9 +16,9 @@ VPS 只有约 1 GB 内存，因此使用不含浏览器的轻量路径，不安�
 
 ## 部署与账号
 
-材料在 `deploy/gpt-direct/`：两个 systemd 单元、出站 worker、安装脚本和固定源码的就绪检查补丁。补丁让缺失凭据时 `/readyz` 返回未就绪，而不是仅因配置了文件路径就报告成功。凭据刷新已关闭，只接收本人提供的短期 access token，不上传其他应用的登录文件。
+材料在 `deploy/gpt-direct/`：两个 systemd 单元、出站 worker、安装脚本、MIT 许可与固定源码的部署补丁。补丁让缺失凭据时 `/readyz` 返回未就绪，把网关限定为生图、模型列表和健康接口，并排除上传参考图的 asset pointer，避免把输入图误当作生成结果。凭据刷新已关闭，只接收本人提供的短期 access token，不上传其他应用的登录文件。
 
-先在本机从固定上游提交应用 `patch_gateway.py`，运行 Go 测试，再以 `GOOS=linux GOARCH=amd64 CGO_ENABLED=0` 构建。把构建产物、worker、单元、两份私有环境文件上传到 0700 临时目录，再由 `install.sh` 安装。网关环境文件必须指定专用 `GPTWEB_OAUTH_TOKEN_FILE=/var/lib/huazhang-gpt/auth.json`、`GPTWEB_OAUTH_REFRESH_DISABLED=1`、`GPTWEB_TRANSPORT_MODE=direct`、`GPTWEB_UPSTREAM_MAX_RETRIES=0` 和本地访问密钥。worker 环境文件只含魔搭地址、任务密钥及本地网关访问密钥。
+先在本机从固定上游提交应用 `patch_gateway.py`，运行 gofmt 和 Go 测试，再以 `GOOS=linux GOARCH=amd64 CGO_ENABLED=0` 构建。把构建产物、worker、单元、上游许可、两份私有环境文件上传到 0700 临时目录，再由 `install.sh` 安装。网关环境文件必须指定专用 `GPTWEB_OAUTH_TOKEN_FILE=/var/lib/huazhang-gpt/auth.json`、`GPTWEB_OAUTH_REFRESH_DISABLED=1`、`GPTWEB_TRANSPORT_MODE=direct`、`GPTWEB_UPSTREAM_MAX_RETRIES=0` 和本地访问密钥。worker 环境文件只含魔搭地址、任务密钥及本地网关访问密钥。
 
 本人将短期网页 access token 放进本机已忽略的 `deploy/gpt-direct/auth.json`，支持 `{"access_token":"…"}` 或网页会话 JSON 的 `accessToken` 字段。只传必要字段，不传密码、Cookie、refresh token 或其他个人资料。`scripts/connect_gpt_account.py` 从该文件读取，使用已验证主机密钥的 SSH 安全安装到 VPS 的 0600 专用文件，只重启新建的 Go 服务，不回显凭据。目标主机与 SSH 私钥路径只在 `deploy/gpt-direct/.env` 本地配置。
 
@@ -51,5 +51,7 @@ Vercel 已支持[容器函数](https://vercel.com/kb/guide/docker-on-vercel-vs-r
 ## 本次验收边界
 
 本机完成 100 项 Python 与 26 项 JavaScript 测试。线上魔搭健康检查和登录成功，worker 心跳表明私有连接及凭据已配置；未授权领取返回 401，工作台 Cookie 不能领取，worker 密钥不能读取工作台接口。VPS 仅新增回环监听，原网络进程及端口未改，两个新服务闲时合计约 37 MB 内存。
+
+首次完整线上任务文案核验通过，约 106 秒结束，但上游错误返回了 270×480 的模糊风格参考图；独立成图审核正确拦截，没有标为通过。已修复上游把输入与输出 asset pointer 混在一起的问题，加入回归测试；输入图片不能成为新图生成成功的证据。修复后网关的聊天、文件、会话等额外接口返回 404。当前 Linux 二进制 SHA256：`084cd5cb7b580e6f1eb50bdf60a7577732b5941fdeb0ae4737ca8c1878517803`。
 
 真实样张使用本型号产品图＋A 风格图，返回 1,654,537 字节图片。独立转录保留了中文、约 1.31 kg 与重量适用条件。成图改变了产品视角并补画参考图看不到的接口，需要人工核对；审核模型还提出了一条两边写成同一字的“简繁”意见，不能据此认定有错字。保留原始自动结论，不强行改成通过。已收紧后续生图与审核提示词，本次不自动重生。样张和审核记录在本机忽略目录 `data/qa/gpt-direct-sample/`。

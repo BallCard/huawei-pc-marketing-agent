@@ -14,6 +14,7 @@ install -d -o huazhang-gpt -g huazhang-gpt -m 700 /var/lib/huazhang-gpt
 install -d -o huazhang-poster -g huazhang-poster -m 700 /var/lib/huazhang-poster-worker
 install -o root -g root -m 755 "$source_dir/gptweb2api" /opt/huazhang-gpt/gptweb2api
 install -o root -g root -m 644 "$source_dir/worker.py" /opt/huazhang-gpt/worker.py
+install -o root -g root -m 644 "$source_dir/UPSTREAM-LICENSE" /opt/huazhang-gpt/UPSTREAM-LICENSE
 for config in gateway worker; do
     install -o root -g root -m 600 "$source_dir/$config.env" "/etc/huazhang-gpt/$config.env"
 done
