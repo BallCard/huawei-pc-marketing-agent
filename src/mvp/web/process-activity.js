@@ -4,6 +4,7 @@
   const PLATFORMS = { xiaohongshu: "小红书", wechat_article: "公众号", moments: "朋友圈", poster: "门店海报" };
   const DIMENSIONS = {portability:"携带负担",battery:"续航",display:"查看资料",os_compat:"软件兼容",ecosystem:"设备协同",ports:"外设连接",performance:"性能",creation:"内容创作",value:"选购成本"};
   const reviewStatus = typeof module !== "undefined" && module.exports ? require("./review-status.js") : window.processReviewStatus;
+  const clarify = () => typeof window !== "undefined" && typeof window.clarifySnapshot === "function" ? window.clarifySnapshot() : null;
   const text = x => typeof x === "string" ? x : x?.detail || x?.text || x?.reason || "";
   const locate = p => `${WHERE[p?.where] || "文稿"}${p?.index >= 0 ? `第 ${p.index + 1} 段` : ""}`;
   const cleanIssue = x => text(x).replace(/^\[(title|lead|body|caption|cta)#(-?\d+)\]\s*/, (_, where, index) => `${locate({where,index:+index})}：`).replace(/^\[平台\]\s*/, "平台要求：");
@@ -137,7 +138,15 @@
       }
       case "finish": {
         if (snapshot.state === "error") { title="创作已中断"; add("错误信息",snapshot.error || "本次执行失败",{status:"error",kind:"issue"}); tone="warn"; break; }
-        if (result.status === "need_info") { title="等待补充信息"; (result.questions || []).slice(0,3).forEach(q=>add("待确认",q,{kind:"input"})); tone="warn"; break; }
+        if (result.status === "need_info") {
+          title="等待补充信息";
+          const ask = clarify();
+          if (ask && ask.total) {
+            if (ask.done) add("需求确认", `已补充 ${ask.answered} 点，点击「继续创作」生成`, {kind:"input"});
+            else add(`需求确认 ${ask.index}/${ask.total}`, ask.question, {kind:"input", status:"running"});
+          } else (result.questions || []).slice(0,3).forEach(q=>add("待确认",q,{kind:"input"}));
+          tone="warn"; break;
+        }
         if (result.status === "budget_exceeded") { title="已到本次时间预算"; add("当前结果","尚无完整稿件；审核未完成",{kind:"issue",status:"error"}); tone="warn"; break; }
         const final=a.final, version=final?.version || (a["draft:2"]?2:1);
         const summary = reviewStatus(result,a,steps,version);

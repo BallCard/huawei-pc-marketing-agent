@@ -124,6 +124,7 @@ let pollGeneration = 0;
 let flowSteps = [];
 let flowBackendRunning = false;
 let flowSnapshot = {};
+let activeJobId = null;
 
 async function init() {
   Studio.init();
@@ -295,17 +296,17 @@ function readTask() {
   return task;
 }
 
-async function submit(instruction) {
+async function submit(instruction, overrideTask = null) {
   if (UI.$("go").disabled) return;
   const error = UI.$("form-error");
   error.hidden = true;
-  if (!instruction && Studio.getMode() === "sentence" && !UI.$("scene-description").value.trim()) {
+  if (!instruction && !overrideTask && Studio.getMode() === "sentence" && !UI.$("scene-description").value.trim()) {
     error.textContent = "先说说你想为谁写、在什么场景下使用。";
     error.hidden = false;
     UI.$("scene-description").focus();
     return;
   }
-  if (!instruction && Studio.getMode() === "structured" && (!UI.$("audience").value.trim() || !UI.$("scenario").value.trim())) {
+  if (!instruction && !overrideTask && Studio.getMode() === "structured" && (!UI.$("audience").value.trim() || !UI.$("scenario").value.trim())) {
     error.textContent = "选择人群和场景，或者切换到「说一句话」描述需求。";
     error.hidden = false;
     return;
@@ -320,11 +321,13 @@ async function submit(instruction) {
   flowSteps = [];
   flowBackendRunning = true;
 
-  const task = instruction && current?.task ? { ...current.task } : readTask();
+  const task = overrideTask || (instruction && current?.task ? { ...current.task } : readTask());
   const payload = {
     ...task,
     instruction: instruction ? String(instruction).trim() : ""
   };
+
+  if (window.AgentAsk) window.AgentAsk.close({ reset: true });
 
   const btnGo = UI.$("#go");
   const btnRedo = UI.$("#redo");
@@ -373,6 +376,7 @@ async function submit(instruction) {
       throw new Error("服务端未返回有效的任务 ID");
     }
     const form = Object.fromEntries(["product", "audience", "scenario", "platform", "goal", "constraints", "extra", "speed"].map(id => [id, UI.$(id).value]));
+    activeJobId = jid;
     sessionStorage.setItem("studio-active-job", JSON.stringify({ id: jid, task, form, mode: Studio.getMode(), sentence: UI.$("scene-description").value, startedAt }));
     poll(jid);
   } catch (err) {
@@ -396,6 +400,7 @@ async function submit(instruction) {
 
 function poll(jid, restorePage = null) {
   if (pollTimer) clearTimeout(pollTimer);
+  activeJobId = jid;
   const generation = ++pollGeneration;
   const restoring = restorePage !== null;
   let firstSnapshot = true;
@@ -408,6 +413,7 @@ function poll(jid, restorePage = null) {
       if (res.status === 404) {
         pollTimer = null;
         unlock();
+        if (window.AgentAsk) window.AgentAsk.close({ reset: true });
         flowSnapshot = { ...flowSnapshot, state: "error" };
         showFlow(flowSteps, false);
         Studio.stopRun();
@@ -439,6 +445,7 @@ function poll(jid, restorePage = null) {
         pollTimer = null;
         unlock();
         Studio.stopRun();
+        if (window.AgentAsk) window.AgentAsk.close({ reset: true });
         sessionStorage.removeItem("studio-active-job");
         UI.$("process-title").textContent = "创作中遇到了一点问题。";
         const need = UI.$("#need");
@@ -505,6 +512,8 @@ function showResult(r) {
     return;
   }
 
+  if (window.AgentAsk) window.AgentAsk.close({ reset: true });
+
   const stage = UI.$("#stage");
   if (stage) stage.hidden = false;
 
@@ -561,20 +570,41 @@ function showNeedInfo(r) {
   if (stage) stage.hidden = true;
 
   const need = UI.$("#need");
-  if (!need) return;
+  if (need) need.replaceChildren();
 
   const info = r.need_info || r.scene_judgement?.need_info || {};
-  const questions = r.questions || info.questions || [];
+  const questions = (r.questions || info.questions || []).map(q => String(q || "").trim()).filter(Boolean);
   const candidates = info.candidates || r.candidates || [];
 
+  // 一次一个问题的悬浮追问；主页面不新增内容，Bot 仍然一屏显示。
+  if (questions.length > 0 && window.AgentAsk) {
+    window.AgentAsk.open({
+      jobId: activeJobId || "",
+      questions,
+      candidates,
+      task: r.task || readTask(),
+      onComplete: (answers, task) => submit("", task),
+      onBack: () => Studio.navigate("create"),
+      onProgress: () => {
+        if (current?.status !== "need_info") return;
+        showFlow(flowSteps, false);
+        UI.$("process-title").textContent = "再补充一点，就能继续。";
+      }
+    });
+    return;
+  }
+
+  if (window.AgentAsk) window.AgentAsk.close({ reset: true });
+  if (!need) return;
+
   const card = UI.el("div", { class: "card need-card" }, [
-    UI.el("h3", {}, ["需要补充信息"])
+    UI.el("h3", {}, [r.status === "budget_exceeded" ? "本次未在时间预算内完成" : "需要补充信息"])
   ]);
 
   if (questions.length > 0) {
     const ul = UI.el("ul", { class: "need-questions" });
     questions.forEach(q => {
-      ul.appendChild(UI.el("li", {}, [String(q)]));
+      ul.appendChild(UI.el("li", {}, [q]));
     });
     card.appendChild(ul);
   }

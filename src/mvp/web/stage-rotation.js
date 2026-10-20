@@ -25,7 +25,7 @@
       phases.push({ ...phase, entries, status: error ? "error" : running ? "running" : "done" });
     }
     if (terminal) phases.push({ id: "finish", label: snapshot.state === "error" ? "创作中断" : "本次完成",
-      role: "协作完成", bot: 7, entries: [], status: snapshot.state === "error" ? "error" : "done" });
+      role: "协作完成", bot: 7, entries: [], status: snapshot.state === "error" ? "error" : snapshot.result?.status === "need_info" ? "waiting" : "done" });
     return phases;
   }
 

@@ -74,6 +74,7 @@
       button.tabIndex = name === page ? 0 : -1;
     });
     history.replaceState(null, "", `#${page}`);
+    if (window.AgentAsk) window.AgentAsk.setPage(page);
     if (focus) UI.$(`page-${page}`).focus({ preventScroll: true });
   }
   function setMode(next) {

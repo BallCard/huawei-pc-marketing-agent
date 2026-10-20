@@ -118,7 +118,7 @@ Compose 只绑定主机 `127.0.0.1:7860`，由 HTTPS 代理转发；知识库和
 
 ```powershell
 python -X utf8 -m unittest discover -s tests -v
-node --test tests/test_process_state.cjs tests/test_stage_rotation.cjs tests/test_process_activity.cjs tests/test_process_clock.cjs tests/test_review_status.cjs
+node --test tests/test_process_state.cjs tests/test_stage_rotation.cjs tests/test_process_activity.cjs tests/test_process_clock.cjs tests/test_review_status.cjs tests/test_agent_ask.cjs
 python -X utf8 scripts/preflight.py --check-model
 # 另启本机部署配置服务后执行真实生成验收：
 python -X utf8 scripts/acceptance.py --base http://127.0.0.1:7880

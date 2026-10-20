@@ -3,7 +3,7 @@
   const state = new window.ProcessState();
   const el = (tag, props, ...kids) => UI.el(tag, props, ...kids);
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const STATUS = { running: "正在处理", done: "已完成", error: "需关注", skip: "已跳过", needs_fix:"发现问题", incomplete:"未完成" };
+  const STATUS = { running: "正在处理", done: "已完成", waiting: "等待补充", error: "需关注", skip: "已跳过", needs_fix:"发现问题", incomplete:"未完成" };
   const WHERE = { title: "标题", lead: "导语", body: "正文", caption: "图注", cta: "行动引导" };
   const PRIMARY = ["scene", "sources", "plan", "compose", "review"];
   let root, deck, peek, latest = {}, displayed, signature = "", detailStage = null, detailSignature = "";
@@ -82,7 +82,7 @@
   function renderTrack() {
     const track = UI.$("phase-track");
     if (!track) return;
-    const stages = window.deriveStages({ steps: state.steps, state: state.state });
+    const stages = window.deriveStages({ steps: state.steps, state: state.state, result: latest.result });
     const phases = [...PRIMARY.map(id=>window.PROCESS_PHASES.find(p=>p.id===id)), ...stages.filter(s=>["lookup","repair","recheck"].includes(s.id))];
     const active = stages.findLast(s=>s.status === "running");
     const trackSignature = JSON.stringify(stages.map(s => [s.id, s.status]));
@@ -122,7 +122,7 @@
   }
   function fillDetail(stage) {
     const a = state.artifacts, data = content(stage), body = UI.$("step-dialog-body");
-    const current = window.deriveStages({ steps: state.steps, state: state.state }).find(s => s.id === stage.id) || stage;
+    const current = window.deriveStages({ steps: state.steps, state: state.state, result: latest.result }).find(s => s.id === stage.id) || stage;
     const nextSignature = JSON.stringify([stage.id, current, data, a]);
     if (detailSignature === nextSignature) return;
     detailSignature = nextSignature;
@@ -170,7 +170,7 @@
     const elapsedMs = clock.read();
     const elapsed = Math.max(0, Math.floor(elapsedMs / 1000));
     if (UI.$("process-elapsed")) UI.$("process-elapsed").textContent = elapsed || running ? `已用 ${elapsed} 秒` : "";
-    const phases = window.deriveStages({steps:state.steps,state:state.state});
+    const phases = window.deriveStages({steps:state.steps,state:state.state,result:latest.result});
     for (const node of root?.querySelectorAll("[data-phase-id]") || []) {
       const phase = phases.find(s=>s.id===node.dataset.phaseId);
       node.textContent = `本环节${phase?.status === "running" ? "" : "耗时"} ${Math.floor(window.phaseDuration(phase,elapsedMs)/1000)} 秒`;
@@ -181,9 +181,13 @@
     clock.update(snapshot);
     state.ingest(snapshot);
     const urgent = snapshot.state === "error" || ["need_info", "budget_exceeded"].includes(snapshot.result?.status);
-    rotation.update(window.deriveStages({ steps: state.steps, state: state.state }), { restore, urgent });
+    rotation.update(window.deriveStages({ steps: state.steps, state: state.state, result: latest.result }), { restore, urgent });
     const live = UI.$("process-live");
-    if (live) { live.textContent = running ? "正在创作" : snapshot.state === "error" ? "执行中断" : snapshot.state === "done" ? "本次已完成" : "等待开始"; live.dataset.active = String(running); }
+    if (live) {
+      const needInfo = snapshot.result?.status === "need_info";
+      live.textContent = running ? "正在创作" : snapshot.state === "error" ? "执行中断" : snapshot.state === "done" ? (needInfo ? "本次待补充" : "本次已完成") : "等待开始";
+      live.dataset.active = String(running);
+    }
     tick();
     return root;
   }
@@ -192,7 +196,7 @@
     clock.reset(); running = false; root = null;
     if (UI.$("step-dialog").open) UI.$("step-dialog").close();
   }
-  reduced.addEventListener("change", () => { rotation.holdMs = reduced.matches ? 0 : 1700; rotation.update(window.deriveStages({ steps: state.steps, state: state.state })); });
+  reduced.addEventListener("change", () => { rotation.holdMs = reduced.matches ? 0 : 1700; rotation.update(window.deriveStages({ steps: state.steps, state: state.state, result: latest.result })); });
   window.buildFlow = (steps, isRunning) => update({ steps, state: isRunning ? "running" : "idle" });
   window.ProcessView = { update, reset };
   setInterval(tick, 250);
