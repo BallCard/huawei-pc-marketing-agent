@@ -1,0 +1,64 @@
+/* Loaded after component typography: touch sizes must survive desktop overrides. */
+@media (max-width: 900px) {
+  body:has(.workspace) { grid-template-rows: auto minmax(0, 1fr); }
+  .site-header { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 52px 48px; gap: 0; padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
+  .site-header .brand { grid-column: 1; grid-row: 1; }
+  .site-header .session-exit { position: static; grid-column: 2; grid-row: 1; }
+  .session-exit button { min-height: 44px; }
+  .page-nav { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .page-nav button { min-height: 44px; font-size: 13px; }
+  .nav-indicator { top: 8px; right: 4px; }
+  .page { scroll-padding-block: 16px; }
+  .page-create { align-items: start; }
+  .brief { align-self: start; }
+  .brief-top { display: flex; }
+  .page-work { --work-scale: 1; }
+}
+
+@media (max-width: 700px) {
+  input, select, textarea, .page-work #instr, .review-dialog textarea, .ask-custom input { font-size: 16px; }
+  input:not([type="radio"]):not([type="checkbox"]), select { min-height: 44px; }
+  .btn-primary, .btn-secondary, .text-button, .input-modes button,
+  .page-heading .btn-secondary, .page-heading .text-button,
+  .page-work .work-preview .preview-devices button, .stage-detail { min-height: 44px; }
+  .icon-button, .ask-close { min-width: 44px; min-height: 44px; flex-shrink: 0; }
+  .page-create, .page-process, .page-evidence, .page-work { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-bottom: max(24px, env(safe-area-inset-bottom, 0px)); }
+  .field-pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .platform-options { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .platform-options button { min-height: 60px; font-size: 12px; }
+  .form-action .btn-primary { min-height: 48px; }
+  .page-heading { flex-wrap: wrap; }
+  .page-heading > div { min-width: 0; }
+  .turn-card { padding: 22px 18px; }
+  .stage-processing { flex-wrap: wrap; }
+  .page-process:has(#need:not(:empty)) .process-content { flex: 1 0 auto; min-height: min-content; }
+  .page-work .work-controls { display: flex; flex-direction: column; align-items: stretch; }
+  .page-work .work-preview { height: clamp(320px, 65dvh, 560px); min-height: 320px; max-height: none; }
+  .page-work .work-delivery, .page-work .work-review { flex-wrap: wrap; justify-content: flex-start; gap: 6px 20px; }
+  .page-work .work-review { margin-top: 12px; }
+  .page-work #work-review-status { white-space: normal; overflow-wrap: anywhere; }
+  .page-work .work-preview .preview-backdrop { overscroll-behavior-y: auto; }
+  .insights, .insight-pane { min-width: 0; }
+  .insight-tabs { gap: 8px; justify-content: space-between; }
+  .insight-tabs button { min-height: 44px; white-space: nowrap; }
+  .insight-pane { overflow-x: auto; }
+  .studio-dialog { padding: 20px 16px; width: calc(100% - 24px); max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow-wrap: anywhere; }
+  .review-dialog { inset: auto 12px max(12px, env(safe-area-inset-bottom, 0px)); width: auto; max-height: 85dvh; }
+  .agent-ask { bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
+  .toast { width: max-content; max-width: calc(100% - 32px); white-space: normal; overflow-wrap: anywhere; bottom: max(20px, env(safe-area-inset-bottom, 0px)); }
+  .welcome { overflow-y: auto; padding: 28px; }
+  .welcome-edition { bottom: max(16px, env(safe-area-inset-bottom, 0px)); }
+  .login-page { padding-bottom: env(safe-area-inset-bottom, 0px); }
+}
+
+@media (max-width: 380px) {
+  .field-pair, .presets-grid { grid-template-columns: minmax(0, 1fr); }
+  .platform-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .platform-options button { min-height: 48px; flex-direction: row; }
+}
+
+@media (max-height: 500px) and (max-width: 900px) {
+  .welcome { display: block; }
+  .welcome-content { margin: auto; padding-bottom: 40px; }
+  .welcome-edition { position: static; }
+}

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <title>极简预览 · 华章有据</title>
+  <link rel="icon" href="/static/brand/app-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/fonts.css?v=1.1.0">
+  <link rel="stylesheet" href="./minimal.css?v=3-mobile">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#s=brief"><img src="/static/brand/logo-mark.svg" width="25" height="25" alt=""><span>华章有据</span></a>
+    <nav aria-label="预览页面">
+      <button type="button" data-page="brief" aria-current="page">创作简报</button>
+      <button type="button" data-page="process" aria-current="false">生成过程</button>
+      <button type="button" data-page="work" aria-current="false">图文作品</button>
+      <button type="button" data-page="evidence" aria-current="false">事实核验</button>
+    </nav>
+    <span class="prototype-label">视觉原型</span>
+  </header>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <!-- Lucide icons, ISC license: https://lucide.dev/license. Project-local sprite; no CDN. -->
+    <symbol id="ic-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="ic-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="ic-pen" viewBox="0 0 24 24"><path d="m16 3 5 5M4 20l4-1L21 6a2.1 2.1 0 0 0-5-3L3 16l-1 6Z"/></symbol>
+    <symbol id="ic-book" viewBox="0 0 24 24"><path d="M12 7v14m0-14C8 3 3 3 2 4v15c4-1 7 0 10 2 3-2 6-3 10-2V4c-4-1-7 0-10 3Z"/></symbol>
+    <symbol id="ic-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 0v6h6M8 13h8m-8 4h6"/></symbol>
+    <symbol id="ic-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="ic-poster" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="1"/><path d="M9 6h6m-6 4h6m-6 4h6m-6 4h3"/></symbol>
+    <symbol id="ic-sliders" viewBox="0 0 24 24"><path d="M4 21v-7m0-4V3m8 18v-9m0-4V3m8 18v-5m0-4V3M1 14h6m2-6h6m2 8h6"/></symbol>
+    <symbol id="ic-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4"/></symbol>
+    <symbol id="ic-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M3 16v4a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-4"/></symbol>
+    <symbol id="ic-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></symbol>
+    <symbol id="ic-mobile" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></symbol>
+    <symbol id="ic-shield" viewBox="0 0 24 24"><path d="m12 2 9 4v6c0 5-9 10-9 10S3 17 3 12V6Z"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="ic-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="ic-play" viewBox="0 0 24 24"><path d="m8 4 12 8-12 8Z"/></symbol>
+    <symbol id="ic-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="ic-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="ic-spark" viewBox="0 0 24 24"><path d="m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6Z"/></symbol>
+    <symbol id="ic-link" viewBox="0 0 24 24"><path d="m10 13 4-4m-6 7-2 2a4 4 0 0 1-6-6l5-5a4 4 0 0 1 6 0m2 2 2-2a4 4 0 0 1 6 6l-5 5a4 4 0 0 1-6 0" transform="translate(2 0)"/></symbol>
+    <symbol id="ic-heart" viewBox="0 0 24 24"><path d="M20 4c-3-3-7-1-8 1-1-2-5-4-8-1-5 5 3 12 8 16 5-4 13-11 8-16Z"/></symbol>
+    <symbol id="ic-undo" viewBox="0 0 24 24"><path d="m3 7 5-5M3 7l5 5M3 7h10a8 8 0 0 1 0 16"/></symbol>
+  </svg>
+  <main id="app" tabindex="-1"></main>
+  <dialog id="review-dialog" aria-labelledby="dialog-title"><div class="dialog-top"><h2 id="dialog-title"></h2><button class="icon-button" type="button" data-close aria-label="关闭弹窗"><svg class="icon" aria-hidden="true"><use href="#ic-close"/></svg></button></div><div id="dialog-content"></div></dialog>
+  <div id="review-toast" role="status" hidden></div>
+  <noscript>请启用 JavaScript 以查看交互预览。</noscript>
+  <script src="./minimal.js?v=2"></script>
+</body>
+</html>
