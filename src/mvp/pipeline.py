@@ -16,22 +16,14 @@ from typing import Callable
 
 import yaml
 
-from . import llm, settings, verify, web_images
+from . import llm, settings, verify, web_images, reconcile
 from .kb import Image, ModelDoc, Snippet, get_kb
 from .progress import Trace
+from .clarification import MAX_ROUNDS as MAX_CLARIFY_ROUNDS, round_count as _clarify_round, form_result, prepare_questions, question_text
 
 PLATFORMS = ["wechat_article", "xiaohongshu", "moments", "poster"]
 TODAY_NOTE = f"事实基准日 {settings.KB_BASE_DATE}；发布前须以华为官方页面和实际销售 SKU 复核。"
-WORKFLOW_VERSION = "evidence-editorial-v2"
-# 场景追问最多消耗一轮；回答后仍无法判断时按现有信息继续，把问题留在待确认。
-MAX_CLARIFY_ROUNDS = 1
-
-
-def _clarify_round(task: dict) -> int:
-    try:
-        return max(0, int(task.get("clarify_round") or 0))
-    except (TypeError, ValueError):
-        return 0
+WORKFLOW_VERSION = "evidence-editorial-v4"
 
 
 def context_version(doc=None) -> str:
@@ -96,7 +88,8 @@ def _cache_put(key: str, value) -> None:
 def parse_scene_cached(task: dict, instruction: str | None) -> dict:
     key = "scene|" + json.dumps([context_version(), settings.FAST_MODEL, settings.KB_BASE_DATE, task.get("product"), task.get("audience"),
                                  task.get("scenario"), task.get("platform"), task.get("goal"),
-                                 task.get("constraints") or [], task.get("extra"), instruction or ""],
+                                 task.get("constraints") or [], task.get("extra"), _clarify_round(task),
+                                 task.get("clarify_answers") or [], instruction or ""],
                                 ensure_ascii=False, sort_keys=True)
     hit = _cache_get(key)
     if hit is not None:
@@ -176,6 +169,8 @@ def parse_scene(task: dict, instruction: str | None) -> dict:
         "购买阶段先验": cfg["scenarios"][hit]["stage"] if hit else "",
         "性价比定义": cfg["value_definition"],
         "需求解释规则": cfg.get("requirement_definitions", {}),
+        "问询": {"已完成轮数": _clarify_round(task), "最多轮数": MAX_CLARIFY_ROUNDS,
+                 "已回答": task.get("clarify_answers") or []},
     }
     out = llm.ask_json(prompt("scene"), jdump(payload), model=settings.FAST_MODEL, role="fast")
     dims = set(cfg["dimensions"])
@@ -238,14 +233,19 @@ def decide_model(task: dict, scene: dict, kb) -> dict:
         names = [kb.info(i).name for i in ids]
         if st == "ambiguous":
             return {"status": "need_info", "candidates": names, "candidate_ids": ids,
+                    "question_field": "product",
                     "questions": [f"“{product}” 对应知识库里的多个型号，请确认具体型号：" + "；".join(names)]}
         return {"status": "need_info", "candidates": [m.name for m in kb.models()],
+                "question_field": "product",
                 "candidate_ids": [m.id for m in kb.models()],
                 "questions": [f"知识库里没有找到“{product}”。请从已收录型号中选择，或留空让我按需求推荐。"]}
     cards = [kb.matrix_card(m.id) for m in kb.models()]
     payload = {"需求画像": {k: scene.get(k) for k in (
         "audience", "scenario", "user_problem", "stage", "hard_constraints", "soft_preferences",
-        "tradeoffs", "weights", "unmappable")}, "候选型号": cards}
+        "tradeoffs", "weights", "unmappable")}, "候选型号": cards,
+        "原始需求": task,
+        "问询": {"已完成轮数": _clarify_round(task), "最多轮数": MAX_CLARIFY_ROUNDS,
+                 "已回答": task.get("clarify_answers") or []}}
     rec = llm.ask_json(prompt("recommend"), jdump(payload), model=settings.FAST_MODEL, role="fast")
     valid = {m.id for m in kb.models()}
     primary = rec.get("primary")
@@ -253,8 +253,9 @@ def decide_model(task: dict, scene: dict, kb) -> dict:
         st, ids = kb.resolve(str(primary or ""))
         primary = ids[0] if st == "ok" else None
     if not primary:
-        return {"status": "need_info", "questions": rec.get("questions") or ["暂时无法从需求判断合适的型号，请补充使用的软件、系统习惯、预算区间或指定型号。"],
-                "candidates": [m.name for m in kb.models()], "candidate_ids": [m.id for m in kb.models()]}
+        return {"status": "need_info", "questions": rec.get("questions") or [],
+                "candidates": [m.name for m in kb.models()], "candidate_ids": [m.id for m in kb.models()],
+                "reason": "；".join(str(c) for c in rec.get("caveats", []) if c)}
     alts = [a for a in rec.get("alternatives", []) if a in valid and a != primary][:2]
     rec["primary"], rec["alternatives"] = primary, alts
     return {"status": "ok", "model_id": primary, "mode": "recommended", "recommendation": rec,
@@ -377,7 +378,7 @@ def compose(task: dict, scene: dict, strat: dict, facts: list[dict], images: lis
     else:
         sys_p = prompt("compose")
     return llm.ask_json(sys_p, jdump(payload), model=mdl,
-                        role="fast" if mdl == settings.FAST_MODEL else "writer")
+                        role="fast" if mdl == settings.FAST_MODEL and mdl != settings.WRITER_MODEL else "writer")
 
 
 def normalize_article(raw: dict, facts: list[dict], images: list[Image]) -> dict:
@@ -491,7 +492,7 @@ def judge(article: dict, facts: list[dict], strat: dict, det: dict, judge_model:
     if feedback:
         payload["用户对上次审核的反馈（不是产品事实依据）"] = feedback
     result = llm.ask_json(prompt("judge"), jdump(payload), model=selected,
-                         role="fast" if selected == settings.FAST_MODEL else "judge")
+                         role="fast" if selected == settings.FAST_MODEL and selected != settings.JUDGE_MODEL else "judge")
     # 旧格式仍兼容；表达意见最多两项，事实/需求问题不设截断。
     must = result.get("must_fix", result.get("problems", []))
     # 语义评审不负责心算长度。对明确的计数意见用本地同一口径验证，避免无效返修。
@@ -531,8 +532,8 @@ def judge(article: dict, facts: list[dict], strat: dict, det: dict, judge_model:
     actual = {(c.get("where"), c.get("index", -1)) for c in result.get("claims", [])}
     if not expected.issubset(actual):
         result["overall"] = "incomplete"
-        result.setdefault("pending_confirm", []).append("独立评审未覆盖全部可见句段，需人工复核。")
-    return result
+        result.setdefault("pending_confirm", []).append("独立评审未覆盖全部可见句段，需要重新审核。")
+    return reconcile.normalize(result)
 
 
 def collect_issues(det: dict, jd: dict | None) -> list[str]:
@@ -541,6 +542,7 @@ def collect_issues(det: dict, jd: dict | None) -> list[str]:
         msgs.append(f"[{it['where']}#{it['index']}] {it.get('rule', it['kind'])}：{it['detail']}")
     msgs += [f"[平台] {p}" for p in det["platform_issues"]]
     if jd:
+        jd = reconcile.normalize(jd)
         for p in jd.get("problems", []):
             msgs.append(f"[{p.get('where', 'body')}#{p.get('index', -1)}] 审核模型（{p.get('type', '')}）："
                         f"{p.get('quote', '')} {p.get('detail', '')}；修改方向：{p.get('direction', '按原始证据修正')}")
@@ -583,6 +585,7 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
         return await_result(pool.submit(lambda: tr.run(*args, **kwargs)))
 
     def review(version):
+        nonlocal budget_hit
         suffix = "" if version == 1 else "re"
 
         def check_rules():
@@ -600,9 +603,22 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
             return review0
 
         checks, review0 = parallel(check_rules, check_semantics)
+        review0 = reconcile.normalize(review0)
+        if review0.get("problems") and review0.get("overall") not in ("incomplete", "not_reviewed"):
+            tr.publish(f"review_original:{version}", review0, "reviewer", "原始评审意见已保留", version=version)
+            try:
+                review0 = perform("cross_review" if version == 1 else "recross_review", "交叉核对重要争议",
+                                  lambda: reconcile.cross_check(review0, article, facts, strat, task, judge_model),
+                                  view=lambda r: {"overall": r.get("overall"), "cross_review": r.get("cross_review")},
+                                  depends_on=[f"review:{version}"])
+            except llm.BudgetExceeded:
+                budget_hit = True
+                review0["cross_review"] = {"status": "incomplete", "dismissed": [], "reason": "时间预算耗尽，保留原始风险。"}
+        tr.publish(f"review:{version}", review0, "reviewer", "评审分流已完成", version=version)
         return checks, review0
 
     def fin(res: dict) -> dict:
+        res = form_result(res, task)
         res["task"] = task
         res["total_ms"] = int((time.monotonic() - tr.started) * 1000)
         res["kb"] = kb.whoami()
@@ -616,6 +632,8 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
             res.update({k: snapshot[k] for k in ("events", "artifacts")})
             tr.closed = True
         pool.shutdown(wait=False, cancel_futures=True)
+        from .review import annotate
+        annotate(res)
         return res
 
     miss = check_task(task)
@@ -631,16 +649,19 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
             inputs=task["platform"]))
         scene = perform("scene", "理解人群与具体任务", lambda: parse_scene_cached(task, instruction),
                        inputs=" · ".join(str(task.get(k) or "") for k in ("audience", "scenario", "extra", "goal") if task.get(k)))
-        if clarify_round >= MAX_CLARIFY_ROUNDS and scene.get("need_info", {}).get("blocking"):
-            # 已经追问过一轮：不再反复打断，剩余问题随稿件标为待确认。
-            scene["need_info"] = {**scene.get("need_info", {}), "blocking": False}
+        if scene.get("need_info", {}).get("blocking") and (clarify_round >= MAX_CLARIFY_ROUNDS or
+                not prepare_questions(scene["need_info"].get("questions"), task)):
+            # 两轮后停止阻断；不确定事项随稿件保留，不能伪装成已确认条件。
+            scene["need_info"] = {**scene.get("need_info", {}), "blocking": False, "deferred": True}
         tr.publish("brief", scene, "planner", "需求已整理")
         if scene["need_info"].get("blocking"):
             return fin({"status": "need_info", "questions": scene["need_info"].get("questions", []), "scene_judgement": scene})
         dm = perform("model", "匹配指定型号" if task.get("product") else "按需求推荐型号",
                     lambda: decide_model(task, scene, kb), inputs=task.get("product") or scene.get("user_problem", ""))
         if dm["status"] != "ok":
-            return fin({"status": "need_info", "questions": dm["questions"], "candidates": dm.get("candidates", []),
+            return fin({"status": "need_info", "questions": dm["questions"], "question_field": dm.get("question_field", ""),
+                        "reason": dm.get("reason", ""),
+                        "candidates": dm.get("candidates", []),
                         "candidate_ids": dm.get("candidate_ids", []), "scene_judgement": scene})
         model_id = dm["model_id"]
         if dm["mode"] == "given":
@@ -732,6 +753,9 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
     if plan.get("critical_gaps"):
         res["status"] = "ok_with_flags"
         res["verification"]["remaining"] += [f"关键需求无法从本型号资料确认：{gap}" for gap in plan["critical_gaps"]]
+    if scene.get("need_info", {}).get("deferred"):
+        res["status"] = "ok_with_flags"
+        res["verification"]["remaining"].append("两轮确认后仍有未知需求，相关条件尚未验证。")
     res["evidence"]["risks"] = plan.get("risks", [])
     res["revisions"] = revisions
     res["workflow_version"] = WORKFLOW_VERSION
@@ -788,7 +812,7 @@ def continue_review(source: dict, decision: dict, on_update=None) -> dict:
     tr.publish("brief", scene, "planner", "沿用原始需求")
     tr.publish("sources", {"model": doc.name, "images": image_catalog(images)}, "retrieve", "沿用已登记产品图")
     tr.publish("evidence", {"facts": facts}, "planner", "沿用原始证据")
-    tr.publish("user_feedback", decision, "controller", "用户已逐项裁定")
+    tr.publish("user_feedback", decision, "controller", "已接收自动修订请求" if decision.get("mode") == "automatic" else "用户反馈已接收")
     try:
         with llm.budget(tr.deadline, tr.record_call):
             if any(a["choice"] == "fix" for a in decision["answers"]):
@@ -806,17 +830,33 @@ def continue_review(source: dict, decision: dict, on_update=None) -> dict:
             jd = tr.run("rejudge", "结合用户反馈独立复审", lambda: judge(
                 article, facts, strat, det, judge_model, images, task,
                 (plan or {}).get("risks", []), feedback=feedback), view=lambda r: {"overall": r.get("overall")})
+            tr.publish(f"review_original:{version}", jd, "reviewer", "原始复审意见已保留", version=version)
+            jd = tr.run("recross_review", "交叉核对剩余重要争议", lambda: reconcile.cross_check(
+                jd, article, facts, strat, task, judge_model))
             tr.publish(f"review:{version}", jd, "reviewer", "用户反馈复审已完成", version=version)
     except llm.LLMError as exc:
         budget_hit = isinstance(exc, llm.BudgetExceeded)
         det = deterministic_check(article, facts, doc, strat, images)
-        jd = {"overall": "not_reviewed", "problems": [], "pending_confirm": ["复审未完成，请重试或人工裁定。"]}
+        if jd.get("overall") == "not_reviewed":
+            jd["pending_confirm"] = ["复审未完成，请重试。"]
+        else:
+            jd["cross_review"] = {"status": "incomplete", "dismissed": [], "reason": "交叉复核未完成，保留原始风险。"}
     attempts = [{"round": version, "issues": collect_issues(det, jd)}]
     result = build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, attempts, [], kb)
     deferred = [f"用户尚未确认：{a['detail']}" for a in decision["answers"] if a["choice"] == "defer"]
     if deferred:
         result["status"] = "ok_with_flags"
         result["verification"]["remaining"].extend(deferred)
+    gaps = (source.get("planning") or {}).get("critical_gaps", [])
+    if gaps:
+        result["status"] = "ok_with_flags"
+        result["verification"]["remaining"].extend(f"关键需求无法从本型号资料确认：{gap}" for gap in gaps)
+    if scene.get("need_info", {}).get("deferred"):
+        result["status"] = "ok_with_flags"
+        result["verification"]["remaining"].append("两轮确认后仍有未知需求，相关条件尚未验证。")
+    if budget_hit:
+        result["status"] = "ok_with_flags"
+        result["verification"]["remaining"].append("时间预算耗尽，必要修订或复核尚未完成。")
     result.update(task=task, revisions=changes, planning=source.get("planning", {}),
                   workflow_version=WORKFLOW_VERSION, context_version=context_version(doc),
                   review_parent=source.get("job_id"), total_ms=int((time.monotonic() - tr.started) * 1000),
@@ -829,6 +869,8 @@ def continue_review(source: dict, decision: dict, on_update=None) -> dict:
     snapshot = tr.snapshot()
     result.update(trace=snapshot["steps"], events=snapshot["events"], artifacts=snapshot["artifacts"], llm_calls=copy.deepcopy(tr.calls))
     tr.closed = True
+    from .review import annotate
+    annotate(result)
     return result
 
 
@@ -931,7 +973,7 @@ def build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, a
     pend = list(article["pending_confirm"])
     pend.append(TODAY_NOTE)
     if _clarify_round(task) >= MAX_CLARIFY_ROUNDS:
-        pend += [str(q) for q in (scene.get("need_info", {}).get("questions") or []) if str(q).strip()]
+        pend += [question_text(q) for q in (scene.get("need_info", {}).get("questions") or []) if question_text(q)]
     if jd:
         pend += [p for p in jd.get("pending_confirm", []) if p]
     remaining = collect_issues(det, jd)
@@ -960,11 +1002,12 @@ def build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, a
             "images": det["images"],
             "compliance": comp,
             "platform": det["platform_issues"],
+            "rules": copy.deepcopy(det),
             "remaining": remaining,
             "repair_rounds": [{"round": a["round"], "issues": a["issues"]} for a in attempts],
-            "judge": {"model": settings.JUDGE_MODEL, "overall": (jd or {}).get("overall"),
-                      "problems": (jd or {}).get("problems", []), "must_fix": (jd or {}).get("must_fix", []),
-                      "improvements": (jd or {}).get("improvements", [])},
+            "judge": {"model": settings.JUDGE_MODEL, **{k: copy.deepcopy((jd or {}).get(k)) for k in
+                      ("overall", "problems", "must_fix", "improvements", "original_problems", "cross_review", "dismissed_counting_notes", "pending_confirm")
+                      if k in (jd or {})}},
             "pending_confirm": list(dict.fromkeys(pend))},
     }
     return res

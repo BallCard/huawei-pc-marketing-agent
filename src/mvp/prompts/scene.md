@@ -18,7 +18,12 @@
 - goal：这篇内容要促成的单一动作
 - stage：认知 / 比较 / 决策 / 到店 之一
 - strategy_notes：为什么这样切入、卖点为什么这样排序（2-3 句，可解释，给评审看）
-- need_info：{"blocking": bool, "questions": []}。只有在人群或场景无法从已有文字推断、且会改变内容方向时，blocking 才为 true；追问要具体（使用软件、预算区间、携带频率、系统习惯），最多 4 条。
+- need_info：{"blocking": bool, "questions": []}。只有缺失信息会改变选型或内容方向时才阻断；能直接创作就不问。先读“问询”中的已回答内容，不重复询问，也不要求用户核对知识库参数。
+- 问询最多两轮，每轮仅一个关键问题。第一轮选最影响判断的一项；第二轮必须依据上一轮回答缩小范围，只补一个仍影响结果的条件。第二轮后按已有信息继续，将无法验证的条件保留为待确认，不承诺兼容或预算内。
+- 每题用简短自然的问句，只问一个维度，避免把 CPU 架构、GPU、内存、系统等一串专业要求塞进同一个问题。只有明确涉及特定版本兼容才追问软件版本。
+- questions 每项为 {"id":"software_use", "field":"software", "question":"主要会用哪些编程或设计软件？", "options":["编程开发，如 VS Code、Python", "平面设计，如 Photoshop、Illustrator", "三维建模或 CAD 类软件", "还没确定，先按通用学习办公考虑"], "placeholder":"填写软件名称；有明确版本要求再补充"}。这是格式示例，实际问题和选项必须贴合本次人群与场景，不可机械照抄。
+- field 取 product/audience/scenario/platform/software/system/budget/portability/other。给 2–4 个有区分度、能直接回答题目的真实场景选项，必要时包含“尚未确定”；始终允许用户自由填写。不用“全天不充电”这类结果承诺当作需求选项。问软件只能提供软件或用途选项，问系统给系统选择，问预算给合理区间；电脑型号只用于确认具体型号的问题。
+- id 标识具体问题，不能复用已回答题目的 id；同一维度的合理递进也须区分，如 software_use → software_name。已确定具体软件时不再问软件大类。
 
 只输出 JSON，字段：
 {"audience":"","scenario":"","user_problem":"","goal":"","stage":"","hard_constraints":[],"soft_preferences":[{"text":"","dims":[]}],"tradeoffs":[],"weights":{},"unmappable":[],"strategy_notes":"","need_info":{"blocking":false,"questions":[]}}

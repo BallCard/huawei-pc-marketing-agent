@@ -176,6 +176,45 @@ class PosterTests(unittest.TestCase):
             with self.assertRaises(llm.LLMError):
                 poster.inspect_image({"model":{}}, self.prepared, self.image)
 
+    def test_cross_image_review_dismisses_visible_false_alarm_but_preserves_missing_copy(self):
+        from src.mvp.reconcile import issue_id
+        appearance = {"where": "poster", "type": "appearance", "quote": "银色机身", "detail": "机身颜色可能不符"}
+        missing = {"where": "poster", "type": "text", "quote": "约1.31 kg", "detail": "缺少限定", "deterministic": True}
+        data = {"decisions": [{"id": issue_id(appearance), "decision": "dismiss", "reason": "两图机身均为银色且清晰可见",
+                 "verdict": "matching_visible_feature", "generated_observation": "海报中央机身为银色",
+                 "reference_observation": "依据图中央机身同为银色"},
+                 {"id": issue_id(missing), "decision": "dismiss", "reason": "不应接受对此程序检查的撤销"}]}
+        with patch.object(llm, "chat", return_value=json.dumps(data)) as call:
+            checked = poster.cross_check_image({"overall": "needs_fix", "problems": [appearance, missing]}, {}, self.prepared, self.image)
+        self.assertEqual(checked["overall"], "needs_fix")
+        self.assertEqual(len(checked["cross_review"]["dismissed"]), 1)
+        self.assertTrue(checked["problems"][0]["deterministic"])
+        self.assertEqual(sum(c["type"] == "image_url" for c in call.call_args.args[0][1]["content"]), 2)
+
+    def test_cross_image_review_cannot_dismiss_unknown_structure_or_uncited_text(self):
+        from src.mvp.reconcile import issue_id
+        risk = {"where": "poster", "type": "uncertain", "detail": "新增接口在原图不可见"}
+        with patch.object(llm, "chat", return_value=json.dumps({"decisions": [{"id": issue_id(risk), "decision": "dismiss", "reason": "看起来合理"}]})):
+            out = poster.cross_check_image({"overall": "needs_fix", "problems": [risk]}, {}, self.prepared, self.image)
+        self.assertEqual(out["problems"][0]["cross_check"], "unresolved")
+        self.assertEqual(out["overall"], "needs_fix")
+
+    def test_failed_cross_image_review_preserves_original_problem(self):
+        risk = {"where": "poster", "type": "appearance", "detail": "疑似接口改变"}
+        with patch.object(llm, "chat", side_effect=llm.LLMError("timeout")):
+            out = poster.cross_check_image({"overall": "needs_fix", "problems": [risk]}, {}, self.prepared, self.image)
+        self.assertEqual(out["problems"], [risk])
+        self.assertEqual(out["cross_review"]["status"], "incomplete")
+
+    def test_only_style_suggestions_do_not_block_image_delivery(self):
+        responses = [json.dumps({"observed_texts": self.prepared["copy"]}), json.dumps({"overall": "needs_fix", "problems": [
+            {"type": "expression", "detail": "背景颜色可更暖些"}]})]
+        with patch.object(llm, "chat", side_effect=responses) as call:
+            checked = poster.inspect_image({"model": {}}, self.prepared, self.image)
+        self.assertEqual(call.call_count, 2)
+        self.assertEqual(checked["overall"], "pass")
+        self.assertEqual(len(checked["improvements"]), 1)
+
     def test_blind_transcription_does_not_receive_expected_copy_or_borrow_later_review_text(self):
         responses = [json.dumps({"observed_texts":["HUAWEI", "PRODUCT"], "unreadable":[]}),
                      json.dumps({"overall":"pass", "observed_texts":["HUAWEI", "约1.31 kg"], "problems":[]})]
@@ -191,7 +230,7 @@ class PosterTests(unittest.TestCase):
             result = poster.attach(source, "a"*32)
         generate.assert_not_called()
         self.assertEqual(result["poster"]["status"], "blocked")
-        self.assertEqual(result["verification"], source["verification"])
+        self.assertEqual({k:result["verification"][k] for k in source["verification"]}, source["verification"])
         self.assertNotIn("poster", source)
 
 

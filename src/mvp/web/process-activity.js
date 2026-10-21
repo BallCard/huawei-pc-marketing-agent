@@ -55,6 +55,10 @@
         }
         add(label,detail,{status,kind:"check",tool:key});
       }
+      const cross = review?.cross_review, crossStep = steps.find(s => s.step === (version === 1 ? "cross_review" : "recross_review"));
+      if (cross || crossStep) add("交叉核对重要争议", cross ? cross.status === "completed" ?
+        `已排除 ${cross.dismissed?.length || 0} 项误报，重要未决按根因合并` : cross.reason || "交叉核对已完成分流" : "正在对照原始资料复核", {
+          status:cross?.status === "incomplete" ? "incomplete" : cross ? "done" : crossStep.status,kind:"check",tool:"cross_review"});
     };
     let title = stage.label || "等待创作任务", note = "", tone = "";
     switch (stage.id) {
@@ -157,6 +161,11 @@
       }
       case "finish": {
         if (snapshot.state === "error") { title="创作已中断"; add("错误信息",snapshot.error || "本次执行失败",{status:"error",kind:"issue"}); tone="warn"; break; }
+        if (result.status === "input_required") {
+          title="暂时无法确定合适型号";
+          add("选型说明", result.message || "现有信息不足以安全选型，请返回创作简报调整。", {kind:"issue",status:"needs_fix"});
+          tone="warn"; break;
+        }
         if (result.status === "need_info") {
           title="等待补充信息";
           const ask = clarify();

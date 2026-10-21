@@ -9,19 +9,19 @@
   <meta name="description" content="基于产品知识库，为华为电脑生成适配四个平台、附事实核验的营销图文。">
   <link rel="icon" type="image/svg+xml" href="/static/brand/app-icon.svg">
   <link rel="preload" href="/static/fonts/noto-sans-sc/noto-sans-sc-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/static/fonts.css?v=1.1.0">
-  <link rel="stylesheet" href="/static/style.css?v=1.1.0">
-  <link rel="stylesheet" href="/static/platforms.css?v=1.1.0-price1">
-  <link rel="stylesheet" href="/static/platforms-fixes.css?v=1.1.0">
-  <link rel="stylesheet" href="/static/studio.css?v=1.1.0">
-  <link rel="stylesheet" href="/static/preview-devices.css?v=1.1.0">
-  <link rel="stylesheet" href="/static/work-page.css?v=1.1.0-scale90">
-  <link rel="stylesheet" href="/static/process.css?v=1.1.0-compact2">
-  <link rel="stylesheet" href="/static/agent-ask.css?v=1.1.0-ask1">
-  <link rel="stylesheet" href="/static/review-questions.css?v=1.2-poster-review3">
-  <link rel="stylesheet" href="/static/poster-image.css?v=1.2-poster1">
-  <link rel="stylesheet" href="/static/typography.css?v=1.1.0-compact2">
-  <link rel="stylesheet" href="/static/mobile.css?v=1">
+  <link rel="stylesheet" href="/static/fonts.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/style.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/platforms.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/platforms-fixes.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/studio.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/preview-devices.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/work-page.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/process.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/agent-ask.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/review-questions.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/poster-image.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/typography.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/mobile.css?v=1.2.0">
 </head>
 <body>
   <section id="welcome" class="welcome" aria-labelledby="welcome-title">
@@ -31,7 +31,7 @@
       <p>从产品知识出发，生成有据可查的华为电脑营销图文。</p>
       <button id="enter-studio" class="welcome-enter" type="button">进入体验 <span aria-hidden="true">↗</span></button>
     </div>
-    <span class="welcome-edition">华章有据 · v1.1</span>
+    <span class="welcome-edition">华章有据 · v1.2</span>
   </section>
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <!-- Lucide outline icons, ISC license: https://lucide.dev/license -->
@@ -156,7 +156,7 @@
   <aside id="agent-ask" class="agent-ask" role="dialog" aria-labelledby="agent-ask-title" data-state="asking" hidden>
     <header class="ask-head">
       <span id="agent-ask-avatar" class="ask-avatar" aria-hidden="true"></span>
-      <div class="ask-id"><b id="agent-ask-title">需求确认</b><span id="agent-ask-hint">一次一个问题，答完继续创作</span></div>
+      <div class="ask-id"><b id="agent-ask-title">需求确认</b><span id="agent-ask-hint">每轮只问一个关键问题，最多两轮</span></div>
       <span id="agent-ask-progress" class="ask-progress" aria-hidden="true">1 / 1</span>
       <button id="agent-ask-close" class="ask-close" type="button" aria-label="收起补充问题">×</button>
     </header>
@@ -164,7 +164,7 @@
       <ol id="agent-ask-answers" class="ask-answers"></ol>
       <div id="agent-ask-asking" class="ask-current" aria-live="polite">
         <p id="agent-ask-question" class="ask-question"></p>
-        <p class="ask-options-label">推荐回答</p>
+        <p class="ask-options-label">选择符合实际的情况，或自己填写</p>
         <div id="agent-ask-options" class="ask-options"></div>
         <form id="agent-ask-form" class="ask-custom">
           <label class="sr-only" for="agent-ask-input">自己写一个回答</label>
@@ -184,10 +184,10 @@
   </aside>
   <button id="agent-ask-pill" class="agent-ask-pill" type="button" hidden>继续补充需求 <span id="agent-ask-pill-count">1/1</span></button>
   <dialog id="presets-dialog" class="studio-dialog" aria-labelledby="presets-title"><div class="dialog-heading"><div><h2 id="presets-title">场景示例</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭示例"><svg class="icon"><use href="#i-close"/></svg></button></div><div id="presets" class="presets-grid"></div></dialog>
-  <dialog id="options-dialog" class="studio-dialog options-dialog" aria-labelledby="options-title"><div class="dialog-heading"><div><h2 id="options-title">内容偏好</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭内容偏好"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="options-fields"><div class="form-group"><label for="goal">希望读者看完做什么</label><input id="goal" placeholder="例如：到店体验、私信咨询；留空由场景决定"></div><div class="form-group"><label for="constraints">有哪些不能写的内容</label><input id="constraints" placeholder="留空表示无额外限制，例如：不写竞品对比"></div><div class="form-group"><label for="extra">还有什么想补充</label><textarea id="extra" rows="3" placeholder="真实痛点、语气偏好，或希望优先突出的卖点"></textarea></div><div class="form-group"><label for="speed">创作档位</label><select id="speed"><option value="quality">质量优先</option><option value="fast">快速创作</option></select></div><button id="save-options" class="btn-primary" type="button">保存偏好 <svg class="icon"><use href="#i-check"/></svg></button></div></dialog>
+  <dialog id="options-dialog" class="studio-dialog options-dialog" aria-labelledby="options-title"><div class="dialog-heading"><div><h2 id="options-title">内容偏好</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭内容偏好"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="options-fields"><div class="form-group"><label for="goal">希望读者看完做什么</label><input id="goal" placeholder="例如：到店体验、私信咨询；留空由场景决定"></div><div class="form-group"><label for="constraints">有哪些不能写的内容</label><input id="constraints" placeholder="留空表示无额外限制，例如：不写竞品对比"></div><div class="form-group"><label for="extra">还有什么想补充</label><textarea id="extra" rows="3" placeholder="真实痛点、语气偏好，或希望优先突出的卖点"></textarea></div><div class="form-group"><label for="speed">创作模型</label><select id="speed"><option value="quality">DeepSeek 1017</option><option value="fast" hidden>DeepSeek 1017</option></select></div><button id="save-options" class="btn-primary" type="button">保存偏好 <svg class="icon"><use href="#i-check"/></svg></button></div></dialog>
   <dialog id="step-dialog" class="studio-dialog" aria-labelledby="step-dialog-title"><div class="dialog-heading"><div><p id="step-dialog-meta" class="section-label"></p><h2 id="step-dialog-title"></h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭执行详情"><svg class="icon"><use href="#i-close"/></svg></button></div><p id="step-dialog-note" class="dialog-copy"></p><div id="step-dialog-body" class="step-dialog-body"></div></dialog>
   <!-- Bump the progress asset versions together when changing the handoff UI. -->
   <dialog id="review-dialog" class="studio-dialog review-dialog" aria-labelledby="review-question-title"><div class="dialog-heading"><div><p id="review-question-meta" class="section-label">终审反馈</p><h2 id="review-question-title" tabindex="-1"></h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭问题详情"><svg class="icon"><use href="#i-close"/></svg></button></div><div id="review-question-body"></div><p id="review-question-error" class="review-question-error" role="status"></p><div id="review-question-actions" class="review-question-actions" hidden><button id="review-back" class="text-button" type="button">← 上一条</button><button id="review-next" class="btn-primary" type="button">下一条 →</button></div></dialog>
-  <script src="/static/dom.js"></script><script src="/static/process-state.js?v=1.1.0-compact2"></script><script src="/static/stage-rotation.js?v=1.2-poster-review3"></script><script src="/static/bot-portrait.js?v=1.1.0-compact2"></script><script src="/static/process-clock.js?v=1.1.0-compact2"></script><script src="/static/review-status.js?v=1.2-poster-review3"></script><script src="/static/process-activity.js?v=1.2-poster-review3"></script><script src="/static/flow.js?v=1.2-poster-review3"></script><script src="/static/preview.js?v=1.1.0"></script><script src="/static/preview-xhs.js?v=1.1.0-r2"></script><script src="/static/preview-wx.js?v=1.1.0"></script><script src="/static/preview-mm.js?v=1.1.0"></script><script src="/static/preview-poster.js?v=1.2-poster-review3"></script><script src="/static/studio.js?v=1.2-poster-review3"></script><script src="/static/font-assets.js?v=1.1.0"></script><script src="/static/agent-ask.js?v=1.1.0-ask2"></script><script src="/static/review-questions.js?v=1.2-poster-review3"></script><script src="/static/app.js?v=1.2-poster-review4"></script>
+  <script src="/static/dom.js?v=1.2.0"></script><script src="/static/process-state.js?v=1.2.0"></script><script src="/static/stage-rotation.js?v=1.2.0"></script><script src="/static/bot-portrait.js?v=1.2.0"></script><script src="/static/process-clock.js?v=1.2.0"></script><script src="/static/review-status.js?v=1.2.0"></script><script src="/static/process-activity.js?v=1.2.0"></script><script src="/static/flow.js?v=1.2.0"></script><script src="/static/preview.js?v=1.2.0"></script><script src="/static/preview-xhs.js?v=1.2.0"></script><script src="/static/preview-wx.js?v=1.2.0"></script><script src="/static/preview-mm.js?v=1.2.0"></script><script src="/static/preview-poster.js?v=1.2.0"></script><script src="/static/studio.js?v=1.2.0"></script><script src="/static/font-assets.js?v=1.2.0"></script><script src="/static/agent-ask.js?v=1.2.0"></script><script src="/static/review-questions.js?v=1.2.0"></script><script src="/static/app.js?v=1.2.0"></script>
 </body>
 </html>

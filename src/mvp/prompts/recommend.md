@@ -12,6 +12,9 @@
 - 必要配件或适配费用有依据时才计入成本，未知费用不当作零；不虚构统一性价比分数。
 - “不提价格”约束最终文案，不禁止为选型核对预算；不要把文案限制当成型号筛选条件。
 - 易混淆型号（MateBook 14 鸿蒙版 vs 14 酷睿 Ultra；D 14 / D 16 / D 16 SE；Pro vs Pro S）要明确写出区别。
+- 查看原始需求和“问询”的已回答记录；能推荐就直接推荐。最多两轮问询，每轮最多一个问题。第二轮只沿着已有回答补充真正影响选择的条件，不重复提问、不把多项条件捆成一题，不要求用户回答产品参数或证明软件适配。
+- questions 使用对象数组：{"id":"具体问题的稳定标识", "field":"software|system|budget|portability|scenario|product|other", "question":"一句简短问题", "options":["2–4 个直接回答该题、符合实际使用场景的不同选项"], "placeholder":"自由填写提示"}。软件题给软件名称或使用类型，系统题给系统需求；不要把候选电脑型号当作软件题答案。沿用上一轮的明确条件，选项不能暗示用户放弃硬约束。不得复用已回答问题的 id；同维度的递进题也须区分，如 software_use → software_name。
+- 已问满两轮后不再生成问题：在满足已知硬约束且能安全选择时给 primary，把未验证条件写入 caveats；确实不能满足或证据不足时 primary 为 null，并在 caveats 解释，不能为了继续流程随意选第一款。
 
 只输出 JSON：
 {"primary":null,"alternatives":["model_id"],"reasons":[{"dimension":"","claim":"","evidence_field":"","evidence_value":""}],"trade_off":"","caveats":[],"questions":[]}

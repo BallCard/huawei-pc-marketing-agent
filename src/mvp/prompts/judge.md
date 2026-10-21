@@ -10,7 +10,7 @@
 - conditional 价格策略允许有依据的报价，各平台均适用；不能把它判成禁止价格，也不要求每篇都报价。报价须有 kind=price 的引用，并保留对应配置、价格类型、核验日期和条件；快照不能写成实时成交价。forbid 遵从用户不提价格的要求，none_in_kb 不写无依据报价。pending_confirm 只记本次需求或稿件真正涉及的缺口，不为未涉及价格的内容补价格提醒。
 - 阅读体验也要看：文章是否解决原始读者任务，是否有重点和单一动作，是否像所选平台内容。
 - 字数与图片数量由并行的代码规则检查负责，不做心算，不在语义评审中报告长度猜测；只评估平台阅读节奏与结构。
-- 有任何 must_fix 或 improvements 则 overall=needs_fix；全部通过才 pass。待确认事项不等于错误，单列最多三条。
+- 仅有 must_fix 时 overall=needs_fix；只有轻微 improvements 时 overall=pass，建议不阻断交付。待确认事项不等于错误，单列最多三条。
 
 输出短 JSON（index 为 blocks 下标；title/lead/cta 用 -1）：
 {"must_fix":[{"where":"body","index":0,"type":"unsupported|evidence_gap|overclaim|model|constraint|compliance|price|platform","quote":"","detail":"","direction":""}],"improvements":[{"where":"lead","index":-1,"type":"expression","quote":"","detail":"","direction":""}],"claims":[{"where":"title","index":-1,"fact_ids":[],"verdict":"supported|unsupported|overclaim|no_fact_claim"}],"pending_confirm":[],"overall":"pass|needs_fix"}

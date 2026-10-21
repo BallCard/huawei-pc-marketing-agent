@@ -1,0 +1,253 @@
+{
+  "result": {
+    "article": {
+      "title": "配置 A 约 1.3 kg。",
+      "lead": "配备 USB-A 接口。",
+      "cta": "到店核对软件适配情况。",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "软件版本适配尚待确认，请到店核对。",
+          "fact_refs": [
+            "F3"
+          ]
+        },
+        {
+          "type": "text",
+          "text": "软件版本适配尚待确认，请到店核对。",
+          "fact_refs": [
+            "F3"
+          ]
+        }
+      ],
+      "fact_refs": {
+        "title": [
+          "F1"
+        ],
+        "lead": [
+          "F2"
+        ]
+      }
+    },
+    "verification": {
+      "judge": {
+        "overall": "needs_fix"
+      },
+      "triage": {
+        "human": 1,
+        "automatic": 0,
+        "optional": 4,
+        "dismissed": 3,
+        "merged": 1
+      }
+    },
+    "evidence": {
+      "facts": [
+        {
+          "id": "F1",
+          "text": "配置 A 约 1.3 kg。"
+        },
+        {
+          "id": "F2",
+          "text": "配备 USB-A 接口。"
+        },
+        {
+          "id": "F3",
+          "text": "部分软件兼容性需以实际版本适配情况为准。"
+        }
+      ]
+    }
+  },
+  "form": {
+    "token": "437a7d45a1f2705aa97c7f9f",
+    "version": 1,
+    "questions": [
+      {
+        "where": "body",
+        "index": 0,
+        "type": "constraint",
+        "detail": "指定软件版本兼容证据缺失（涉及 2 处，统一处理）",
+        "root_cause": "指定软件版本兼容证据缺失",
+        "cross_check": "unresolved",
+        "cross_reason": "用户硬条件是必须运行院系指定软件，但软件名称和版本尚未提供；正文仅称尚待确认并邀请到店，不能证明该条件已满足。",
+        "evidence": [
+          {
+            "fact_id": "F3",
+            "quote": "部分软件兼容性需以实际版本适配情况为准。"
+          }
+        ],
+        "id": "366214636a6753c0",
+        "quote": "软件版本适配尚待确认，请到店核对。",
+        "origin": "judge",
+        "direction": "",
+        "question": "关于“指定软件版本兼容证据缺失”，现有依据仍不足，怎样处理？",
+        "members": [
+          {
+            "where": "body",
+            "index": 0,
+            "type": "constraint",
+            "detail": "无法确认用户必须运行的指定软件是否适配",
+            "root_cause": "指定软件版本兼容证据缺失",
+            "cross_check": "unresolved",
+            "cross_reason": "用户硬条件是必须运行院系指定软件，但软件名称和版本尚未提供；正文仅称尚待确认并邀请到店，不能证明该条件已满足。",
+            "evidence": [
+              {
+                "fact_id": "F3",
+                "quote": "部分软件兼容性需以实际版本适配情况为准。"
+              }
+            ],
+            "id": "1c214a04d36f1681",
+            "quote": "软件版本适配尚待确认，请到店核对。",
+            "origin": "judge",
+            "direction": "",
+            "question": "这个重要条件，现有资料仍无法确认，怎样处理？"
+          },
+          {
+            "where": "body",
+            "index": 1,
+            "type": "constraint",
+            "detail": "无法确认用户必须运行的指定软件是否适配",
+            "root_cause": "指定软件版本兼容证据缺失",
+            "cross_check": "unresolved",
+            "cross_reason": "正文第二个块重复同样的适配待确认表述，仍无指定软件的名称、版本及兼容证据，用户硬条件缺口未解决。",
+            "evidence": [
+              {
+                "fact_id": "F3",
+                "quote": "部分软件兼容性需以实际版本适配情况为准。"
+              }
+            ],
+            "id": "535ddf620a52aeee",
+            "quote": "软件版本适配尚待确认，请到店核对。",
+            "origin": "judge",
+            "direction": "",
+            "question": "这个重要条件，现有资料仍无法确认，怎样处理？"
+          }
+        ],
+        "occurrences": 2
+      }
+    ],
+    "automatic_issues": [],
+    "suggestions": [
+      {
+        "type": "expression",
+        "detail": "个人语气偏好0",
+        "id": "e36bb2cc2e2d9141",
+        "where": "article",
+        "index": -1,
+        "quote": "",
+        "origin": "judge",
+        "direction": "",
+        "question": "这个重要条件，现有资料仍无法确认，怎样处理？"
+      },
+      {
+        "type": "expression",
+        "detail": "个人语气偏好1",
+        "id": "6b2d6dd035975579",
+        "where": "article",
+        "index": -1,
+        "quote": "",
+        "origin": "judge",
+        "direction": "",
+        "question": "这个重要条件，现有资料仍无法确认，怎样处理？"
+      },
+      {
+        "type": "expression",
+        "detail": "个人语气偏好2",
+        "id": "2dde2aae3c596e3e",
+        "where": "article",
+        "index": -1,
+        "quote": "",
+        "origin": "judge",
+        "direction": "",
+        "question": "这个重要条件，现有资料仍无法确认，怎样处理？"
+      },
+      {
+        "type": "expression",
+        "detail": "个人语气偏好3",
+        "id": "c458718a7e2567cd",
+        "where": "article",
+        "index": -1,
+        "quote": "",
+        "origin": "judge",
+        "direction": "",
+        "question": "这个重要条件，现有资料仍无法确认，怎样处理？"
+      }
+    ],
+    "dismissed": [
+      {
+        "where": "title",
+        "index": -1,
+        "type": "unsupported",
+        "detail": "重量数字未获支持",
+        "cross_check": "dismissed",
+        "cross_reason": "标题“配置 A 约 1.3 kg。”与 F1 逐字一致，评论称重量数字未获支持是误判。",
+        "root_cause": "重量数字被误报为无依据",
+        "evidence": [
+          {
+            "fact_id": "F1",
+            "quote": "配置 A 约 1.3 kg。"
+          }
+        ],
+        "verdict": "supported",
+        "article_quote": "配置 A 约 1.3 kg。"
+      },
+      {
+        "where": "lead",
+        "index": -1,
+        "type": "unsupported",
+        "detail": "USB-A接口未获支持",
+        "cross_check": "dismissed",
+        "cross_reason": "引导句“配备 USB-A 接口。”与 F2 逐字一致，接口信息有明确依据，评论误判。",
+        "root_cause": "USB-A 接口信息被误报为无依据",
+        "evidence": [
+          {
+            "fact_id": "F2",
+            "quote": "配备 USB-A 接口。"
+          }
+        ],
+        "verdict": "supported",
+        "article_quote": "配备 USB-A 接口。"
+      },
+      {
+        "where": "cta",
+        "index": -1,
+        "type": "unsupported",
+        "detail": "软件邀请被认为承诺兼容",
+        "cross_check": "dismissed",
+        "cross_reason": "CTA 只是“到店核对软件适配情况”，未承诺已兼容；正文也明确说适配尚待确认。评论把它误读为兼容承诺。",
+        "root_cause": "到店核对软件适配的邀请被误报为已确认兼容",
+        "evidence": [
+          {
+            "fact_id": "F3",
+            "quote": "部分软件兼容性需以实际版本适配情况为准。"
+          }
+        ],
+        "verdict": "no_fact_claim",
+        "article_quote": "到店核对软件适配情况。"
+      }
+    ],
+    "summary": {
+      "human": 1,
+      "automatic": 0,
+      "optional": 4,
+      "dismissed": 3,
+      "merged": 1
+    },
+    "facts": [
+      {
+        "id": "F1",
+        "text": "配置 A 约 1.3 kg。"
+      },
+      {
+        "id": "F2",
+        "text": "配备 USB-A 接口。"
+      },
+      {
+        "id": "F3",
+        "text": "部分软件兼容性需以实际版本适配情况为准。"
+      }
+    ],
+    "previous": null,
+    "automatic_overall": "needs_fix"
+  }
+}

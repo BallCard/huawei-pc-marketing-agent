@@ -4,6 +4,13 @@ const describe = require('../src/mvp/web/process-activity.js');
 const stage=(id,status='running')=>({id,status,entries:[]});
 const fact={id:'F1',sid:'S2',text:'机身约 1.3 kg，仅配置 A',source:{label:'产品事实·尺寸与重量',path:'P1-产品参数库/测试电脑/产品事实.md'}};
 
+test('two-round stop explains unavailable recommendation without claiming a completed article',()=>{
+  const result=describe(stage('finish','done'),{state:'done',result:{status:'input_required',message:'软件兼容性尚不能验证'}});
+  assert.equal(result.title,'暂时无法确定合适型号');
+  assert.equal(result.records[0].detail,'软件兼容性尚不能验证');
+  assert.equal(result.tone,'warn');
+});
+
 test('pending planning displays actual input documents, never a made-up angle or future selection',()=>{
   const result=describe(stage('plan'),{artifacts:{sources:{model:'测试电脑',snippets:[{sid:'S2',text:fact.text,source:fact.source}]}},steps:[]});
   assert.equal(result.records[0].path,fact.source.path);

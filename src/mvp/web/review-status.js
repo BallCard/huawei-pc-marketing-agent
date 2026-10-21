@@ -26,13 +26,18 @@
       state:poster.status === "blocked" ? automatic.state : "poster_needs_review",
       label:poster.status === "error" ? "海报生成未完成" : poster.status === "blocked" ? automatic.label : "成图待复核",
       detail:poster.error || poster.review?.problems?.[0]?.detail || "实际成图尚未通过完整审核。"};
-    const human = result.human_review;
+    const triage = result.verification?.triage;
+    if (triage && automatic.needsReview) automatic = {...automatic,
+      label:triage.human ? `${triage.human} 项重要条件待确认` : triage.automatic ? "待自动修订或重试" : automatic.label,
+      detail:triage.human ? `仅需确认 ${triage.human} 个重要事项；确定错误和可选建议已分流。` : triage.automatic ?
+        `${triage.automatic} 项可继续自动处理，无需逐条人工裁定。` : automatic.detail};
+    const human = result.human_review || result.automatic_followup;
     if (human?.state === "adopted") return { ...automatic, state:"human_adopted", label:"人工裁定采用", passed:false,
       needsReview:false, automaticPassed:automatic.passed, detail:"使用者已逐项裁定采用本稿；原始自动审核结论与异议仍保留。" };
     if (human?.state === "deferred") return { ...automatic, state:"deferred", label:"已暂缓，待复核", needsReview:true,
       detail:"使用者已选择暂缓处理，问题及自动审核结论已保留。" };
     if (human?.state === "continuing") return { ...automatic, state:"continuing", label:"已提交后续复审", needsReview:true,
-      detail:"用户反馈已保存，请查看后续任务的修订和复审结果。" };
+      detail:"处理请求已保存，请查看后续任务的修订和复审结果。" };
     if (result.text_human_review?.state === "adopted" && poster?.status === "passed") return { ...automatic,
       state:"human_adopted", label:"文案人工采用 · 成图核验通过", passed:false, needsReview:false,
       detail:"文案已由使用者裁定采用，本次成图的独立审核已通过。"};

@@ -28,7 +28,7 @@ shows_device 表示画面里能清楚看到笔记本电脑整机或其大部分�
 
 
 def tag_one(path, model: str) -> dict:
-    raw = llm.describe_image(path, PROMPT, model=model)
+    raw = llm.describe_image(path, PROMPT, model=model, role="image_verify")
     try:
         d = llm.parse_json(raw)
     except Exception:  # noqa: BLE001
@@ -44,7 +44,7 @@ def tag_one(path, model: str) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--force", action="store_true")
-    ap.add_argument("--model", default=settings.WRITER_MODEL)
+    ap.add_argument("--model", default=settings.IMAGE_VERIFY_MODEL)
     ap.add_argument("--workers", type=int, default=4)
     a = ap.parse_args()
     kb = get_kb()

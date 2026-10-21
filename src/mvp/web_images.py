@@ -193,7 +193,7 @@ def _verify_candidate(client, doc, page, url, deadline):
                 if left <= 0:
                     raise TimeoutError("联网补图超时")
                 verdict = llm.parse_json(llm.describe_image(temp_path, VERIFY_PROMPT, model=settings.IMAGE_VERIFY_MODEL,
-                                                          role="fast", retries=0, timeout=left))
+                                                          role="image_verify", retries=0, timeout=left))
                 if (not isinstance(verdict, dict) or verdict.get("usable") is not True or verdict.get("shows_device") is not True
                         or verdict.get("kind") not in ("device", "device_scene")):
                     raise ValueError("视觉核验未通过：不是可靠的整机主视觉")

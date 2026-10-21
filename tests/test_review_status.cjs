@@ -28,3 +28,18 @@ test('manual adoption is distinct from automatic pass and never rewrites the ver
   assert.equal(status.needsReview,false);assert.equal(status.automaticPassed,false);
   assert.equal(source.verification.judge.overall,'needs_fix');
 });
+
+test('triage distinguishes automatic correction from the small set of important unknowns',()=>{
+  const verification={judge:{overall:'needs_fix',problems:[{detail:'重量条件错误'}]},triage:{human:0,automatic:2,optional:4,dismissed:2,merged:0}};
+  let status=review({verification});
+  assert.equal(status.needsReview,true);assert.equal(status.label,'待自动修订或重试');
+  verification.triage.human=1;
+  status=review({verification});assert.equal(status.label,'1 项重要条件待确认');
+  assert.equal(review({verification,automatic_followup:{state:'continuing',mode:'automatic'}}).state,'continuing');
+});
+
+test('optional suggestions do not create a manual review gate on an otherwise verified article',()=>{
+  const status=review({verification:{judge:{overall:'pass',problems:[],improvements:[{type:'expression',detail:'语气偏好'}]},remaining:[],
+    triage:{human:0,automatic:0,optional:1,dismissed:0,merged:0}}});
+  assert.equal(status.passed,true);assert.equal(status.needsReview,false);
+});

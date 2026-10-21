@@ -93,13 +93,13 @@
       meta
     );
 
-    const ava = PV.publisherAvatar("mm-ava");
+    const ava = PV.publisherAvatar("mm-ava", true);
     const post = UI.el("div", { className: "mm-post" }, ava, main);
     const scroll = UI.el("div", { className: "pv-scroll" }, post);
 
     if (desktop) {
       const rail = UI.el("div", { className: "mm-desktop-rail", "aria-hidden": "true" },
-        PV.publisherAvatar("mm-desktop-avatar"), PV.icon("message"), PV.icon("file"),
+        PV.publisherAvatar("mm-desktop-avatar", true), PV.icon("message"), PV.icon("file"),
         UI.el("span", { className: "mm-rail-active" }, PV.icon("grid")));
       return UI.el("div", { className: "pv-desktop pv-mm" }, PV.desktopBar("微信 · 朋友圈"),
         UI.el("div", { className: "mm-desktop-body" }, rail,

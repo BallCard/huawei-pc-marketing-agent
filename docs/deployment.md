@@ -1,12 +1,12 @@
-# v1.1 部署与配置
+# v1.2 部署与配置
 
 华章有据是 FastAPI + 原生网页的单实例应用，生成任务运行在后台线程，任务与结果存 SQLite。面向本人及小范围展示，使用共享访问账号。只运行一个进程，不能使用多个 worker 或多个副本。
 
 ## 本次发布记录
 
-v1.1.0（2026-10-20）包含证据策划与有界修订、Bot 单环节轮转、横向实时进展与计时修复，以及随应用提供的字体。沿用魔搭模型与访问配置。对应源提交以 Git 标签 `v1.1.0` 和创空间 `deployment-source.json` 为准。
+v1.2.0（version1.2，2026-10-21）统一文字模型为魔搭 DeepSeek 1017，需求问询最多两轮；加入重要争议交叉核对、轻微意见与确定错误分流，以及固定的“提交评审结果”按钮。同版收录整图海报、私有出图通道、慢速图片回传和手机布局改进。完整更新内容见 [版本记录](../CHANGELOG.md)。对应源提交以 Git 标签 `v1.2.0` 和创空间 `deployment-source.json` 为准。
 
-本地 54 项 Python 测试、21 项前端测试通过；实际浏览器验证四平台、任务恢复、预算提示、手机布局、自托管字体与离线 HTML。性能与质量边界见 [验收记录](editorial-validation.md)，未将自动检查通过视为人工盲评结论。
+本版发布前 140 项 Python 与 32 项前端测试通过，并在 320、390、1440 像素宽度验证两轮问询、七项修改直接提交、失败重试及答案恢复，另通过 152 项页面适配检查。部署配置的三个文字角色均通过真实模型连接检查。发布后的运行版本通过 `/api/info` 核对。性能与质量边界见 [验收记录](editorial-validation.md)，未将自动检查通过视为人工盲评结论。
 
 以下保留 v1.0 的首次部署记录：
 
@@ -67,12 +67,13 @@ Vercel 的主要障碍是任务和存储方式，并非不能运行 Python。GPT
 | --- | --- |
 | `LLM_BASE_URL` | `https://api-inference.modelscope.cn/v1` |
 | `LLM_API_KEY` | 魔搭推理令牌，存创空间 **Secret** |
-| `WRITER_MODEL` / `JUDGE_MODEL` | `deepseek-ai/DeepSeek-V4.1-Flash-1017`；独立请求与审核上下文 |
+| `FAST_MODEL` / `WRITER_MODEL` / `JUDGE_MODEL` | `deepseek-ai/DeepSeek-V4.1-Flash-1017`；独立请求与审核上下文 |
 | `LLM_THINKING` | `disabled`，展示优先响应速度 |
-| `FAST_MODEL` | `Qwen/Qwen3.5-35B-A3B` |
 | `FAST_LLM_BASE_URL` | `https://api-inference.modelscope.cn/v1` |
 | `FAST_LLM_API_KEY` | 魔搭推理令牌，存创空间 **Secret** |
-| `FAST_LLM_THINKING` / `FAST_LLM_EXTRA_BODY` | `auto` / `{"enable_thinking":false}` |
+| `FAST_LLM_THINKING` / `FAST_LLM_EXTRA_BODY` | `disabled` / `{}`，统一沿用 DeepSeek 配置 |
+| `IMAGE_VERIFY_MODEL` / `IMAGE_VERIFY_BASE_URL` | `Qwen/Qwen3.5-35B-A3B` / 魔搭推理接口，保留视觉输入能力 |
+| `IMAGE_VERIFY_API_KEY` | 魔搭推理令牌，存创空间 **Secret**；留空复用 `LLM_API_KEY` |
 | `AUTH_USERNAME` / `AUTH_PASSWORD` | 演示访问账号 / 随机密码；密码存 **Secret** |
 | `COOKIE_SECURE` | HTTPS 为 `1`，仅本机 HTTP 验证时为 `0` |
 | `HOST` / `PORT` | 魔搭为 `0.0.0.0` / `7860` |
@@ -83,9 +84,9 @@ Vercel 的主要障碍是任务和存储方式，并非不能运行 Python。GPT
 | `GENERATION_BUDGET_SECONDS` | 默认 `240` 秒上限，为质量模型评审及一次修订/复审留出时间；旧配置若显式设为 `90` 需同步调整，预算不足不会宣称审核通过 |
 | `MODELSCOPE_API_KEY` | 仅本机部署工具使用的魔搭管理令牌，不整份上传本机配置 |
 
-未配置单独角色接口时复用 `LLM_*`；写作和审核同样支持 `WRITER_LLM_*`、`JUDGE_LLM_*` 覆盖。没有静默切换供应商的回退。“质量优先”按三个角色配置运行；“快速创作”写作和审核也使用 FAST 模型。DeepSeek 官方密钥仅保留在本机忽略的 `model.txt`，部署版不再调用官方接口，消耗魔搭推理配额或资源。
+未配置单独角色接口时复用 `LLM_*`；写作和审核同样支持 `WRITER_LLM_*`、`JUDGE_LLM_*` 覆盖。没有静默切换供应商的回退。2026-10-21 起三个文字角色统一使用魔搭 DeepSeek 1017，已有简报中的质量与快速档位也调用同一模型。DeepSeek 官方密钥仅保留在本机忽略的 `model.txt`，部署版不再调用官方接口，消耗魔搭推理配额或资源。
 
-其他可评测候选包括 `Qwen/Qwen3.5-122B-A10B`（写作/审核候选）和 `ZhipuAI/GLM-5.2`（复杂任务候选）。模型列表可见不代表适合本任务：需单独验证 JSON、思考模式、延迟和事实审核表现。本版先采用已跑通真实流程的 Qwen 35B + DeepSeek Flash 组合；连接小样不是文案质量排名。
+其他可评测候选包括 `Qwen/Qwen3.5-122B-A10B`（写作/审核候选）和 `ZhipuAI/GLM-5.2`（复杂任务候选）。模型列表可见不代表适合本任务：需单独验证 JSON、思考模式、延迟和事实审核表现。本版文字角色统一为 DeepSeek 1017，图片核验独立使用视觉模型；连接小样不是文案质量排名。
 
 图片标签已离线预计算，上线不需再次调用视觉模型。重新分析图片时需单独选择支持视觉的模型。资料包与视觉缓存必须配套。
 

@@ -190,12 +190,12 @@
     latest = snapshot; running = snapshot.state === "running";
     clock.update(snapshot);
     state.ingest(snapshot);
-    const urgent = snapshot.state === "error" || ["need_info", "budget_exceeded"].includes(snapshot.result?.status);
+    const urgent = snapshot.state === "error" || ["need_info", "input_required", "budget_exceeded"].includes(snapshot.result?.status);
     rotation.update(window.deriveStages({ steps: state.steps, state: state.state, result: latest.result }), { restore, urgent });
     const live = UI.$("process-live");
     if (live) {
       const needInfo = snapshot.result?.status === "need_info";
-      live.textContent = running ? "正在创作" : snapshot.state === "error" ? "执行中断" : snapshot.state === "done" ? (needInfo ? "本次待补充" : "本次已完成") : "等待开始";
+      live.textContent = running ? "正在创作" : snapshot.state === "error" ? "执行中断" : snapshot.result?.status === "input_required" ? "暂未生成作品" : snapshot.state === "done" ? (needInfo ? "本次待补充" : "本次已完成") : "等待开始";
       live.dataset.active = String(running);
     }
     tick();

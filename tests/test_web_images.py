@@ -73,7 +73,7 @@ class WebImageTests(unittest.TestCase):
         self.assertEqual(image.page, PAGE)
         self.assertEqual(image.source_type, "official_web")
         self.assertTrue(image.checked_at)
-        self.assertEqual(visual.call_args.kwargs["role"], "fast")
+        self.assertEqual(visual.call_args.kwargs["role"], "image_verify")
         # Original results remain downloadable after cache freshness expires.
         kb = object.__new__(LocalKB)
         kb.load = lambda model_id: self.doc

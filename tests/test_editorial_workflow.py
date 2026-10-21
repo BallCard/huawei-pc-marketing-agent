@@ -49,7 +49,8 @@ class WorkflowTests(unittest.TestCase):
                    patch.object(pipeline, "compose", return_value=self.article),
                    patch.object(pipeline, "deterministic_check", return_value=self.det),
                    patch.object(pipeline, "judge", return_value=review()),
-                   patch.object(pipeline.web_images, "find_hero", return_value={"images": [], "status": "unavailable", "pages": []})]
+                   patch.object(pipeline.web_images, "find_hero", return_value={"images": [], "status": "unavailable", "pages": []}),
+                   patch.object(pipeline.reconcile, "cross_check", side_effect=lambda review, *a: pipeline.reconcile.normalize(review))]
         self.mocks = [p.start() for p in patches]
         for p in patches:
             self.addCleanup(p.stop)
@@ -66,6 +67,63 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(result["scene_judgement"]["hard_constraints"], [])
         self.assertFalse(any("价格" in item for item in result["verification"]["pending_confirm"]))
 
+    def test_only_optional_style_notes_pass_without_revision_or_manual_question(self):
+        self.mocks[5].return_value = review([{"where": "lead", "type": "expression", "detail": "可以再轻松些"}])
+        result = pipeline.run(self.task)
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["verification"]["state"], "passed")
+        self.assertEqual(result["verification"]["triage"]["human"], 0)
+        self.assertEqual(result["verification"]["triage"]["optional"], 1)
+        self.assertEqual(self.mocks[3].call_count, 1)
+
+    def test_cross_review_clears_only_the_semantic_false_alarm_not_rule_failure(self):
+        p = {"where": "title", "type": "unsupported", "detail": "标题重量无依据"}
+        self.mocks[5].return_value = review([p])
+        self.mocks[7].side_effect = lambda r, *a: {"overall": "pass", "problems": [], "original_problems": [p],
+            "cross_review": {"status": "completed", "dismissed": [p]}}
+        self.mocks[4].return_value = {**self.det, "issues": [{"where": "title", "index": -1, "kind": "model", "detail": "型号错写"}]}
+        result = pipeline.run(self.task)
+        self.assertEqual(result["status"], "ok_with_flags")
+        self.assertEqual(result["verification"]["triage"]["human"], 0)
+        self.assertEqual(result["verification"]["triage"]["automatic"], 1)
+        self.assertEqual(result["verification"]["triage"]["dismissed"], 1)
+
+    def test_cross_review_budget_retains_first_review_issues_instead_of_losing_them(self):
+        p = {"where": "title", "type": "unsupported", "detail": "重量尚无依据"}
+        self.mocks[5].return_value = review([p])
+        self.mocks[7].side_effect = llm.BudgetExceeded("cross budget")
+        result = pipeline.run(self.task, enable_revision=False)
+        self.assertTrue(result["budget"]["exhausted"])
+        self.assertEqual(result["verification"]["judge"]["problems"], [p])
+        self.assertEqual(result["status"], "ok_with_flags")
+
+    def test_automatic_followup_repairs_actual_source_and_rechecks_new_version(self):
+        from src.mvp import review as decisions
+        source = pipeline.run(self.task)
+        p = {"where": "title", "index": -1, "type": "model", "detail": "型号错写", "cross_check": "confirmed"}
+        source["verification"]["judge"] = review([p])
+        source["verification"]["state"] = "needs_review"
+        source["verification"]["remaining"] = ["型号错写"]
+        form = decisions.questions(source)
+        self.assertEqual(form["questions"], [])
+        decision = decisions.validate_decision(source, {"token": form["token"], "answers": [], "resolution": "continue"})
+        after = {**self.article, "title": "携电脑去图书馆"}
+        self.mocks[3].return_value = after
+        out = pipeline.continue_review(source, decision)
+        self.assertEqual(out["article"]["title"], after["title"])
+        self.assertEqual(out["verification"]["article_version"], 2)
+        self.assertEqual(out["status"], "ok")
+        self.assertNotIn("human_review", out)
+        self.assertIn("型号错写", " ".join(self.mocks[3].call_args.kwargs["issues"]))
+
+    def test_followup_cannot_erase_existing_critical_requirements_when_prose_passes(self):
+        self.plan["critical_gaps"] = ["指定软件版本兼容性未验证"]
+        source = pipeline.run(self.task)
+        decision = {"answers": [{"choice": "recheck", "where": "article", "index": -1, "detail": "重查", "quote": "", "direction": "", "reason": ""}]}
+        out = pipeline.continue_review(source, decision)
+        self.assertEqual(out["status"], "ok_with_flags")
+        self.assertTrue(any("指定软件版本" in p for p in out["verification"]["remaining"]))
+
     def test_first_clarification_round_can_still_block(self):
         self.mocks[1].return_value = {**scene(), "need_info": {"blocking": True, "questions": ["请提供需要运行的软件名称和版本。"]}}
         result = pipeline.run({**self.task, "clarify_round": 0})
@@ -75,15 +133,48 @@ class WorkflowTests(unittest.TestCase):
     def test_exhausted_clarification_proceeds_and_keeps_questions_as_pending(self):
         question = "请提供需要运行的软件名称和版本。"
         self.mocks[1].return_value = {**scene(), "need_info": {"blocking": True, "questions": [question]}}
-        result = pipeline.run({**self.task, "clarify_round": 1})
-        self.assertEqual(result["status"], "ok")
+        result = pipeline.run({**self.task, "clarify_round": 2})
+        self.assertEqual(result["status"], "ok_with_flags")
         self.assertFalse(result["artifacts"]["brief"]["need_info"]["blocking"])
         self.assertIn(question, result["artifacts"]["brief"]["need_info"]["questions"])
         self.assertIn(question, result["verification"]["pending_confirm"])
-        self.assertEqual(result["task"]["clarify_round"], 1)
+        self.assertEqual(result["task"]["clarify_round"], 2)
+
+    def test_second_round_can_ask_one_focused_question(self):
+        self.mocks[1].return_value = {**scene(), "need_info": {"blocking": True, "questions": [
+            {"id": "software", "field": "software", "question": "主要用哪些软件？",
+             "options": ["Python 编程", "CAD 建模", "还没确定"]},
+            {"question": "预算多少？", "field": "budget", "options": ["5000 元以内", "8000 元以上"]}]}}
+        result = pipeline.run({**self.task, "clarify_round": 1})
+        self.assertEqual(result["status"], "need_info")
+        self.assertEqual(result["questions"], ["主要用哪些软件？"])
+        self.assertEqual(result["question_specs"][0]["options"], ["Python 编程", "CAD 建模", "还没确定"])
+        self.assertEqual(result["clarification"]["round"], 2)
+
+    def test_repeated_scene_question_does_not_interrupt_specified_model_again(self):
+        question = {"id": "software_use", "field": "software", "question": "主要用什么软件？"}
+        self.mocks[1].return_value = {**scene(), "need_info": {"blocking": True, "questions": [question]}}
+        result = pipeline.run({**self.task, "clarify_round": 1, "clarify_answers": [{**question, "answer": "还没确定"}]})
+        self.assertEqual(result["status"], "ok_with_flags")
+        self.assertIn("article", result)
+
+    def test_unresolved_recommendation_does_not_open_third_round_or_force_model(self):
+        with patch.object(pipeline, "decide_model", return_value={"status": "need_info", "questions": ["必须使用 Windows 吗？"],
+                "candidates": ["测试电脑"]}):
+            result = pipeline.run({**self.task, "product": "", "clarify_round": 2})
+        self.assertEqual(result["status"], "input_required")
+        self.assertEqual(result["question_specs"], [])
+        self.mocks[3].assert_not_called()
+
+    def test_model_ambiguity_uses_the_same_round_limit(self):
+        self.kb.resolve.return_value = ("ambiguous", ["a", "b"])
+        self.kb.info.side_effect = lambda mid: SimpleNamespace(name=mid)
+        result = pipeline.run({**self.task, "clarify_round": 2})
+        self.assertEqual(result["status"], "input_required")
+        self.assertTrue(result["clarification"]["exhausted"])
 
     def test_semantic_feedback_drives_one_revision_and_reviews_displayed_final(self):
-        issue = {"where": "lead", "index": -1, "type": "expression", "quote": "课本已经够重", "detail": "切入泛", "direction": "落到查资料"}
+        issue = {"where": "lead", "index": -1, "type": "requirement", "quote": "课本已经够重", "detail": "未满足用户明确场景", "direction": "落到查资料"}
         self.mocks[5].side_effect = [review([issue]), review()]
         after = {**self.article, "lead": "去图书馆，把要看的资料带齐。"}
         self.mocks[3].side_effect = [self.article, after]
@@ -118,7 +209,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(len(result["article"]["blocks"]), 1)
 
     def test_re_review_budget_cannot_reuse_original_review(self):
-        issue = {"where": "lead", "index": -1, "type": "expression", "detail": "切入泛"}
+        issue = {"where": "lead", "index": -1, "type": "requirement", "detail": "未满足用户明确场景"}
         self.mocks[5].side_effect = [review([issue]), llm.BudgetExceeded("budget")]
         result = pipeline.run(self.task)
         self.assertEqual(result["verification"]["judge"]["overall"], "not_reviewed")

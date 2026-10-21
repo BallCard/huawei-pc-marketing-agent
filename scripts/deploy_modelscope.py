@@ -137,7 +137,7 @@ def deploy():
              "commit", "-m", f"Deploy Huazhang Youju {source_commit[:8]}"], checkout)
     git(["push", "origin", "HEAD:master"], checkout, env)
     print("私有源码与资料包已同步，源代码版本：" + source_commit[:8], flush=True)
-    variables = {k: v for k, v in cfg.items() if k.startswith(("LLM_", "FAST_", "WRITER_", "JUDGE_", "POSTER_"))
+    variables = {k: v for k, v in cfg.items() if k.startswith(("LLM_", "FAST_", "WRITER_", "JUDGE_", "POSTER_", "IMAGE_VERIFY_"))
                  or k in ("AUTH_USERNAME", "AUTH_PASSWORD", "MAX_CONCURRENT_JOBS", "GENERATION_BUDGET_SECONDS")}
     variables.update(HOST="0.0.0.0", PORT="7860", COOKIE_SECURE="1", KB_BACKEND="local",
                      KB_DIR="/app/data/kb", CACHE_DIR="/app/data/cache",

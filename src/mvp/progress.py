@@ -9,7 +9,7 @@ from . import llm
 
 
 NODE = {"scene": "planner", "extract": "planner", "compose": "editor", "repair": "editor",
-        "judge": "reviewer", "rejudge": "reviewer"}
+        "judge": "reviewer", "rejudge": "reviewer", "cross_review": "reviewer", "recross_review": "reviewer"}
 
 
 class Trace:

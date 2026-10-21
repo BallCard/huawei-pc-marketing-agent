@@ -21,20 +21,22 @@ def _load_dotenv() -> None:
 
 _load_dotenv()
 
-# 大模型：OpenAI 兼容接口。开发期默认指向本机反代，无需密钥。档位默认 high。
-LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "http://127.0.0.1:8045/v1").rstrip("/")
+# 文字角色统一使用魔搭 DeepSeek 1017；写作和评审仍是独立上下文。
+DEFAULT_TEXT_MODEL = "deepseek-ai/DeepSeek-V4.1-Flash-1017"
+LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "https://api-inference.modelscope.cn/v1").rstrip("/")
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
-WRITER_MODEL = os.environ.get("WRITER_MODEL", "gemini-3.8-flash-high")  # 写作/视觉
-FAST_MODEL = os.environ.get("FAST_MODEL", "gemini-3.8-flash-low")
-JUDGE_MODEL = os.environ.get("JUDGE_MODEL", "gemini-3.8-flash-medium")
+WRITER_MODEL = os.environ.get("WRITER_MODEL", DEFAULT_TEXT_MODEL)
+FAST_MODEL = os.environ.get("FAST_MODEL", DEFAULT_TEXT_MODEL)
+JUDGE_MODEL = os.environ.get("JUDGE_MODEL", DEFAULT_TEXT_MODEL)
 LLM_TIMEOUT = float(os.environ.get("LLM_TIMEOUT", "180"))
 GENERATION_BUDGET_SECONDS = float(os.environ.get("GENERATION_BUDGET_SECONDS", "240"))
-LLM_THINKING = os.environ.get("LLM_THINKING", "auto")
+LLM_THINKING = os.environ.get("LLM_THINKING", "disabled")
 
 
 def llm_config(role: str = "writer") -> dict:
-    if role == "poster_review":
-        return {"base_url": POSTER_REVIEW_BASE_URL, "api_key": POSTER_REVIEW_API_KEY,
+    if role in ("poster_review", "image_verify"):
+        return {"base_url": POSTER_REVIEW_BASE_URL if role == "poster_review" else IMAGE_VERIFY_BASE_URL,
+                "api_key": POSTER_REVIEW_API_KEY if role == "poster_review" else IMAGE_VERIFY_API_KEY,
                 "thinking": "auto", "extra": {"enable_thinking": False}}
     prefix = {"writer": "WRITER", "fast": "FAST", "judge": "JUDGE"}[role]
     extra = json.loads(os.environ.get(f"{prefix}_LLM_EXTRA_BODY") or "{}")
@@ -68,8 +70,10 @@ CACHE_DIR = Path(os.environ.get("CACHE_DIR") or str(KB_DIR.parent / "cache"))
 KB_BASE_DATE = "2026-10-17"  # 知识库事实基准日
 WEB_IMAGE_SEARCH = os.environ.get("WEB_IMAGE_SEARCH", "1") == "1"
 WEB_IMAGE_TIMEOUT = float(os.environ.get("WEB_IMAGE_TIMEOUT", "25"))
-# 复用 FAST 接口；须为支持图片输入的视觉模型。
-IMAGE_VERIFY_MODEL = os.environ.get("IMAGE_VERIFY_MODEL") or FAST_MODEL
+# 图片核验需要视觉输入，不能随着文字角色切换到 DeepSeek。
+IMAGE_VERIFY_MODEL = os.environ.get("IMAGE_VERIFY_MODEL") or "Qwen/Qwen3.5-35B-A3B"
+IMAGE_VERIFY_BASE_URL = (os.environ.get("IMAGE_VERIFY_BASE_URL") or "https://api-inference.modelscope.cn/v1").rstrip("/")
+IMAGE_VERIFY_API_KEY = os.environ.get("IMAGE_VERIFY_API_KEY") or LLM_API_KEY
 
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "7860"))

@@ -474,7 +474,7 @@ function poll(jid, restorePage = null) {
         pollTimer = null;
         unlock();
         showResult(j.result);
-        if (restorePage && j.result?.status !== "need_info") Studio.navigate(restorePage, false);
+        if (restorePage && !["need_info", "input_required", "budget_exceeded"].includes(j.result?.status)) Studio.navigate(restorePage, false);
         return;
       } else if (j.state === "error") {
         pollTimer = null;
@@ -556,12 +556,12 @@ function showResult(r) {
   posterRedo.hidden = !r.poster || r.poster.status === "blocked";
   posterRedo.textContent = r.poster?.resume_available || r.poster?.status === "error" && r.poster?.task_id && /超时/.test(r.poster?.error || "") ? "继续等待本次生图 ↗" : "重新生图 ↗";
 
-  if (r.status === "need_info" || r.status === "budget_exceeded") {
+  if (r.status === "need_info" || r.status === "input_required" || r.status === "budget_exceeded") {
     const stage = UI.$("#stage");
     if (stage) stage.hidden = true;
     showNeedInfo(r);
     Studio.stopRun();
-    UI.$("process-title").textContent = r.status === "budget_exceeded" ? "本次创作已到时间预算。" : "再补充一点，就能继续。";
+    UI.$("process-title").textContent = r.status === "budget_exceeded" ? "本次创作已到时间预算。" : r.status === "input_required" ? "暂时无法安全确定型号。" : "再确认一点，就能继续。";
     return;
   }
 
@@ -626,21 +626,21 @@ function showNeedInfo(r) {
   if (need) need.replaceChildren();
 
   const info = r.need_info || r.scene_judgement?.need_info || {};
-  const questions = (r.questions || info.questions || []).map(q => String(q || "").trim()).filter(Boolean);
+  const specs = r.question_specs || r.questions || info.questions || [];
+  const questions = specs.map(q => String(typeof q === "object" && q ? q.question || "" : q || "").trim()).filter(Boolean);
   const candidates = info.candidates || r.candidates || [];
   const round = Math.max(0, Number(r.task?.clarify_round || 0) || 0);
-  const modelChoice = Array.isArray(candidates) && candidates.length > 0;
-  // 场景追问只消耗一轮；型号选择仍可继续，因为它是可点选的具体决定。
-  const exhausted = round >= 1 && !modelChoice;
+  const exhausted = round >= 2 || r.status === "input_required";
 
   // 一次一个问题的悬浮追问；主页面不新增内容，Bot 仍然一屏显示。
-  if (questions.length > 0 && !exhausted && window.AgentAsk) {
+  if (r.status === "need_info" && questions.length > 0 && !exhausted && window.AgentAsk) {
     window.AgentAsk.open({
       jobId: activeJobId || "",
-      questions,
+      questions: specs,
+      round: r.clarification?.round || round + 1,
       candidates,
       task: r.task || readTask(),
-      onComplete: (answers, task) => submit("", { ...task, clarify_round: modelChoice ? round : round + 1 }),
+      onComplete: (answers, task) => submit("", task),
       onBack: () => Studio.navigate("create"),
       onProgress: () => {
         if (current?.status !== "need_info") return;
@@ -655,11 +655,11 @@ function showNeedInfo(r) {
   if (!need) return;
 
   const card = UI.el("div", { class: "card need-card" }, [
-    UI.el("h3", {}, [r.status === "budget_exceeded" ? "本次未在时间预算内完成" : exhausted ? "还需要确认这些信息" : "需要补充信息"])
+    UI.el("h3", {}, [r.status === "budget_exceeded" ? "本次未在时间预算内完成" : exhausted ? "暂时无法确定合适型号" : "需要补充信息"])
   ]);
 
   if (exhausted) {
-    card.appendChild(UI.el("p", {}, ["已根据你的回答尝试过一次。为避免反复追问，请返回创作简报补充具体信息。"]));
+    card.appendChild(UI.el("p", {}, [r.message || "已完成两轮需求确认。现有信息不足以安全选型，请在创作简报中明确型号或调整必须条件。"]));
   }
 
   if (questions.length > 0) {
@@ -670,7 +670,7 @@ function showNeedInfo(r) {
     card.appendChild(ul);
   }
 
-  if (Array.isArray(candidates) && candidates.length > 0) {
+  if (!exhausted && Array.isArray(candidates) && candidates.length > 0) {
     const candWrap = UI.el("div", { class: "need-candidates" });
     candWrap.appendChild(UI.el("span", { class: "need-cand-label" }, ["推荐候选机型："]));
     candidates.forEach(c => {
@@ -1137,14 +1137,16 @@ function renderVerify(r) {
 
   const container = document.getElementById("verify") || dbg;
   container.textContent = "";
-  if (review.needsReview || r.human_review) container.appendChild(UI.el("div", {class:"review-feedback-entry"},
-    UI.el("div", {}, UI.el("b", {}, "终审需要你的判断"), UI.el("p", {}, "逐项查看原因，选择修改、复审或人工裁定。")),
+  const triage = vf.triage;
+  if (review.needsReview || r.human_review || r.automatic_followup) container.appendChild(UI.el("div", {class:"review-feedback-entry"},
+    UI.el("div", {}, UI.el("b", {}, triage ? triage.human ? `仅 ${triage.human} 项重要条件需要确认` : "继续自动修订或核验" : "查看评审处理结果"),
+      UI.el("p", {}, triage ? `已排除 ${triage.dismissed} 项误报，合并 ${triage.merged} 条重复意见；${triage.automatic} 项自动处理，${triage.optional} 项可选优化。` : "轻微建议无需裁定；仅保留重要未决事项。")),
     UI.el("button", {type:"button", class:"btn-secondary", onclick:() => window.ReviewQuestions.open(r)}, "问题详情 ↗")));
   if (review.state === "incomplete") container.appendChild(UI.el("p", {}, review.detail));
 
   if (remaining.length > 0) {
     const pRem = document.createElement("p");
-    pRem.textContent = "自动流程尚未解决的事项：";
+    pRem.textContent = "自动流程的剩余记录（具体处理见问题详情）：";
     container.appendChild(pRem);
 
     const ulRem = document.createElement("ul");
@@ -1187,6 +1189,8 @@ function renderVerify(r) {
   }
 
   const judge = vf.judge || {};
+  if (judge.improvements?.length) container.appendChild(UI.el("details", {}, UI.el("summary", {}, "可选优化 · 不影响通过"),
+    UI.el("ul", {}, ...judge.improvements.map(p => UI.el("li", {}, p.detail || p.direction || "")))));
   const problems = judge.problems || [];
   if (problems.length > 0) {
     const det = document.createElement("details");

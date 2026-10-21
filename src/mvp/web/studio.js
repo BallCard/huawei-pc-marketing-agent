@@ -93,8 +93,7 @@
   }
   function syncOptions() {
     const constraints = UI.$("constraints").value.trim();
-    const speed = UI.$("speed").value === "fast" ? "快速创作" : "质量优先";
-    UI.$("open-options").title = `${constraints || "不限内容"} · ${speed}`;
+    UI.$("open-options").title = `${constraints || "不限内容"} · DeepSeek 1017`;
   }
   function toast(message) {
     clearTimeout(toastTimer);

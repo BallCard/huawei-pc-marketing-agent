@@ -79,6 +79,16 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         return response
 
+    def test_question_history_and_round_survive_task_request_validation(self):
+        self.login()
+        answer = {"id": "software_use", "field": "software", "question": "主要用什么软件？", "answer": "Python 开发"}
+        with patch.object(service, "_start", return_value="test-job") as start:
+            response = self.client.post("/api/run", json={"clarify_round": 1, "clarify_answers": [answer]})
+        self.assertEqual(response.status_code, 200)
+        task = start.call_args.args[0]
+        self.assertEqual(task["clarify_round"], 1)
+        self.assertEqual(task["clarify_answers"], [answer])
+
     def test_login_protects_data_static_and_task_endpoints_and_logout_revokes_cookie(self):
         self.assertEqual(self.client.get("/", follow_redirects=False).headers["location"], "/login")
         for path in ("/api/info", "/api/job/unknown", "/img/model/file.jpg", "/static/app.js"):

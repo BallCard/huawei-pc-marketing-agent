@@ -23,6 +23,15 @@
 .review-decision-summary { padding-left: 22px; margin: 24px 0; }
 .review-summary-details { margin-top: 20px; font-size: 13px; color: var(--text-muted); }
 .review-summary-details > summary { cursor: pointer; }
+.review-submit-effect { font-size: 14px; line-height: 1.8; }
+.review-summary-details .review-resolution { margin-top: 12px; }
+.review-question-actions .btn-primary { white-space: nowrap; }
+.review-triage { margin: 16px 0; padding: 12px; background: #9ca98f12; border-radius: 6px; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+.review-triage p { margin: 0; }
+.review-triage small { display: block; color: var(--text-muted); }
+.review-triage details { margin-top: 8px; }
+.review-triage summary { cursor: pointer; }
+.review-triage ul { padding-left: 18px; }
 .review-decision-summary li { padding: 12px 0; border-bottom: 1px solid var(--border-line); font-size: 13px; line-height: 1.8; }
 .review-decision-summary b, .review-decision-summary small { display: block; }
 .review-decision-summary b { color: var(--accent-terracotta); font-weight: 500; }

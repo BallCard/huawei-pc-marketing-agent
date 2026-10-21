@@ -87,7 +87,7 @@ def prepare(result: dict, folder: Path) -> dict:
     payload = {"逐字文案": copy_lines, "场景": scene.get("user_problem") or task.get("scenario", ""), "参考风格": ref["style"]}
     old = (result.get("poster") or {}).get("review") or {}
     if old.get("problems"):
-        payload["重生要求"] = [str(p.get("direction") or p.get("detail", ""))[:60] for p in old["problems"][:2]]
+        payload["重生要求"] = [str(p.get("direction") or p.get("detail", "")) for p in old["problems"]]
     prompt = ((settings.PKG / "prompts" / "poster-image.md").read_text(encoding="utf-8") + "\n" + json.dumps(payload, ensure_ascii=False) +
               "\n图1是唯一产品外观依据，保持其配色、形态、接口和视角。图2只借鉴配色与留白，把旧海报的所有文字、日期、Logo及产品全部替换。" +
               "不要拼贴两张图，不要广告牌、灯箱、照片外框或街景；画布本身就是最终海报。不要新增文字、价格、二维码、配件或未获证实的能力。")
@@ -308,21 +308,64 @@ def inspect_image(result: dict, prepared: dict, path: Path, feedback: list[str] 
     texts = transcription["observed_texts"]
     review["observed_texts"] = texts
     for position in transcription.get("unreadable") or []:
-        problems.append({"where":"poster", "index":-1, "type":"readability", "quote":str(position),
+        problems.append({"where":"poster", "index":-1, "type":"readability", "quote":str(position), "deterministic":True,
                          "detail":"独立文字识别未能辨认此处，不能视为文案完整。", "direction":"提高文字可读性后重新核验。"})
     actual = normalized("".join(texts))
     for expected in prepared["copy"]:
         if normalized(expected) not in actual:
-            problems.append({"where":"poster", "index":-1, "type":"text", "quote":expected,
+            problems.append({"where":"poster", "index":-1, "type":"text", "quote":expected, "deterministic":True,
                              "detail":"成图文字转录未完整匹配这句批准文案，需检查错字、缺字或可读性。", "direction":"确保原句与限定条件完整清晰地呈现。"})
     with Image.open(path) as image:
         width, height = image.size
     if abs(width / height - .75) > .06 or width < 720 or height < 960:
-        problems.append({"where":"poster", "index":-1, "type":"readability", "quote":"海报尺寸",
+        problems.append({"where":"poster", "index":-1, "type":"readability", "quote":"海报尺寸", "deterministic":True,
                          "detail":"成图比例或清晰度未达到竖版预览要求。", "direction":"生成至少 720×960、接近 3:4 的竖版海报，不裁切文字。"})
-    review["overall"] = ("needs_fix" if problems else "pass" if review.get("overall") == "pass" else "incomplete")
+    review["overall"] = ("incomplete" if review.get("overall") == "incomplete" else
+                         "needs_fix" if problems else "pass" if review.get("overall") == "pass" else "incomplete")
     review["model"] = settings.POSTER_REVIEW_MODEL
-    return review
+    return cross_check_image(review, result, prepared, path)
+
+
+def cross_check_image(review: dict, result: dict, prepared: dict, path: Path) -> dict:
+    from .reconcile import normalize, issue_id
+    out = normalize(review)
+    candidates = {issue_id(p): p for p in out["problems"] if not p.get("deterministic")}
+    if not candidates or review.get("overall") == "incomplete":
+        out["cross_review"] = {"status": "not_needed", "dismissed": []}
+        return out
+    payload = {"争议": [{"id": key, **p} for key, p in candidates.items()], "需求": result.get("task"),
+               "事实": result.get("evidence", {}).get("facts", []), "实际文字转录": out.get("observed_texts", [])}
+    try:
+        data = llm.parse_json(llm.chat([
+            {"role": "system", "content": (settings.PKG / "prompts" / "cross-review-poster.md").read_text(encoding="utf-8")},
+            {"role": "user", "content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)},
+             {"type": "image_url", "image_url": {"url": data_url(path)}},
+             {"type": "image_url", "image_url": {"url": data_url(prepared["product_path"])}}]}],
+            model=settings.POSTER_REVIEW_MODEL, role="poster_review", json_mode=True, max_tokens=2400,
+            retries=0, timeout=min(35, settings.POSTER_REVIEW_TIMEOUT)))
+        decisions = data.get("decisions")
+        if not isinstance(decisions, list):
+            raise ValueError("成图交叉核对缺少结论")
+    except (llm.LLMError, ValueError, AttributeError, TypeError):
+        out["cross_review"] = {"status": "incomplete", "dismissed": [], "reason": "成图交叉核对未完成，保留原始风险。"}
+        return out
+    kept, dismissed, audit = [], [], []
+    for p in out["problems"]:
+        matches = [d for d in decisions if isinstance(d, dict) and d.get("id") == issue_id(p)]
+        d = matches[0] if len(matches) == 1 and not p.get("deterministic") else {}
+        direct = all(len(str(d.get(k) or "").strip()) >= 6 for k in ("reason", "generated_observation", "reference_observation"))
+        dismiss = (d.get("decision") == "dismiss" and direct and
+                   (p.get("type") == "appearance" and d.get("verdict") == "matching_visible_feature" or
+                    p.get("type") == "scene" and d.get("verdict") == "incidental_prop"))
+        row = {**p, "cross_check": "dismissed" if dismiss else "confirmed" if p.get("deterministic") or (
+            d.get("decision") == "confirm" and direct) else "unresolved", "cross_reason": d.get("reason", ""),
+            "root_cause": str(d.get("root_cause") or ""), "generated_observation": d.get("generated_observation", ""),
+            "reference_observation": d.get("reference_observation", "")}
+        (dismissed if dismiss else kept).append(row)
+        audit.append({"id": issue_id(p), **d, "accepted": row["cross_check"]})
+    out.update(problems=kept, must_fix=kept[:], overall="needs_fix" if kept else "pass",
+               cross_review={"status": "completed", "dismissed": dismissed, "decisions": audit})
+    return out
 
 
 def attach(source: dict, jid: str, on_update=None, *, review_only=False, decision=None) -> dict:
@@ -382,7 +425,7 @@ def attach(source: dict, jid: str, on_update=None, *, review_only=False, decisio
             checked = tr.run("poster_review", "核对成图文字、外观与场景", lambda: inspect_image(source, prepared, folder / "poster.png",
                              feedback=instructions(decision) if decision else None))
             if candidate.get("reference_upload_warning"):
-                checked["problems"].append({"where":"poster", "index":-1, "type":"reference", "detail":candidate["reference_upload_warning"],
+                checked["problems"].append({"where":"poster", "index":-1, "type":"reference", "deterministic":True, "detail":candidate["reference_upload_warning"],
                                             "direction":"确认产品图和风格图上传成功后，再由用户决定是否重新生图。"})
                 checked["overall"] = "needs_fix"
             candidate.update(review=checked, status="passed" if checked["overall"] == "pass" else "needs_review")
@@ -413,4 +456,6 @@ def attach(source: dict, jid: str, on_update=None, *, review_only=False, decisio
                   total_ms=previous_ms + int((time.monotonic() - started) * 1000))
     result["llm_calls"] = result.get("llm_calls", []) + tr.calls
     tr.closed = True
+    from .review import annotate
+    annotate(result)
     return result

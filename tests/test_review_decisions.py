@@ -14,7 +14,7 @@ from src.mvp.jobs import JobStore
 def result_fixture():
     return {"task": {"platform": "moments"}, "article": {"title": "每天带着走"},
             "verification": {"article_version": 2, "judge": {"overall": "needs_fix", "problems": [
-                {"where": "title", "index": -1, "quote": "每天带着走", "type": "expression",
+                {"where": "title", "index": -1, "quote": "每天带着走", "type": "requirement",
                  "detail": "标题未点明使用场景", "direction": "增加通勤场景"}]},
                 "remaining": ["审核模型：标题未点明使用场景"]}, "evidence": {"facts": []}, "status": "ok_with_flags"}
 
@@ -99,6 +99,36 @@ class ReviewAPITests(unittest.TestCase):
             self.assertEqual(captured[0][0]["article"], self.original["article"])
             self.assertEqual(captured[0][1]["answers"][0]["detail"], "标题未点明使用场景")
         self.assertEqual(self.client.post("/api/job/source/review", json=self.payload("fix", "continue")).status_code, 409)
+
+    def test_confirmed_errors_continue_without_a_questionnaire_or_fake_human_adoption(self):
+        source = copy.deepcopy(self.original)
+        source["verification"]["judge"]["problems"][0]["cross_check"] = "confirmed"
+        self.store.update("source", result=source)
+        form = self.client.get("/api/job/source/review").json()
+        self.assertEqual(form["questions"], [])
+        with patch.object(service, "_start", return_value="automatic-next") as start:
+            response = self.client.post("/api/job/source/review", json={"token": form["token"], "answers": [], "resolution": "continue"})
+        self.assertEqual(response.status_code, 200)
+        saved = self.store.get("source")["result"]
+        self.assertNotIn("human_review", saved)
+        self.assertEqual(saved["automatic_followup"]["mode"], "automatic")
+        self.assertEqual(start.call_args.kwargs["decision"]["answers"][0]["choice"], "fix")
+        self.assertEqual(self.client.post("/api/job/source/review", json={"token": form["token"], "answers": [], "resolution": "continue"}).status_code, 409)
+
+    def test_all_seven_completed_fix_answers_can_be_submitted_together(self):
+        source = copy.deepcopy(self.original)
+        first = source["verification"]["judge"]["problems"][0]
+        source["verification"]["judge"]["problems"] = [{**first, "detail": f"第 {i+1} 条需要修改"} for i in range(7)]
+        source["verification"]["remaining"] = []
+        self.store.update("source", result=source)
+        payload = self.payload("fix", "continue")
+        self.assertEqual(len(payload["answers"]), 7)
+        with patch.object(service, "_start", return_value="seven-fixed") as start:
+            response = self.client.post("/api/job/source/review", json=payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["job"], "seven-fixed")
+        self.assertEqual(len(start.call_args.kwargs["decision"]["answers"]), 7)
+        self.assertTrue(all(a["choice"] == "fix" for a in start.call_args.kwargs["decision"]["answers"]))
 
 
 if __name__ == "__main__":

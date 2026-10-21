@@ -105,17 +105,25 @@ async def access_control(request: Request, call_next):
     return response
 
 
+class ClarifyAnswer(BaseModel):
+    id: str = ""
+    field: str = "other"
+    question: str
+    answer: str
+
+
 class TaskIn(BaseModel):
     product: str = ""
     audience: str = ""
     scenario: str = ""
     platform: str = "xiaohongshu"
-    speed: str = "quality"   # quality=写作/审核用 high；fast=全 low，演示用
+    speed: str = "quality"   # 保留已有简报档位；当前文字角色统一使用 DeepSeek 1017
     goal: str = ""
     constraints: list[str] = Field(default_factory=list)
     extra: str = ""
     instruction: str = ""
     clarify_round: int = Field(default=0, ge=0)
+    clarify_answers: list[ClarifyAnswer] = Field(default_factory=list)
 
 
 class LoginIn(BaseModel):
@@ -224,6 +232,7 @@ def _start(task: dict, instruction: str | None, *, source: dict | None = None, d
             if poster_only:
                 result = copy.deepcopy(source)
                 result["poster_parent"] = source.get("job_id")
+                result.pop("automatic_followup", None)
                 result["trace"] = [s for s in result.get("trace", []) if not s.get("step", "").startswith("poster_")]
                 result["total_ms"] = 0
                 if result.get("human_review"):
@@ -304,7 +313,7 @@ def decide_review(jid: str, payload: ReviewDecision):
             raise HTTPException(409, str(exc)) from None
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from None
-        previous = result.get("human_review") or {}
+        previous = result.get("human_review") or result.get("automatic_followup") or {}
         if previous.get("next_job"):
             raise HTTPException(409, "该稿件已提交后续处理，请打开最新任务再裁定。")
         decision["actor"] = settings.AUTH_USERNAME or "本机用户"
@@ -318,7 +327,7 @@ def decide_review(jid: str, payload: ReviewDecision):
             result["human_review"] = decision
             next_job = _start(result["task"], None, source=result, poster_only=True)
             decision["next_job"] = next_job
-        result["human_review"] = decision
+        result["human_review" if decision.get("mode") == "human" else "automatic_followup"] = decision
         history = saved.get("review_history", []) + [decision]
         STORE.update(jid, result=result, review_history=history)
         return {"result": result, "job": next_job}
