@@ -83,7 +83,7 @@ async def access_control(request: Request, call_next):
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
         return response
-    public = {"/healthz", "/about", "/login", "/api/login", "/static/style.css", "/static/login.css", "/static/fonts.css", "/static/typography.css",
+    public = {"/healthz", "/about", "/login", "/api/login", "/static/style.css", "/static/login.css", "/static/fonts.css", "/static/typography.css", "/static/mobile.css",
               "/static/login.js", "/static/brand/logo-mark.svg", "/static/brand/app-icon.svg",
               "/static/gallery/welcome.jpg", "/static/gallery/brief.jpg", "/static/gallery/workflow.jpg",
               "/static/gallery/result.jpg", "/static/gallery/evidence.jpg"}
