@@ -3,32 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#f8f7f3">
+  <meta name="theme-color" content="#f5f2ec">
   <title>华章有据</title>
   <meta name="application-name" content="华章有据">
-  <meta name="description" content="基于产品知识库，为华为电脑生成适配四个平台、附事实核验的营销图文。">
+  <meta name="description" content="为华为品牌门店的店长与销售，围绕门店资料与私域触点生成附事实核验的营销图文。">
   <link rel="icon" type="image/svg+xml" href="/static/brand/app-icon.svg">
   <link rel="preload" href="/static/fonts/noto-sans-sc/noto-sans-sc-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/fonts.css?v=1.2.0">
-  <link rel="stylesheet" href="/static/style.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/style.css?v=1.4.0">
   <link rel="stylesheet" href="/static/platforms.css?v=1.2.0">
   <link rel="stylesheet" href="/static/platforms-fixes.css?v=1.2.0">
-  <link rel="stylesheet" href="/static/studio.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/studio.css?v=1.5.0">
   <link rel="stylesheet" href="/static/preview-devices.css?v=1.2.0">
-  <link rel="stylesheet" href="/static/work-page.css?v=1.2.0">
-  <link rel="stylesheet" href="/static/process.css?v=1.2.0">
-  <link rel="stylesheet" href="/static/agent-ask.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/work-page.css?v=1.4.0">
+  <link rel="stylesheet" href="/static/process.css?v=1.4.0">
+  <link rel="stylesheet" href="/static/agent-ask.css?v=1.4.0">
   <link rel="stylesheet" href="/static/review-questions.css?v=1.2.0">
   <link rel="stylesheet" href="/static/poster-image.css?v=1.2.0">
   <link rel="stylesheet" href="/static/typography.css?v=1.2.0">
-  <link rel="stylesheet" href="/static/mobile.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/mobile.css?v=1.3.0">
+  <link rel="stylesheet" href="/static/creative-context.css?v=1.6.1">
+  <link rel="stylesheet" href="/static/insight-visual.css?v=1.5.0">
 </head>
 <body>
   <section id="welcome" class="welcome" aria-labelledby="welcome-title">
     <div class="welcome-content">
       <img class="welcome-logo" src="/static/brand/logo-mark.svg" width="76" height="76" alt="">
       <h1 id="welcome-title">华章有据</h1>
-      <p>从产品知识出发，生成有据可查的华为电脑营销图文。</p>
+      <p>为门店店长与销售，围绕门店与私域，生成有据可查的华为电脑营销图文。</p>
       <button id="enter-studio" class="welcome-enter" type="button">进入体验 <span aria-hidden="true">↗</span></button>
     </div>
     <span class="welcome-edition">华章有据 · v1.2</span>
@@ -36,6 +38,7 @@
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <!-- Lucide outline icons, ISC license: https://lucide.dev/license -->
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
     <symbol id="i-pen" viewBox="0 0 24 24"><path d="m16 3 5 5M4 20l4-1 13-13a2.1 2.1 0 0 0-5-3L3 16l-1 6Z"/></symbol>
     <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 0v6h6M8 13h8m-8 4h6"/></symbol>
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
@@ -46,6 +49,10 @@
     <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></symbol>
     <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
     <symbol id="i-poster" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h6m-6 4h6m-6 6h3"/></symbol>
+    <symbol id="i-store" viewBox="0 0 24 24"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M22 7v3a2 2 0 0 1-2 2 2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2Z"/><path d="M9 22v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
   </svg>
   <header class="site-header">
     <a href="#create" class="brand" aria-label="华章有据首页"><img class="brand-mark" src="/static/brand/logo-mark.svg" width="29" height="29" alt=""><b>华章有据</b></a>
@@ -55,7 +62,10 @@
       <button id="tab-work" type="button" role="tab" data-page="work" aria-controls="page-work" aria-selected="false" tabindex="-1">图文作品</button>
       <button id="tab-evidence" type="button" role="tab" data-page="evidence" aria-controls="page-evidence" aria-selected="false" tabindex="-1">事实核验</button>
     </nav>
-    <form id="session-exit" class="session-exit" action="/logout" method="post" hidden><button type="submit">退出登录</button></form>
+    <div class="header-actions">
+      <button id="tab-store" type="button" class="store-entry" data-page="store" aria-controls="page-store"><svg class="icon"><use href="#i-store"/></svg><span>我的门店</span><i class="store-entry-dot" id="store-entry-dot" aria-hidden="true"></i></button>
+      <form id="session-exit" class="session-exit" action="/logout" method="post" hidden><button type="submit">退出登录</button></form>
+    </div>
   </header>
   <main id="workspace" class="workspace">
     <section id="page-create" class="page page-create" role="tabpanel" aria-labelledby="tab-create" tabindex="0">
@@ -72,27 +82,155 @@
         </svg>
       </div>
       <div id="task-panel" class="brief">
-        <div class="brief-top"><button id="open-presets" type="button" class="text-button">试试示例 <span aria-hidden="true">↗</span></button></div>
-        <h2>这次，想为谁写？</h2>
+        <h2>这次，为门店写什么？</h2>
         <div class="input-modes" role="tablist" aria-label="场景输入方式"><button id="mode-structured" type="button" role="tab" data-input-mode="structured" aria-selected="true" aria-controls="structured-fields">选择场景</button><button id="mode-sentence" type="button" role="tab" data-input-mode="sentence" aria-selected="false" aria-controls="sentence-fields" tabindex="-1">说一句话</button></div>
         <form id="task-form" class="task-form">
-          <div id="structured-fields" class="mode-fields" role="tabpanel" aria-labelledby="mode-structured"><div class="field-pair">
-            <div class="form-group"><label for="audience">写给谁看</label><input id="audience" list="audienceList" value="大学新生" placeholder="选择或输入人群" autocomplete="off"><datalist id="audienceList"><option value="大学新生"><option value="经常出差的职场人"><option value="摄影与设计创作者"><option value="准备给孩子换电脑的家长"><option value="职场新人"></datalist></div>
-            <div class="form-group"><label for="scenario">发生在什么场景</label><input id="scenario" list="sceneList" value="开学季" placeholder="选择或输入场景" autocomplete="off"><datalist id="sceneList"></datalist></div>
-          </div></div>
+          <div id="structured-fields" class="mode-fields" role="tabpanel" aria-labelledby="mode-structured">
+            <fieldset class="spine-step">
+              <legend class="spine-label"><span class="spine-num" aria-hidden="true">1</span>写给谁，在什么场景</legend>
+              <div class="spine-grid">
+                <div class="form-group"><label for="audience">人群</label><input id="audience" list="audienceList" value="大学新生" placeholder="选择或输入人群" autocomplete="off"><datalist id="audienceList"><option value="大学新生"><option value="经常出差的职场人"><option value="摄影与设计创作者"><option value="准备给孩子换电脑的家长"><option value="职场新人"></datalist></div>
+                <div class="form-group"><label for="scenario">场景</label><input id="scenario" list="sceneList" value="开学季" placeholder="选择或输入场景" autocomplete="off"><datalist id="sceneList"></datalist></div>
+                <div class="form-group"><label for="product">型号<span class="spine-optional">选填</span></label><input id="product" list="modelList" placeholder="留空自动推荐" autocomplete="off"><datalist id="modelList"></datalist></div>
+              </div>
+            </fieldset>
+          </div>
           <div id="sentence-fields" class="mode-fields" role="tabpanel" aria-labelledby="mode-sentence" hidden><label class="sr-only" for="scene-description">一句话描述创作场景</label><textarea id="scene-description" rows="3" placeholder="比如：给经常背电脑去图书馆的大学新生，写一篇突出便携和接口的小红书笔记，邀请他们到店试试。"></textarea></div>
-          <div class="form-group"><div class="label-row"><label for="product">电脑型号（选填）</label></div><input id="product" list="modelList" placeholder="留空自动推荐" autocomplete="off"><datalist id="modelList"></datalist></div>
-          <fieldset class="platform-field"><legend>准备发布到哪里</legend><select id="platform" class="sr-only" aria-label="发布平台" tabindex="-1"><option value="xiaohongshu">小红书</option><option value="wechat_article">公众号</option><option value="moments">朋友圈</option><option value="poster">门店海报</option></select><div class="platform-options" role="group" aria-label="选择发布平台">
-            <button type="button" data-platform="xiaohongshu" aria-pressed="true"><svg class="icon"><use href="#i-book"/></svg><span>小红书</span></button>
-            <button type="button" data-platform="wechat_article" aria-pressed="false"><svg class="icon"><use href="#i-file"/></svg><span>公众号</span></button>
-            <button type="button" data-platform="moments" aria-pressed="false"><svg class="icon"><use href="#i-grid"/></svg><span>朋友圈</span></button>
-            <button type="button" data-platform="poster" aria-pressed="false"><svg class="icon"><use href="#i-poster"/></svg><span>门店海报</span></button>
-          </div></fieldset>
-          <div class="brief-options"><button id="open-options" class="text-button" type="button"><svg class="icon"><use href="#i-sliders"/></svg>内容偏好</button></div>
+          <div class="spine-row">
+            <fieldset class="spine-step platform-field"><legend class="spine-label"><span class="spine-num" aria-hidden="true">2</span>发到哪里</legend><select id="platform" class="sr-only" aria-label="发布平台" tabindex="-1"><option value="xiaohongshu">小红书</option><option value="wechat_article">公众号</option><option value="moments">朋友圈</option><option value="poster">门店海报</option></select><div class="platform-options" role="group" aria-label="选择发布平台">
+              <button type="button" data-platform="xiaohongshu" aria-pressed="true"><svg class="icon"><use href="#i-book"/></svg><span>小红书</span></button>
+              <button type="button" data-platform="wechat_article" aria-pressed="false"><svg class="icon"><use href="#i-file"/></svg><span>公众号</span></button>
+              <button type="button" data-platform="moments" aria-pressed="false"><svg class="icon"><use href="#i-grid"/></svg><span>朋友圈</span></button>
+              <button type="button" data-platform="poster" aria-pressed="false"><svg class="icon"><use href="#i-poster"/></svg><span>门店海报</span></button>
+            </div></fieldset>
+            <fieldset class="spine-step goal-field"><legend class="spine-label"><span class="spine-num" aria-hidden="true">3</span>要什么结果</legend><div class="goal-chips" role="group" aria-label="门店经营目标">
+              <button type="button" data-goal="引导到店" aria-pressed="false">引导到店</button>
+              <button type="button" data-goal="预约体验" aria-pressed="false">预约体验</button>
+              <button type="button" data-goal="私信咨询" aria-pressed="false">私信咨询</button>
+              <button type="button" data-goal="消化库存" aria-pressed="false">消化库存</button>
+            </div></fieldset>
+          </div>
+          <fieldset class="spine-step touchpoint-field">
+            <legend class="spine-label"><span class="spine-num" aria-hidden="true">4</span>经哪些私域触达</legend>
+            <div class="touchpoint-track" role="group" aria-label="私域触点">
+              <button type="button" data-touchpoint="企业微信私信" aria-pressed="false"><svg class="icon"><use href="#i-chat"/></svg><span>企业微信私信</span></button>
+              <button type="button" data-touchpoint="朋友圈" aria-pressed="false"><svg class="icon"><use href="#i-grid"/></svg><span>朋友圈</span></button>
+              <button type="button" data-touchpoint="门店社群" aria-pressed="false"><svg class="icon"><use href="#i-users"/></svg><span>门店社群</span></button>
+              <button type="button" data-touchpoint="到店邀约" aria-pressed="false"><svg class="icon"><use href="#i-target"/></svg><span>到店邀约</span></button>
+            </div>
+          </fieldset>
           <p id="form-error" class="form-error" role="alert" hidden></p>
+          <div class="spine-foot"><button id="open-presets" type="button" class="text-button">试试示例 <span aria-hidden="true">↗</span></button><button id="open-store-loop" type="button" class="text-button">门店私域链路 <span aria-hidden="true">↗</span></button><button id="view-prompts" type="button" class="text-button">提示词对照</button><button id="compare-prompts" type="button" class="text-button">A/B 对照</button><button id="open-options" class="text-button" type="button"><svg class="icon"><use href="#i-sliders"/></svg>内容偏好</button></div>
           <div class="form-action"><button id="go" class="btn-primary" type="submit"><span class="btn-text">开始创作</span><svg class="icon"><use href="#i-arrow"/></svg></button></div>
         </form>
       </div>
+    </section>
+    <section id="page-store" class="page page-store" role="tabpanel" aria-labelledby="tab-store" tabindex="0" hidden>
+      <div class="store-hero">
+        <div class="store-hero-main">
+          <p class="section-label">我的门店<span class="store-demo-flag">示例数据</span></p>
+          <h2>华为授权体验店 · 杭州万象城店</h2>
+          <p class="store-hero-meta">门店编号 <b>HZ-WXC-018</b> · 华东 / 浙江 · 营业中 10:00–22:00</p>
+          <p class="store-scope" id="store-scope">全店视角 · 含社群、库存与全部跟进</p>
+        </div>
+        <div class="store-hero-side">
+          <div class="store-role-row">
+            <label class="store-role-label" id="store-role-label" for="store-role-group">我的角色</label>
+            <div class="store-role" id="store-role-group" role="group" aria-labelledby="store-role-label">
+              <button id="role-manager" type="button" data-role="manager" aria-pressed="true">门店店长</button>
+              <button id="role-sales" type="button" data-role="sales" aria-pressed="false">销售顾问</button>
+            </div>
+          </div>
+          <button id="open-context" class="text-button store-manage" type="button">管理门店资料 <span aria-hidden="true">↗</span></button>
+        </div>
+      </div>
+
+      <div class="store-kpis">
+        <div class="store-kpi">
+          <span class="store-kpi-label">今日新增企微好友</span>
+          <b data-mgr="12" data-sales="7">12</b>
+          <small class="up">较昨日 +4</small>
+          <span class="kpi-spark" aria-hidden="true"><i style="--h:38%"></i><i style="--h:52%"></i><i style="--h:44%"></i><i style="--h:70%"></i><i style="--h:58%"></i><i style="--h:76%"></i><i style="--h:100%"></i></span>
+        </div>
+        <div class="store-kpi">
+          <span class="store-kpi-label">社群互动</span>
+          <b data-mgr="46" data-sales="18">46</b>
+          <small>3 个群有接龙</small>
+          <span class="kpi-spark" aria-hidden="true"><i style="--h:30%"></i><i style="--h:46%"></i><i style="--h:64%"></i><i style="--h:40%"></i><i style="--h:72%"></i><i style="--h:58%"></i><i style="--h:88%"></i></span>
+        </div>
+        <div class="store-kpi warn">
+          <span class="store-kpi-label">待跟进顾客</span>
+          <b data-mgr="5" data-sales="3">5</b>
+          <small>2 位超 24 小时</small>
+          <span class="kpi-spark" aria-hidden="true"><i style="--h:20%"></i><i style="--h:34%"></i><i style="--h:28%"></i><i style="--h:52%"></i><i style="--h:44%"></i><i style="--h:66%"></i><i style="--h:60%"></i></span>
+        </div>
+        <div class="store-kpi">
+          <span class="store-kpi-label">今日到店</span>
+          <b data-mgr="8" data-sales="4">8</b>
+          <small>其中预约 3 位</small>
+          <span class="kpi-spark" aria-hidden="true"><i style="--h:26%"></i><i style="--h:40%"></i><i style="--h:36%"></i><i style="--h:56%"></i><i style="--h:48%"></i><i style="--h:70%"></i><i style="--h:80%"></i></span>
+        </div>
+      </div>
+
+      <div class="store-columns">
+        <details class="store-panel store-feed" open>
+          <summary class="store-panel-head">
+            <h3>企微与社群动态</h3>
+            <span class="store-panel-count">今日 7 条</span>
+            <svg class="icon store-panel-chevron"><use href="#i-chevron"/></svg>
+          </summary>
+          <div class="store-panel-body">
+            <div class="feed-filters" role="group" aria-label="按类型筛选动态">
+              <button type="button" data-feed-filter="all" aria-pressed="true">全部 <b>7</b></button>
+              <button type="button" data-feed-filter="new" aria-pressed="false">新客加微 <b>1</b></button>
+              <button type="button" data-feed-filter="group" aria-pressed="false">社群接龙 <b>1</b></button>
+              <button type="button" data-feed-filter="visit" aria-pressed="false">到店 / 预约 <b>3</b></button>
+              <button type="button" data-feed-filter="ask" aria-pressed="false">待确认 <b>1</b></button>
+              <button type="button" data-feed-filter="stock" aria-pressed="false">库存 <b>1</b></button>
+              <button type="button" data-feed-filter="old" aria-pressed="false">老客换新 <b>1</b></button>
+            </div>
+            <p class="feed-status" id="feed-status" aria-live="polite">显示全部 7 条</p>
+            <ol class="feed-list">
+              <li data-kind="new"><span class="feed-time">09:12</span><span class="feed-kind new">新客加微</span><p>李女士通过门店海报二维码添加企微，关注 <b>MateBook 14</b>，说想看看轻一点的。</p></li>
+              <li data-kind="group" data-owner="manager"><span class="feed-time">09:40</span><span class="feed-kind group">社群接龙</span><p>3 号群「开学季配件包」接龙已 <b>14 人</b>，还差 6 人成团。</p></li>
+              <li data-kind="visit"><span class="feed-time">10:05</span><span class="feed-kind visit">预约到店</span><p>王先生预约周六 14:00 到店体验 <b>MateBook X Pro</b>，需要准备样机与触控笔。</p></li>
+              <li data-kind="ask"><span class="feed-time">10:26</span><span class="feed-kind ask">待确认咨询</span><p>张同学问能不能跑 SolidWorks，资料里没有兼容说明，已标记待确认。</p></li>
+              <li data-kind="stock" data-owner="manager"><span class="feed-time">11:03</span><span class="feed-kind stock">库存提醒</span><p><b>MateBook D 16</b> 深空灰只剩 2 台，适合做本周主推。</p></li>
+              <li data-kind="old"><span class="feed-time">11:47</span><span class="feed-kind old">老客换新</span><p>周女士咨询 2019 款旧机置换，问以旧换新能抵多少。</p></li>
+              <li data-kind="visit"><span class="feed-time">12:20</span><span class="feed-kind visit">到店</span><p>陈先生到店试机 40 分钟，已加企微，离店时留了预算区间。</p></li>
+            </ol>
+          </div>
+        </details>
+
+        <aside class="store-side">
+          <details class="store-panel" open>
+            <summary class="store-panel-head">
+              <h3>私域触点分布</h3>
+              <span class="store-panel-count">可触达 3,166</span>
+              <svg class="icon store-panel-chevron"><use href="#i-chevron"/></svg>
+            </summary>
+            <div class="store-panel-body">
+              <ul class="tp-bars">
+                <li><span>企业微信私信</span><i style="--w:82%"></i><b>1,204</b><small>+38</small></li>
+                <li><span>朋友圈</span><i style="--w:64%"></i><b>940</b><small>+12</small></li>
+                <li><span>门店社群</span><i style="--w:47%"></i><b>686</b><small>+25</small></li>
+                <li><span>到店邀约</span><i style="--w:23%"></i><b>336</b><small>+9</small></li>
+              </ul>
+            </div>
+          </details>
+          <details class="store-panel" open>
+            <summary class="store-panel-head">
+              <h3>历史稿件</h3>
+              <span class="store-panel-count" id="store-history-count">正在读取…</span>
+              <svg class="icon store-panel-chevron"><use href="#i-chevron"/></svg>
+            </summary>
+            <div class="store-panel-body">
+              <div id="store-history" class="store-history">正在读取…</div>
+            </div>
+          </details>
+        </aside>
+      </div>
+      <p class="store-footnote">本页为演示看板，门店与经营数据为示例；历史稿件读取自本机真实记录。</p>
     </section>
     <section id="page-process" class="page page-process" role="tabpanel" aria-labelledby="tab-process" tabindex="0" hidden>
       <div class="page-heading"><h2 id="process-title" aria-live="polite">创作准备</h2><button id="view-result" class="btn-secondary" type="button" data-nav="work" hidden>查看作品 <svg class="icon"><use href="#i-arrow"/></svg></button></div>
@@ -123,7 +261,7 @@
             <textarea id="instr" rows="3" placeholder="比如：开头更直接，多一点通勤场景。"></textarea>
             <button id="redo" class="btn-primary work-refine-submit" type="button">开始打磨 <svg class="icon"><use href="#i-arrow"/></svg></button>
           </div>
-          <div class="work-utilities">
+          <div id="creative-summary" class="creative-summary" aria-live="polite"></div><div class="work-utilities">
             <div class="work-delivery"><button id="copy" class="text-button" type="button"><svg class="icon"><use href="#i-copy"/></svg><span>复制正文</span></button><button id="dl" class="text-button" type="button"><svg class="icon"><use href="#i-download"/></svg><span>导出 HTML</span></button><a id="poster-download" class="text-button" hidden download>下载 PNG</a><button id="poster-regenerate" class="text-button" type="button" hidden>重新生图 ↗</button></div>
             <div class="work-review"><button type="button" class="text-button" data-nav="evidence">事实与审核 <svg class="icon"><use href="#i-arrow"/></svg></button><span id="work-review-status" role="status"></span><button id="work-review-questions" type="button" class="text-button review-question-entry" hidden>问题详情 ↗</button></div>
           </div>
@@ -145,7 +283,7 @@
       <div class="page-heading"><div><h2>每一句，都有据可查。</h2><p class="page-description">回看引用的事实与配图，确认发布前需要留意的地方。</p></div><button type="button" class="text-button" data-nav="work">返回作品 <svg class="icon"><use href="#i-arrow"/></svg></button></div>
       <div id="evidence-empty" class="empty-state"><svg class="empty-icon"><use href="#i-book"/></svg><h3>还没有核验记录</h3><button type="button" class="btn-secondary" data-nav="create">开始一次创作</button></div>
       <div id="insights" class="insights" hidden>
-        <div class="insight-tabs" role="tablist" aria-label="核验内容"><button id="insight-tab-evidence" type="button" role="tab" data-insight="evidence" aria-controls="insight-evidence" aria-selected="true">事实与配图</button><button id="insight-tab-judge" type="button" role="tab" data-insight="judge" aria-controls="insight-judge" aria-selected="false" tabindex="-1">选型逻辑</button><button id="insight-tab-verify" type="button" role="tab" data-insight="verify" aria-controls="insight-verify" aria-selected="false" tabindex="-1">审核记录</button></div>
+        <div class="insight-tabs" role="tablist" aria-label="核验内容"><button id="insight-tab-evidence" type="button" role="tab" data-insight="evidence" aria-controls="insight-evidence" aria-selected="true">事实与配图</button><button id="insight-tab-judge" type="button" role="tab" data-insight="judge" aria-controls="insight-judge" aria-selected="false" tabindex="-1">选型与 Agent 编排</button><button id="insight-tab-verify" type="button" role="tab" data-insight="verify" aria-controls="insight-verify" aria-selected="false" tabindex="-1">审核记录</button></div>
         <div id="insight-evidence" class="insight-pane" role="tabpanel" aria-labelledby="insight-tab-evidence" tabindex="0"><section id="dbg-evidence" hidden><div class="insight-caption"><h3>引用的产品事实与图片</h3><span id="ev-sum"></span></div><div id="evidence" class="dbg-content"></div></section></div>
         <div id="insight-judge" class="insight-pane" role="tabpanel" aria-labelledby="insight-tab-judge" tabindex="0" hidden><section id="dbg-judge" hidden><div class="insight-caption"><h3>为什么这样选、这样写</h3></div><div id="judge" class="dbg-content"></div></section></div>
         <div id="insight-verify" class="insight-pane" role="tabpanel" aria-labelledby="insight-tab-verify" tabindex="0" hidden><section id="dbg-verify" hidden><div class="insight-caption"><h3>事实核验与独立审核</h3><span id="vf-sum"></span></div><div id="verify" class="dbg-content"></div></section></div>
@@ -184,10 +322,24 @@
   </aside>
   <button id="agent-ask-pill" class="agent-ask-pill" type="button" hidden>继续补充需求 <span id="agent-ask-pill-count">1/1</span></button>
   <dialog id="presets-dialog" class="studio-dialog" aria-labelledby="presets-title"><div class="dialog-heading"><div><h2 id="presets-title">场景示例</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭示例"><svg class="icon"><use href="#i-close"/></svg></button></div><div id="presets" class="presets-grid"></div></dialog>
-  <dialog id="options-dialog" class="studio-dialog options-dialog" aria-labelledby="options-title"><div class="dialog-heading"><div><h2 id="options-title">内容偏好</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭内容偏好"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="options-fields"><div class="form-group"><label for="goal">希望读者看完做什么</label><input id="goal" placeholder="例如：到店体验、私信咨询；留空由场景决定"></div><div class="form-group"><label for="constraints">有哪些不能写的内容</label><input id="constraints" placeholder="留空表示无额外限制，例如：不写竞品对比"></div><div class="form-group"><label for="extra">还有什么想补充</label><textarea id="extra" rows="3" placeholder="真实痛点、语气偏好，或希望优先突出的卖点"></textarea></div><div class="form-group"><label for="speed">创作模型</label><select id="speed"><option value="quality">DeepSeek 1017</option><option value="fast" hidden>DeepSeek 1017</option></select></div><button id="save-options" class="btn-primary" type="button">保存偏好 <svg class="icon"><use href="#i-check"/></svg></button></div></dialog>
+  <dialog id="options-dialog" class="studio-dialog options-dialog" aria-labelledby="options-title"><div class="dialog-heading"><div><h2 id="options-title">内容偏好</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭内容偏好"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="options-fields"><div class="form-group"><label for="goal">希望读者看完做什么</label><input id="goal" placeholder="例如：到店体验、私信咨询；留空由场景决定"></div><div class="form-group"><label for="constraints">有哪些不能写的内容</label><input id="constraints" placeholder="留空表示无额外限制，例如：不写竞品对比"></div><div class="form-group"><label for="extra">还有什么想补充</label><textarea id="extra" rows="3" placeholder="真实痛点、语气偏好，或希望优先突出的卖点"></textarea></div><div class="form-group"><label for="prompt-variant">提示词版本</label><select id="prompt-variant"><option value="baseline">A · 原版基线</option><option value="differentiated">B · 已审核样板模仿</option></select></div><div class="form-group"><label for="speed">创作模型</label><select id="speed"><option value="quality">DeepSeek 1017</option><option value="fast" hidden>DeepSeek 1017</option></select></div><button id="save-options" class="btn-primary" type="button">保存偏好 <svg class="icon"><use href="#i-check"/></svg></button></div></dialog>
   <dialog id="step-dialog" class="studio-dialog" aria-labelledby="step-dialog-title"><div class="dialog-heading"><div><p id="step-dialog-meta" class="section-label"></p><h2 id="step-dialog-title"></h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭执行详情"><svg class="icon"><use href="#i-close"/></svg></button></div><p id="step-dialog-note" class="dialog-copy"></p><div id="step-dialog-body" class="step-dialog-body"></div></dialog>
   <!-- Bump the progress asset versions together when changing the handoff UI. -->
   <dialog id="review-dialog" class="studio-dialog review-dialog" aria-labelledby="review-question-title"><div class="dialog-heading"><div><p id="review-question-meta" class="section-label">终审反馈</p><h2 id="review-question-title" tabindex="-1"></h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭问题详情"><svg class="icon"><use href="#i-close"/></svg></button></div><div id="review-question-body"></div><p id="review-question-error" class="review-question-error" role="status"></p><div id="review-question-actions" class="review-question-actions" hidden><button id="review-back" class="text-button" type="button">← 上一条</button><button id="review-next" class="btn-primary" type="button">下一条 →</button></div></dialog>
-  <script src="/static/dom.js?v=1.2.0"></script><script src="/static/process-state.js?v=1.2.0"></script><script src="/static/stage-rotation.js?v=1.2.0"></script><script src="/static/bot-portrait.js?v=1.2.0"></script><script src="/static/process-clock.js?v=1.2.0"></script><script src="/static/review-status.js?v=1.2.0"></script><script src="/static/process-activity.js?v=1.2.0"></script><script src="/static/flow.js?v=1.2.0"></script><script src="/static/preview.js?v=1.2.0"></script><script src="/static/preview-xhs.js?v=1.2.0"></script><script src="/static/preview-wx.js?v=1.2.0"></script><script src="/static/preview-mm.js?v=1.2.0"></script><script src="/static/preview-poster.js?v=1.2.0"></script><script src="/static/studio.js?v=1.2.0"></script><script src="/static/font-assets.js?v=1.2.0"></script><script src="/static/agent-ask.js?v=1.2.0"></script><script src="/static/review-questions.js?v=1.2.0"></script><script src="/static/app.js?v=1.2.0"></script>
+<dialog id="store-loop-dialog" class="studio-dialog store-loop-dialog" aria-labelledby="store-loop-title"><div class="dialog-heading"><div><p class="section-label">门店私域</p><h2 id="store-loop-title">一条能走到店里的链路</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭门店私域链路"><svg class="icon"><use href="#i-close"/></svg></button></div><p class="dialog-copy">门店营销不是写一篇稿就结束：内容要能承接进私域，私域要能把人带到店里。</p><ol class="store-loop-steps"><li><b>内容</b><span>小红书、公众号、朋友圈、门店海报，每个事实都可回溯到资料</span></li><li><b>私域</b><span>企业微信、门店社群、朋友圈承接，一条内容只服务一个动作</span></li><li><b>到店</b><span>预约、体验、核销，把这次到店变成下一次触达</span></li></ol><p class="store-loop-note">下面这两个选择，就是这条链路的起点。</p><button id="start-store-loop" class="btn-primary store-loop-start" type="button">按这条链路开始</button></dialog>
+<dialog id="context-dialog" class="studio-dialog options-dialog" aria-labelledby="context-title">
+<div class="dialog-heading"><h2 id="context-title">门店资料与历史</h2><button type="button" class="text-button" data-close-dialog>关闭</button></div>
+<div class="options-fields">
+<p>按门店编号保存；当前为共享演示账号。只填有来源的真实资料。照片目前仅记录文字说明，不上传或识别图片。</p>
+<div class="form-group"><label for="context-store">门店编号</label><input id="context-store" value="default" maxlength="64" pattern="[A-Za-z0-9_-]+"><button id="load-context" class="text-button" type="button">载入此门店</button></div>
+<div class="form-group"><label for="context-name">门店名称</label><input id="context-name" maxlength="100"></div>
+<div class="form-group"><label for="context-audience">常见客群</label><input id="context-audience" maxlength="200"></div>
+<div class="form-group"><label for="context-tone">日常语气</label><input id="context-tone" maxlength="200"></div>
+<div id="context-items"></div><button id="add-context-item" class="text-button" type="button">＋ 添加一条资料或素材</button>
+<button id="save-context" type="button" class="btn-primary">保存并用于后续创作</button>
+<p id="context-status" role="status"></p><details><summary>近期稿件与发布状态</summary><div id="context-history"></div></details>
+</div></dialog>
+  <dialog id="compare-dialog" class="studio-dialog" aria-labelledby="compare-title"><div class="dialog-heading"><h2 id="compare-title">提示词 A/B 对照</h2><button type="button" class="text-button" data-close-dialog>关闭</button></div><p id="compare-status" role="status"></p><div id="compare-body"></div><details><summary>查看两套完整提示词</summary><div id="compare-prompt-texts"></div></details></dialog>
+  <script src="/static/dom.js?v=1.2.0"></script><script src="/static/process-state.js?v=1.2.0"></script><script src="/static/stage-rotation.js?v=1.2.0"></script><script src="/static/bot-portrait.js?v=1.2.0"></script><script src="/static/process-clock.js?v=1.2.0"></script><script src="/static/review-status.js?v=1.2.0"></script><script src="/static/process-activity.js?v=1.2.0"></script><script src="/static/flow.js?v=1.3.2"></script><script src="/static/preview.js?v=1.3.2"></script><script src="/static/preview-xhs.js?v=1.3.2"></script><script src="/static/preview-wx.js?v=1.2.0"></script><script src="/static/preview-mm.js?v=1.2.0"></script><script src="/static/preview-poster.js?v=1.3.2"></script><script src="/static/studio.js?v=1.3.0"></script><script src="/static/font-assets.js?v=1.2.0"></script><script src="/static/agent-ask.js?v=1.2.0"></script><script src="/static/review-questions.js?v=1.2.0"></script><script src="/static/creative-context.js?v=1.4.0"></script><script src="/static/prompt-comparison.js?v=1.3.2"></script><script src="/static/marketing-templates.js?v=1.3.2"></script><script src="/static/app.js?v=1.6.0"></script>
 </body>
 </html>

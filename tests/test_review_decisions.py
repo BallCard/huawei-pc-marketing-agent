@@ -98,6 +98,12 @@ class ReviewAPITests(unittest.TestCase):
             self.assertNotEqual(response.json()["job"], "source")
             self.assertEqual(captured[0][0]["article"], self.original["article"])
             self.assertEqual(captured[0][1]["answers"][0]["detail"], "标题未点明使用场景")
+            # resume 的 Event 只表示进入模型替身；须等后台历史与任务快照均写完。
+            import time
+            deadline = time.monotonic() + 2
+            while time.monotonic() < deadline and self.store.get(response.json()["job"])["state"] == "running":
+                time.sleep(.01)
+            self.assertEqual(self.store.get(response.json()["job"])["state"], "done")
         self.assertEqual(self.client.post("/api/job/source/review", json=self.payload("fix", "continue")).status_code, 409)
 
     def test_confirmed_errors_continue_without_a_questionnaire_or_fake_human_adoption(self):

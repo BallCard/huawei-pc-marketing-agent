@@ -55,6 +55,20 @@
     return node;
   }
 
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  function svg(useId, cls = 'icon') {
+    const node = document.createElementNS(SVG_NS, 'svg');
+    if (cls) {
+      node.setAttribute('class', cls);
+    }
+    node.setAttribute('aria-hidden', 'true');
+    const use = document.createElementNS(SVG_NS, 'use');
+    use.setAttribute('href', `#${String(useId).replace(/^#/, '')}`);
+    node.appendChild(use);
+    return node;
+  }
+
   function tag(text, cls = '') {
     const span = document.createElement('span');
     span.className = cls ? `tag ${cls}` : 'tag';
@@ -102,6 +116,7 @@
   window.UI = {
     $,
     el,
+    svg,
     tag,
     fmtMs,
     KIND_ZH,

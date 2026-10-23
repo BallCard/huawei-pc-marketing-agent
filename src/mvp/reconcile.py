@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 
-from . import llm, settings
+from . import llm, settings, marketing_templates
 
 
 def optional(problem: dict) -> bool:
@@ -60,7 +60,7 @@ def _article_text(article: dict, problem: dict) -> str:
     return ""
 
 
-def _supported_dismissal(decision: dict, problem: dict, article: dict, facts: list[dict]) -> bool:
+def _supported_dismissal(decision: dict, problem: dict, article: dict, facts: list[dict], task=None) -> bool:
     if not str(decision.get("reason") or "").strip():
         return False
     current = _compact(_article_text(article, problem))
@@ -79,6 +79,10 @@ def _supported_dismissal(decision: dict, problem: dict, article: dict, facts: li
         fact = next((f for f in facts if f.get("id") == citation.get("fact_id") in refs), None)
         if not fact or decision.get("verdict") != "supported":
             continue
+        if fact.get("kind") == "demo_context":
+            labels = marketing_templates.disclosures(task or {}, (task or {}).get("_template_plan"))
+            if not (task or {}).get("demo_mode") or not labels or not set(labels).issubset(article.get("disclosures", [])):
+                continue
         original = _compact(fact.get("text"))
         cited = _compact(citation.get("quote"))
         conditions = [_compact(c.get("text", "") if isinstance(c, dict) else c) for c in fact.get("conditions", [])]
@@ -105,8 +109,13 @@ def cross_check(review: dict, article: dict, facts: list[dict], strategy: dict,
     payload = {"原始需求": task, "实际终稿": article, "完整事实及条件": facts,
                "平台规则": {k: strategy.get(k) for k in ("platform_name", "chars", "writing_limits", "price_policy")},
                "需要交叉核对的意见": [{"id": key, **p} for key, p in ids.items()]}
+    guidance = ""
+    if task.get("_template_plan"):
+        payload["已审核样板"] = task["_template_plan"]
+        payload["可见概念标识"] = article.get("disclosures", [])
+        guidance = "\n本次按已审核样板创作。D 是标有 fictional_demo 的虚构演示设定，只能在 demo_mode=true 且 disclosures 可见时支持完全对应的演示门店／安排，不能证明产品参数、价格、真实合作或客户体验。不要把标注后的情景演绎当成真人经历；撤销意见仍须满足完整逐字原文与条件校验，不新增推断例外。"
     try:
-        raw = llm.chat([{"role": "system", "content": (settings.PKG / "prompts" / "cross-review.md").read_text(encoding="utf-8")},
+        raw = llm.chat([{"role": "system", "content": (settings.PKG / "prompts" / "cross-review.md").read_text(encoding="utf-8") + guidance},
                         {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
                        model=model or settings.JUDGE_MODEL, role="judge", json_mode=True,
                        max_tokens=2600, retries=0, timeout=35)
@@ -128,7 +137,7 @@ def cross_check(review: dict, article: dict, facts: list[dict], strategy: dict,
         decision["evidence"] = [c for c in evidence if isinstance(c, dict)] if isinstance(evidence, list) else []
         action = decision.get("decision")
         accepted = (action == "dismiss" and problem.get("type") in ("unsupported", "evidence_gap", "overclaim", "facts") and
-                    not problem.get("deterministic") and _supported_dismissal(decision, problem, article, facts))
+                    not problem.get("deterministic") and _supported_dismissal(decision, problem, article, facts, task))
         # 模型称“确定错误”仍需可回查依据；缺证据只能保留为重要未决。
         refs = article.get("fact_refs", {}).get(problem.get("where"), [])
         index = problem.get("index", -1)

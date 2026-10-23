@@ -46,7 +46,7 @@
       el("div", { class: "stage-bot" }, avatar, el("span", { class: "bot-caption" }, stage.role || "内容策划")),
       el("div", { class: "stage-copy" }, meta, el("h3", {}, stage.status === "running" ? el("span", { class: "activity-spinner", "aria-hidden": "true" }) : null, el("span", {}, data.title)),
         ["poster_image","poster_review"].includes(stage.id) ? el("div", {class:"poster-process-visual"},
-          state.artifacts.poster?.image_url ? el("img", {src:state.artifacts.poster.image_url, alt:"已返回的海报，审核结论尚待确认"}) :
+          (state.artifacts.poster?.image_url || state.artifacts.poster?.fallback_image_url) ? el("img", {src:state.artifacts.poster.image_url || state.artifacts.poster.fallback_image_url, alt:state.artifacts.poster.image_url ? "已返回的海报，审核结论尚待确认" : "预制样例，现场生图尚未完成"}) :
           el("div", {class:"poster-skeleton", "aria-label":"等待模型返回海报", role:"img"},
             el("span", {class:"poster-skeleton-title"}), el("span", {class:"poster-skeleton-visual"}), el("span", {class:"poster-skeleton-line"}), el("span", {class:"poster-skeleton-line short"}))) : null,
         rows, processing,
@@ -144,6 +144,14 @@
       value(step.detail) ? el("p", {}, value(step.detail)) : null));
     if (["plan", "sources"].includes(stage.id)) {
       if (stage.id === "plan") {
+        const ctx = a.creative_context || {};
+        body.append(detailBlock("实际载入的创作上下文", `门店 ${ctx.store?.name || ctx.store_id || '未登记'} · 有效资料 ${ctx.confirmed_items?.length || 0} 条 · 近期历史 ${ctx.history?.length || 0} 篇 · 可用样板 ${ctx.approved_templates?.length || 0} 个`));
+        body.append(detailBlock("本篇结构与避重", [a.plan?.format, ...(a.plan?.avoidance || [])].filter(Boolean)));
+        const template = a.plan?.template;
+        if (template) {
+          body.append(detailBlock(`已审核样板 ${template.id} · ${template.title}`, [template.selection_source, template.reason, `审核备注：${template.user_note || '未附备注'}`, ...template.pattern]));
+          for (const slot of template.filled_slots || []) body.append(detailBlock(slot.slot, `${slot.text || '未填槽位'} · 引用 ${(slot.refs || []).join('、') || '无产品主张'}`));
+        }
         for (const angle of a.plan?.angles || []) body.append(detailBlock(`${angle.id === a.plan.selected_angle ? "选定" : "另一个角度"} · ${angle.title}`, angle.reason));
         if (a.plan?.unsupported_requests?.length) body.append(detailBlock("缺乏依据，不作承诺", a.plan.unsupported_requests));
       }
@@ -155,6 +163,8 @@
     }
     if (["review", "repair", "recheck", "finish"].includes(stage.id)) {
       const version = stage.id === "review" ? 1 : stage.id === "repair" ? 1 : a.final?.version || Math.max(1,...Object.keys(a).filter(k=>/^draft:\d+$/.test(k)).map(k=>+k.split(":")[1]));
+      const similarity = a[`similarity:${version}`] || a['similarity:final'];
+      if (similarity) body.append(detailBlock("历史稿字面重合检查", [`实际对照 ${similarity.compared} 篇，不代表原创率`, ...(similarity.matches || []).map(m => `${m.where}#${m.index} 与《${m.title}》重合：${m.overlap}`)]));
       for (const p of a[`review:${version}`]?.problems || []) body.append(el("section", { class: "detail-block problem-record" },
         el("h3", {}, `${WHERE[p.where] || "文稿"} · ${p.type === "expression" ? "表达改进" : "必须修改"}`),
         p.quote ? el("blockquote", {}, p.quote) : null, el("p", {}, p.detail), p.direction ? el("p", {}, "修改方向：" + p.direction) : null));

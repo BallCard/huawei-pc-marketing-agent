@@ -1,11 +1,13 @@
-/* Shared tokens for the studio and its native platform previews. */
+/* Shared tokens for the studio and its native platform previews.
+   华为门店营销工作台基调：华为红 #D9342B、炭黑 #1B1B1B、暖灰 #F5F2EC、纸张白 #FFFCF7、信号绿 #5C8D68。 */
 :root {
   color-scheme: light;
-  --bg-canvas: #f8f7f3; --bg-surface: #fffefa; --bg-surface-subtle: #eeede6; --bg-surface-elevated: #fcfbf8;
-  --text-main: #25241f; --text-muted: #68645b; --text-faint: #767066;
-  --border-hairline: #e5e1d7; --border-line: #d3cdc0; --border-strong: #aea592;
-  --accent-terracotta: #b35f42; --accent-terracotta-hover: #964b32; --accent-terracotta-dark: #964b32; --accent-tint: #f3e8df; --accent-terracotta-soft: #f3e8df;
-  --state-ok: #4c6554; --state-ok-bg: #edf1e9; --state-warn: #9c6634; --state-warn-bg: #f6eee1; --state-bad: #a34739; --state-bad-bg: #f7e9e4;
+  --bg-canvas: #f5f2ec; --bg-surface: #fffcf7; --bg-surface-subtle: #ece8de; --bg-surface-elevated: #fbf8f2;
+  --text-main: #1b1b1b; --text-muted: #5f5b54; --text-faint: #6f6a63;
+  --border-hairline: #e4dfd4; --border-line: #d4cdc0; --border-strong: #a89d8d;
+  /* 品牌强调色沿用旧变量名，值切为华为红，避免逐个改选择器。 */
+  --accent-terracotta: #d9342b; --accent-terracotta-hover: #b2241e; --accent-terracotta-dark: #b2241e; --accent-tint: #f8e3de; --accent-terracotta-soft: #f8e3de;
+  --state-ok: #5c8d68; --state-ok-bg: #e9f1e6; --state-warn: #9c6634; --state-warn-bg: #f6eee1; --state-bad: #a34739; --state-bad-bg: #f7e9e4;
   --radius-xs: 3px; --radius-sm: 5px; --radius-md: 8px; --radius-lg: 12px;
 }
 *, *::before, *::after { box-sizing: border-box; }
@@ -43,7 +45,7 @@ h1, h2, h3, p { margin: 0; }
 .tag.ok { color: var(--state-ok); background: var(--state-ok-bg); }
 .tag.warn { color: var(--state-warn); background: var(--state-warn-bg); }
 .tag.bad { color: var(--state-bad); background: var(--state-bad-bg); }
-input, select, textarea { width: 100%; border: 1.5px solid var(--border-line); border-radius: 8px; background: #fffefa; padding: 11px 13px; min-width: 0; line-height: 1.5; font-size: 14px; }
+input, select, textarea { width: 100%; border: 1.5px solid var(--border-line); border-radius: 8px; background: var(--bg-surface); padding: 11px 13px; min-width: 0; line-height: 1.5; font-size: 14px; }
 input:hover, select:hover, textarea:hover { border-color: var(--border-strong); }
 input::placeholder, textarea::placeholder { color: #918c80; }
 textarea { resize: none; }

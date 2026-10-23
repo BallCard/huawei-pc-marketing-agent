@@ -3,7 +3,8 @@
   body:has(.workspace) { grid-template-rows: auto minmax(0, 1fr); }
   .site-header { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 52px 48px; gap: 0; padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
   .site-header .brand { grid-column: 1; grid-row: 1; }
-  .site-header .session-exit { position: static; grid-column: 2; grid-row: 1; }
+  .site-header .header-actions { position: static; grid-column: 2; grid-row: 1; justify-self: end; }
+  .site-header .session-exit { position: static; }
   .session-exit button { min-height: 44px; }
   .page-nav { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
   .page-nav button { min-height: 44px; font-size: 13px; }
@@ -22,7 +23,7 @@
   .page-heading .btn-secondary, .page-heading .text-button,
   .page-work .work-preview .preview-devices button, .stage-detail { min-height: 44px; }
   .icon-button, .ask-close { min-width: 44px; min-height: 44px; flex-shrink: 0; }
-  .page-create, .page-process, .page-evidence, .page-work { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-bottom: max(24px, env(safe-area-inset-bottom, 0px)); }
+  .page-create, .page-store, .page-process, .page-evidence, .page-work { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-bottom: max(24px, env(safe-area-inset-bottom, 0px)); }
   .field-pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .platform-options { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .platform-options button { min-height: 60px; font-size: 12px; }

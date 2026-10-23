@@ -1,0 +1,14 @@
+{
+  "origin_commit": "03a4f305c3b36ce152a8f48a91fedc0d9a8f0b21",
+  "saved_on": "2026-10-21",
+  "scope": "本轮修改前原始提示词；平台配置与服务端逻辑不属于此快照",
+  "sha256": {
+    "base.md": "d2473b7050ad04918766fedf4389fe0649a689b1e0b450c465e132875e57abde",
+    "compose.md": "7e83f038e74a721e55735e56a24582dabe569c0664e6e34881421194937218a3",
+    "extract.md": "8570a84986f1310cf495ab4f98b504eacd57e98ab973e5f684ba621a5656ad8c",
+    "judge.md": "7944f0647a2ff227ac858ae7b5493e0f2d722d7908d1e66c28e6ae767be2e2a4",
+    "recommend.md": "3a5fb4003fb9036ad765bce9d4ade21c913fc059fece023b83fdd3da7d46e372",
+    "repair.md": "da9c91c6432aa93501d2d1a514021a908afa7779638a5874fc98166a94faaf6c",
+    "scene.md": "54a07ee26266f1c71289657ff3ab0b13cee9857a9eb495bb3506ee82947ad343"
+  }
+}

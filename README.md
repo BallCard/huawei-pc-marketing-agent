@@ -5,10 +5,19 @@
 v1.2.0（version1.2）· 两轮问询与评审减负。[在线体验](https://ballcard-huazhang-youju.ms.show) · [图文介绍](https://ballcard-huazhang-youju.ms.show/about) · [魔搭主页](https://modelscope.cn/studios/BallCard/huazhang-youju) · [部署与配置](docs/deployment.md)
 
 > 个人项目副本，独立于比赛协作仓库。产品资料不进入 GitHub，仅在本机和已授权的私有创空间保留部署副本。
+本项目与初赛仓库的关系、当前主线和冻结边界见[两个华为项目的统一说明](docs/project-lineage.md)。后续功能、修复、发布和部署均以本复赛仓库为准；初赛仓库仅作历史参考，不再继续更新。
+
+[切题检验与复赛优化分析](docs/competition-fit-review.md)（2026-10-21）：对照原始手册和老师补充的业务痛点，记录当前缺口、验证边界与优先级。本机手册和知识库原始压缩包归档于 `data/ref/`，不进入 Git。
+
+[复赛演示脚本与视频制作](docs/demo-video-script.md)：真实任务录屏、中文 AI 配音、同步字幕与重点推近；本机成品在 `output/demo/`，素材和缓存在 `data/demo-*`，均位于 D 盘。
 
 v1.2 统一文字角色为魔搭 DeepSeek 1017，需求问询最多两轮；交叉评审先消解轻微意见与有据误报，只把重要未决交人工。答完后可直接点击固定的“提交评审结果”，继续修订或复审。整图海报、慢速回传和手机布局也一并更新。详见 [版本记录](CHANGELOG.md) 和 [编排与验证说明](docs/editorial-workflow.md)。
 
 全站字体现由网站提供：Noto Serif SC 负责标题，Noto Sans SC 负责正文与操作，统一字重和文字层级；HTML 导出会嵌入所需字体。详见 [字体规范](docs/typography.md)。
+
+下一版差异化已在本地接入：门店确认资料、文字素材、近期稿件和实际重合结果进入策划/写作/审核/修订。右上角「我的门店」提供经营看板与历史稿件，门店资料在「管理门店资料」中维护；默认一份成稿，可选择备用角度。案例与评委演示建议见 [差异化调查简报](docs/differentiation-report.md)，使用与验证边界见 [创作上下文说明](docs/creative-context.md)。线上版本尚未随本轮修改部署。
+
+提示词保留 A 原版与 B 新版，默认 A；「内容偏好」可切换，「生成 A/B 对照」在相同策划、证据、资料与模型下各写一稿并列查看。实验范围与运行方式见 [提示词双版本对照](docs/prompt-comparison.md)。
 
 ## 快速体验
 
@@ -68,6 +77,8 @@ python -X utf8 -m src.mvp.app        # http://127.0.0.1:7860
 启动前可运行 `python -X utf8 scripts/preflight.py`；加 `--check-model` 会真实调用三个角色模型检查 JSON 返回。部署专用配置可用环境变量 `APP_ENV_FILE=.env.deploy` 指定，不覆盖本机 `.env`。
 
 ## 功能
+
+- **用户审核样板版（本地）**：A 保留原始提示词并保持默认，B 从审核通过的 11 个 PC 营销案例匹配和填槽，可指定样板并查看来源、备注及引用；支持概念演示标识和并排 A/B 对照。用法与验证边界见[用户审核样板版](docs/reviewed-patterns.md)。
 
 - **独立开屏**：Logo、名称与一句话描述依次出现，点击「进入体验」进入工作台；同一标签页刷新或恢复任务时跳过，支持减少动态效果。
 - **平台原生版式预览**：顶部切换电脑 / 手机并保留选择；电脑端小红书左图右文、公众号宽栏阅读、朋友圈桌面动态流，手机端保留图片轮播与九宫格，门店竖版海报维持原样。窄屏首次默认手机模式，电脑首次默认电脑模式。

@@ -153,8 +153,10 @@
     root.appendChild(media);
     const content = UI.el("div", { className: "xhs-content" }, body);
     if (desktop) {
+      const interactive = (r.planning?.template || r.marketing_template)?.id === 'C01';
       content.appendChild(UI.el("div", { className: "xhs-comments-empty" },
-        UI.el("span", {}, "评论区"), UI.el("p", {}, "暂无评论")));
+        UI.el("span", {}, interactive ? "这篇想问你" : "评论区"), UI.el("p", {}, interactive ? article.cta || '说说你的选择' : "暂无评论"),
+        interactive ? UI.el('small', {}, '等待真实回复，未预置评论') : null));
     }
     root.appendChild(content);
     root.appendChild(bar);

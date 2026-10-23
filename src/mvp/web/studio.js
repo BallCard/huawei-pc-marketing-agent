@@ -1,6 +1,6 @@
 (function () {
   "use strict";
-  const pages = ["create", "process", "work", "evidence"];
+  const pages = ["create", "store", "process", "work", "evidence"];
   let mode = "structured";
   let toastTimer;
   let previewResult = null;
@@ -70,8 +70,13 @@
     pages.forEach(name => {
       UI.$(`page-${name}`).hidden = name !== page;
       const button = UI.$(`tab-${name}`);
-      button.setAttribute("aria-selected", String(name === page));
-      button.tabIndex = name === page ? 0 : -1;
+      if (!button) return;
+      if (button.getAttribute("role") === "tab") {
+        button.setAttribute("aria-selected", String(name === page));
+        button.tabIndex = name === page ? 0 : -1;
+      } else {
+        button.setAttribute("aria-current", name === page ? "page" : "false");
+      }
     });
     history.replaceState(null, "", `#${page}`);
     if (window.AgentAsk) window.AgentAsk.setPage(page);

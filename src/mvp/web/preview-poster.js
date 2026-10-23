@@ -38,14 +38,33 @@
     const data = r || {};
     if (data.poster) {
       const poster = data.poster;
-      const caption = poster.status === "passed" ? "AI 生成海报 · 成图核验通过" : poster.fallback_from ? "AI 生成海报 · 免费备选链路，待复核" : poster.image_url ? "AI 生成海报 · 待复核" : "海报尚未就绪";
+      const fallback = !poster.image_url && poster.fallback_image_url;
+      const caption = poster.status === "passed" ? "AI 生成海报 · 成图核验通过" : poster.fallback_from ? "AI 生成海报 · 免费备选链路，待复核" : poster.image_url ? "AI 生成海报 · 待复核" : fallback ? "预制样例 · 现场生图未完成，不能作为最终成图" : "海报尚未就绪";
       return UI.el("figure", {className:"pv-generated-poster"},
-        poster.image_url ? UI.el("img", {src:poster.image_url, alt:"生成的门店海报", loading:"eager"}) :
+        poster.image_url || fallback ? UI.el("img", {src:poster.image_url || poster.fallback_image_url, alt:fallback ? "预制营销样例，非本次最终海报" : "生成的门店海报", loading:"eager"}) :
           UI.el("div", {className:"poster-unavailable"}, UI.el("h3", {}, poster.status === "blocked" ? "先核对文案，再生成海报" : "这张海报尚未生成"),
             UI.el("p", {}, poster.error || "请查看任务记录。")),
+        fallback ? UI.el("p", {className:"fallback-poster-note"}, poster.fallback_warning || poster.fallback_note || "现场生图未完成，当前为预制样例。") : null,
         UI.el("figcaption", {}, caption));
     }
     const article = data.article || {};
+    const template = data.planning?.template || data.task?._template_plan;
+    if (template) {
+      // 样板文案预览不沿用旧版“最多三个卖点”，避免四格最后一格被截去。
+      const blocks = PV.textBlocks(data);
+      const product = PV.imageBlocks(data).map(b => PV.figure(data, b)).find(Boolean);
+      const comic = template.id === 'C07';
+      const cards = blocks.map((b, i) => UI.el('div', {className: 'template-draft-panel'},
+        comic && i === 2 ? product : null, UI.el('p', {}, b.text)));
+      return UI.el('div', {className: `pv-template-poster ${comic ? 'is-comic' : ''}`},
+        UI.el('p', {className: 'template-draft-state'}, comic ? '四格文案分镜 · 尚未生成插画' : '样板文案预览 · 尚未生图'),
+        UI.el('p', {className: 'template-draft-model'}, data.model?.name || ''),
+        UI.el('div', {className: 'po-body'}, UI.el('h3', {}, article.title || ''),
+          article.lead ? UI.el('p', {}, article.lead) : null,
+          !comic ? product : null,
+          UI.el('div', {className: 'template-draft-panels'}, ...cards),
+          UI.el('p', {className: 'template-draft-cta'}, article.cta || '')));
+    }
 
     const brand = UI.el("div", { className: "po-brand" }, "HUAWEI");
     const header = UI.el("div", { className: "po-header" }, brand);

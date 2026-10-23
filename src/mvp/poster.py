@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 import httpx
 from PIL import Image, ImageDraw, ImageOps, ImageFilter
 
-from . import llm, settings
+from . import llm, settings, marketing_templates
 from .kb import get_kb
 from .progress import Trace
 
@@ -40,7 +40,7 @@ def text_approved(result: dict) -> bool:
 
 def visible_copy(result: dict) -> list[str]:
     article = result["article"]
-    lines = ["HUAWEI", result["model"]["name"], article.get("title", ""), article.get("lead", "")]
+    lines = [*article.get("disclosures", []), "HUAWEI", result["model"]["name"], article.get("title", ""), article.get("lead", "")]
     lines.extend(b["text"] for b in article.get("blocks", []) if b.get("type") == "text")
     lines.append(article.get("cta") or "到店体验真机")
     # 本版本不接入真实门店二维码，CTA 必须是能执行的到店动作。
@@ -85,6 +85,14 @@ def prepare(result: dict, folder: Path) -> dict:
     style.save(style_path)
     copy_lines = visible_copy(result)
     payload = {"逐字文案": copy_lines, "场景": scene.get("user_problem") or task.get("scenario", ""), "参考风格": ref["style"]}
+    template = marketing_templates.visual_brief(result)
+    if template:
+        payload["用户已审核样板"] = template
+        payload["本次视觉方向"] = template["visual_direction"]
+        payload["参考优先级"] = "真实产品外观不变；本次已审核视觉方向优先，图2仅作辅助配色，不限制为旧海报布局。"
+        payload["标识呈现"] = "required_labels 属于逐字文案，须用清晰可读的字号独立展示，不能藏在纹理、裁出画布或省略。"
+        if template["case_id"] == "C07":
+            payload["四格逐字文案"] = [b["text"] for b in result["article"].get("blocks", []) if b.get("type") == "text"][:4]
     old = (result.get("poster") or {}).get("review") or {}
     if old.get("problems"):
         payload["重生要求"] = [str(p.get("direction") or p.get("detail", "")) for p in old["problems"]]
@@ -94,6 +102,7 @@ def prepare(result: dict, folder: Path) -> dict:
     return {"reference": ref, "reference_path":style_path, "product_path": product.path, "product_image": product.id,
             "style_input_sha256":hashlib.sha256(style_path.read_bytes()).hexdigest(),
             "board_path": board_path, "copy": copy_lines, "prompt": prompt,
+            "marketing_template": template,
             "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest()}
 
 
@@ -320,9 +329,13 @@ def inspect_image(result: dict, prepared: dict, path: Path, feedback: list[str] 
         raise llm.LLMError("成图审核未返回实际文字转录。")
     payload = {"批准文案": prepared["copy"], "原始需求": result.get("task"), "型号": result["model"],
                "产品事实": result.get("evidence", {}).get("facts", []), "独立文字转录":transcription}
+    guidance = ""
+    if prepared.get("marketing_template"):
+        payload["已审核样板与必须可见标识"] = prepared["marketing_template"]
+        guidance = "\n已审核样板决定本次视觉形式。微缩背景、四格动漫或原创角色可作已标注的情景演绎，不等于实拍／客户经历；D 只作演示门店安排，不支持产品能力或真实合作。检查 required_labels 实际完整、清晰可读，不把有标识的虚构设定误当真实宣称；未标注、改外观或夸大能力仍列问题。"
     if feedback:
         payload["用户反馈（不是产品事实依据）"] = feedback
-    raw = llm.chat([{"role":"system", "content":(settings.PKG / "prompts" / "poster-review.md").read_text(encoding="utf-8")},
+    raw = llm.chat([{"role":"system", "content":(settings.PKG / "prompts" / "poster-review.md").read_text(encoding="utf-8") + guidance},
                     {"role":"user", "content":[{"type":"text", "text":json.dumps(payload, ensure_ascii=False)},
                      {"type":"image_url", "image_url":{"url":data_url(path)}},
                      {"type":"image_url", "image_url":{"url":data_url(prepared["product_path"])}}]}],
@@ -364,9 +377,13 @@ def cross_check_image(review: dict, result: dict, prepared: dict, path: Path) ->
         return out
     payload = {"争议": [{"id": key, **p} for key, p in candidates.items()], "需求": result.get("task"),
                "事实": result.get("evidence", {}).get("facts", []), "实际文字转录": out.get("observed_texts", [])}
+    guidance = ""
+    if prepared.get("marketing_template"):
+        payload["已审核样板与必须可见标识"] = prepared["marketing_template"]
+        guidance = "\n样板允许微缩背景、四格、原创角色等清楚标注的概念表现。D 仅为虚构演示安排，不是产品事实或真实合作。结合实际可见标识判断，不把情景演绎误认成客户实测；保留现有撤销条件，不得撤销标识缺字、不可读、参数或外观结构风险。"
     try:
         data = llm.parse_json(llm.chat([
-            {"role": "system", "content": (settings.PKG / "prompts" / "cross-review-poster.md").read_text(encoding="utf-8")},
+            {"role": "system", "content": (settings.PKG / "prompts" / "cross-review-poster.md").read_text(encoding="utf-8") + guidance},
             {"role": "user", "content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)},
              {"type": "image_url", "image_url": {"url": data_url(path)}},
              {"type": "image_url", "image_url": {"url": data_url(prepared["product_path"])}}]}],
@@ -410,6 +427,13 @@ def attach(source: dict, jid: str, on_update=None, *, review_only=False, decisio
     folder = settings.POSTER_DIR / jid
     candidate = {"status":"preparing", "provider":settings.POSTER_IMAGE_PROVIDER,
                  "model":settings.POSTER_IMAGE_MODEL, "source_type":"ai_generated", "job_id":jid}
+    # 先登记样板的预制资产；即使真实产品图准备失败，也能展示可审阅的视觉 fallback。
+    early_template = marketing_templates.visual_brief(source)
+    if early_template:
+        candidate["marketing_template"] = early_template
+        candidate["fallback_image_url"] = early_template.get("fallback_url")
+        candidate["fallback_note"] = (early_template.get("product_pair") or {}).get("fallback_note", "")
+        candidate["fallback_available"] = bool(candidate["fallback_image_url"])
     prepared = None
     if not text_approved(source):
         candidate.update(status="blocked", error="文案仍有待核对项，请先在问题详情中修订或作出人工裁定，再继续生图。")
@@ -422,6 +446,12 @@ def attach(source: dict, jid: str, on_update=None, *, review_only=False, decisio
             candidate.update(reference={k:prepared["reference"][k] for k in ("id", "name", "source_url", "sha256")},
                              style_input_sha256=prepared["style_input_sha256"], style_processing="blurred_palette_layout",
                              product_image=prepared["product_image"], copy=prepared["copy"], prompt_sha256=prepared["prompt_sha256"], status="generating")
+            if prepared.get("marketing_template"):
+                candidate["marketing_template"] = prepared["marketing_template"]
+                # 预制样例始终随本次样板进入候选记录，便于现场生图失败时可追溯回退。
+                candidate["fallback_image_url"] = prepared["marketing_template"].get("fallback_url")
+                candidate["fallback_note"] = prepared["marketing_template"].get("product_pair", {}).get("fallback_note", "")
+                candidate["fallback_available"] = bool(candidate["fallback_image_url"])
             tr.publish("poster", candidate, "poster_image", "正在生成整张海报")
             def activity(data):
                 candidate.update({k:v for k,v in data.items() if k != "label"})
@@ -469,8 +499,15 @@ def attach(source: dict, jid: str, on_update=None, *, review_only=False, decisio
             candidate.update(review=checked, status="passed" if checked["overall"] == "pass" else "needs_review")
         except Exception as exc:
             has_image = (folder / "poster.png").exists()
-            candidate.update(status="needs_review" if has_image else "error",
-                             error=str(exc) if isinstance(exc, (ValueError, llm.LLMError)) else "海报生成或成图审核连接未完成，请稍后手动重试。")
+            error = str(exc) if isinstance(exc, (ValueError, llm.LLMError)) else "海报生成或成图审核连接未完成，请稍后手动重试。"
+            # 只有“现场生图没有返回图片”时才启用预制样例；它保留为演示图，不能伪装成这次的最终成图。
+            fallback_url = candidate.get("fallback_image_url")
+            if not has_image and fallback_url:
+                candidate.update(status="fallback", fallback_used=True, fallback_reason=error,
+                                 error=error,
+                                 fallback_warning="现场生图未完成，当前展示的是预制样例；不能作为本次最终成图或下载稿。")
+            else:
+                candidate.update(status="needs_review" if has_image else "error", error=error)
             if settings.POSTER_IMAGE_PROVIDER in ("modelscope", "private_worker") and isinstance(exc, llm.BudgetExceeded) and candidate.get("task_id") and not has_image:
                 candidate["resume_available"] = True
             if has_image:

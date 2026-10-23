@@ -1,5 +1,5 @@
 /* Original Bot portraits with real operations, sources and indeterminate loading. */
-.page-process { --process-ink: #302d28; --process-accent: #b35f42; max-width: 1400px; padding: 28px clamp(24px, 4vw, 60px) 26px; color: var(--process-ink); gap: 14px; }
+.page-process { --process-ink: #302d28; --process-accent: var(--accent-terracotta); max-width: 1400px; padding: 28px clamp(24px, 4vw, 60px) 26px; color: var(--process-ink); gap: 14px; }
 .page-process .page-heading { min-height: 44px; padding: 0; align-items: center; }
 .page-process .page-heading h2 { font-size: 24px; }
 .page-process .process-content { padding: 0; border: 0; background: transparent; overflow: hidden; flex: 1; min-height: 0; }
@@ -9,7 +9,7 @@
 .rotation-stage { position: relative; height: 100%; display: flex; align-items: center; justify-content: center; padding: 40px 24px 44px; isolation: isolate; }
 .stage-deck { position: relative; width: 100%; max-width: 1000px; display: grid; }
 .stage-peek { position: absolute; left: 50%; top: -28px; width: calc(100% - 80px); height: 150px; border: 1px solid #e7e2d8; border-radius: 16px; background: #f4f1e9; color: #a49a8b; text-align: right; padding: 15px 26px; font-size: 10px; letter-spacing: .04em; transform: translateX(-50%); z-index: -1; transition: opacity .7s; animation: peek-in 1s ease both; }
-.turn-card { grid-area: 1 / 1; position: relative; display: grid; grid-template-columns: 160px minmax(0, 1fr); align-items: center; gap: 44px; min-height: 390px; padding: 40px 54px 38px 42px; background: #fffefa; border: 1px solid #dfd9cc; border-radius: 16px; box-shadow: 0 9px 32px #4d412505; transform-origin: 50% 50%; }
+.turn-card { grid-area: 1 / 1; position: relative; display: grid; grid-template-columns: 160px minmax(0, 1fr); align-items: center; gap: 44px; min-height: 390px; padding: 40px 54px 38px 42px; background: var(--bg-surface); border: 1px solid var(--border-line); border-radius: 16px; box-shadow: 0 9px 32px #4d412505; transform-origin: 50% 50%; }
 .stage-bot { align-self: center; display: grid; justify-items: center; gap: 14px; }
 .page-process .bot-avatar { width: 158px; height: 158px; border-radius: 50%; background: #f5f1e7; }
 .page-process .bot-portrait { position: relative; width: 130px; height: 130px; z-index: 1; }

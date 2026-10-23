@@ -1,0 +1,183 @@
+version: store-private-patterns-v2
+review:
+  report_id: store-private-domain-review-20261023
+  exported_at: '2026-10-23T05:20:00.000Z'
+  sha256: 1aee066b184723cbb5a5eb1d4ac020a55f1a40958a3b80a24d5dbc9f335d6dd5
+  approved: []   # 逐条审核后手工移入；未审核的候选不进入生成链路
+  rejected: []
+templates:
+- id: S01
+  title: 把导购和顾客一对一绑定，让店员有动力做私域
+  source: https://www.youzan.com/anli/76560
+  user_note: ''
+  reference_pattern:
+  - 先说清顾客当场能得到什么，再邀请加微信
+  - 导购与顾客一对一绑定，成交归属清楚
+  - 给一个下一次到店或咨询的具体入口
+  platforms:
+  - moments
+  - xiaohongshu
+  touchpoints:
+  - 企业微信私信
+  goals:
+  - 私信咨询
+  - 引导到店
+  format: 一对一承接
+  slots:
+  - 当场可得的理由
+  - 加微信之后的下一步
+  - 到店或咨询的入口
+  visual: invitation
+  demo: false
+  store: false
+  pattern:
+  - 用顾客当场就能得到的一件事邀请加微信
+  - 说清加上之后会收到什么，而不是以后有活动通知你
+  - 给一个具体到店或咨询的入口，不群发广告
+- id: S02
+  title: 多码合一：把加好友做成接待必做项
+  source: https://www.youzan.com/anli/76648
+  user_note: ''
+  reference_pattern:
+  - 一个入口同时完成加好友、关注和会员注册
+  - 接待时用一句标准说法带出这个动作
+  - 沉淀之后的下一步写清楚
+  platforms:
+  - moments
+  - poster
+  touchpoints:
+  - 企业微信私信
+  goals:
+  - 私信咨询
+  format: 接待动作
+  slots:
+  - 一句话说法
+  - 一个入口完成什么
+  - 加完之后会收到什么
+  visual: theme
+  demo: false
+  store: false
+  pattern:
+  - 用一句店员能直接说出口的话带出扫码动作
+  - 说清这一个码同时完成哪几件事
+  - 承诺加上之后会收到的内容，不承诺做不到的权益
+- id: S03
+  title: 朋友圈与私信的日常内容：每天一条可核对的理由
+  source: https://www.youzan.com/anli/76543
+  user_note: ''
+  reference_pattern:
+  - 选一条今天的日常内容：答疑、实拍或优惠
+  - 这条内容只讲一个可核对的理由
+  - 给出顾客下一步能做的动作
+  platforms:
+  - moments
+  - xiaohongshu
+  touchpoints:
+  - 朋友圈
+  - 企业微信私信
+  goals:
+  - 私信咨询
+  - 消化库存
+  format: 日常栏目
+  slots:
+  - 今天的栏目
+  - 一个可核对的理由
+  - 顾客下一步动作
+  visual: question
+  demo: false
+  store: false
+  pattern:
+  - 以门店导购视角发一条日常内容，只解决一个问题
+  - 理由必须能在门店资料里核对到
+  - 结尾给一个明确的下一步，不写促销轰炸
+- id: S04
+  title: 社群分层：不同的人要的东西不一样
+  source: https://m.ebrun.com/545401.html
+  user_note: ''
+  reference_pattern:
+  - 先判断这位顾客属于哪一层
+  - 只写这一层最需要的那件事
+  - 给一个服务型动作，而不是又一条促销
+  platforms:
+  - moments
+  - wechat_article
+  touchpoints:
+  - 门店社群
+  goals:
+  - 私信咨询
+  - 预约体验
+  format: 分层服务
+  slots:
+  - 面向哪一层顾客
+  - 这一层最需要的一件事
+  - 服务型动作
+  visual: contrast
+  demo: false
+  store: false
+  pattern:
+  - 明确这条内容写给哪一层顾客：普通用户、品牌粉丝、KOC 或发烧友
+  - 只回应这一层最在意的一件事，普通用户多是售后与联系方式
+  - 以服务动作收尾，不用促销替代服务
+- id: S05
+  title: 会员节点：把一个日子做成一组可兑现的权益
+  source: https://www.lenovo.com.cn/wiki/article-48078.html
+  user_note: ''
+  reference_pattern:
+  - 说清这是一个什么日子、持续到什么时候
+  - 列出这组权益里门店确实能兑现的那几条
+  - 给出参与方式与到店核销说明
+  platforms:
+  - poster
+  - moments
+  - wechat_article
+  touchpoints:
+  - 朋友圈
+  - 门店社群
+  - 到店邀约
+  goals:
+  - 引导到店
+  - 消化库存
+  format: 会员节点
+  disclosure: 活动与权益信息以门店确认资料为准，非品牌官方活动
+  slots:
+  - 什么日子与持续到什么时候
+  - 门店确实能兑现的权益
+  - 参与方式与核销说明
+  visual: invitation
+  demo: false
+  store: true
+  pattern:
+  - 说清这是一个什么节点、持续到哪一天
+  - 只列门店确认过的权益，条数与兑现方式写清楚
+  - 给出参与方式和到店核销说明；不编造折扣、赠品与名额
+- id: S06
+  title: 用户共创：让顾客带着作品来，而不是只来看
+  source: https://www.c114.com.cn/news/126/a1302753.html
+  user_note: ''
+  reference_pattern:
+  - 给一个可以带着作品或问题来的主题
+  - 写清现场能做什么、和谁聊
+  - 报名与到店信息只用门店确认的资料
+  platforms:
+  - xiaohongshu
+  - wechat_article
+  - poster
+  touchpoints:
+  - 到店邀约
+  - 门店社群
+  goals:
+  - 预约体验
+  - 引导到店
+  format: 共创活动
+  disclosure: 活动信息以门店确认资料为准，非品牌官方活动
+  slots:
+  - 可带着什么来
+  - 现场能做什么
+  - 报名与到店信息
+  visual: topical
+  demo: false
+  store: true
+  pattern:
+  - 给一个顾客能带着作品或问题参与的主题
+  - 写清现场做什么、和谁交流
+  - 报名与到店信息只引用门店确认资料，不暗示品牌官方授权

@@ -115,13 +115,13 @@
   padding: 10px 11px;
   border: 1.5px solid var(--border-line);
   border-radius: 10px;
-  background: #fffefa;
+  background: var(--bg-surface);
   text-align: left;
   transition: border-color .16s, background .16s, transform .16s;
 }
 .ask-option:hover, .ask-option:focus-visible {
   border-color: var(--accent-terracotta);
-  background: #fbf2e9;
+  background: var(--accent-tint);
   transform: translateX(1px);
 }
 .ask-option-key {

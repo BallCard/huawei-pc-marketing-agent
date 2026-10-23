@@ -20,14 +20,16 @@ from . import llm, settings, verify, web_images, reconcile
 from .kb import Image, ModelDoc, Snippet, get_kb
 from .progress import Trace
 from .clarification import MAX_ROUNDS as MAX_CLARIFY_ROUNDS, round_count as _clarify_round, form_result, prepare_questions, question_text
+from .editorial_context import check_similarity, context_facts
+from . import prompt_variants, marketing_templates
 
 PLATFORMS = ["wechat_article", "xiaohongshu", "moments", "poster"]
 TODAY_NOTE = f"事实基准日 {settings.KB_BASE_DATE}；发布前须以华为官方页面和实际销售 SKU 复核。"
-WORKFLOW_VERSION = "evidence-editorial-v4"
+WORKFLOW_VERSION = "evidence-editorial-v6-reviewed-templates"
 
 
-def context_version(doc=None) -> str:
-    digest = hashlib.sha256(WORKFLOW_VERSION.encode())
+def context_version(doc=None, variant=prompt_variants.DEFAULT) -> str:
+    digest = hashlib.sha256((WORKFLOW_VERSION + prompt_variants.manifest(variant)["digest"]).encode())
     for path in sorted((settings.PKG / "prompts").glob("*.md")) + sorted((settings.PKG / "config").glob("*.yaml")):
         digest.update(path.name.encode())
         digest.update(path.read_bytes())
@@ -55,10 +57,8 @@ def _config_version(path, version):
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
-def prompt(name: str) -> str:
-    base = (settings.PKG / "prompts" / "base.md").read_text(encoding="utf-8")
-    step = (settings.PKG / "prompts" / f"{name}.md").read_text(encoding="utf-8")
-    return f"{base}\n\n---\n\n{step}"
+def prompt(name: str, variant=prompt_variants.DEFAULT) -> str:
+    return prompt_variants.prompt(name, variant)
 
 
 def jdump(o) -> str:
@@ -86,10 +86,11 @@ def _cache_put(key: str, value) -> None:
 
 
 def parse_scene_cached(task: dict, instruction: str | None) -> dict:
-    key = "scene|" + json.dumps([context_version(), settings.FAST_MODEL, settings.KB_BASE_DATE, task.get("product"), task.get("audience"),
+    key = "scene|" + json.dumps([context_version(variant=task.get("prompt_variant", prompt_variants.DEFAULT)), settings.FAST_MODEL, settings.KB_BASE_DATE, task.get("product"), task.get("audience"),
                                  task.get("scenario"), task.get("platform"), task.get("goal"),
                                  task.get("constraints") or [], task.get("extra"), _clarify_round(task),
-                                 task.get("clarify_answers") or [], instruction or ""],
+                                 task.get("clarify_answers") or [], instruction or "",
+                                 (task.get("creative_context") or {}).get("store", {})],
                                 ensure_ascii=False, sort_keys=True)
     hit = _cache_get(key)
     if hit is not None:
@@ -104,7 +105,7 @@ def parse_scene_cached(task: dict, instruction: str | None) -> dict:
 
 def plan_content_cached(doc, scene, strat, task, instruction=None):
     stable_scene = {k: v for k, v in scene.items() if k != "cache_hit"}
-    key = "plan|" + json.dumps([context_version(doc), doc.id, stable_scene, _strategy_view(strat), task, instruction,
+    key = "plan|" + json.dumps([context_version(doc, task.get("prompt_variant", prompt_variants.DEFAULT)), doc.id, stable_scene, _strategy_view(strat), task, instruction,
                                 settings.FAST_MODEL], ensure_ascii=False, sort_keys=True)
     hit = _cache_get(key)
     if hit is not None:
@@ -161,6 +162,7 @@ def parse_scene(task: dict, instruction: str | None) -> dict:
     hit = next((k for k in cfg["scenarios"] if k in (task.get("scenario") or "")), None)
     payload = {
         "任务": {k: task.get(k) for k in ("product", "audience", "scenario", "platform", "goal", "constraints", "extra")},
+        "门店客群与语气（不是产品依据）": (task.get("creative_context") or {}).get("store", {}),
         "修改指令": instruction or "",
         "可用维度": cfg["dimensions"],
         "先验权重": prior,
@@ -172,7 +174,7 @@ def parse_scene(task: dict, instruction: str | None) -> dict:
         "问询": {"已完成轮数": _clarify_round(task), "最多轮数": MAX_CLARIFY_ROUNDS,
                  "已回答": task.get("clarify_answers") or []},
     }
-    out = llm.ask_json(prompt("scene"), jdump(payload), model=settings.FAST_MODEL, role="fast")
+    out = llm.ask_json(prompt("scene", task.get("prompt_variant", prompt_variants.DEFAULT)), jdump(payload), model=settings.FAST_MODEL, role="fast")
     dims = set(cfg["dimensions"])
     lw = {d: float(out.get("weights", {}).get(d, 0) or 0) for d in dims}
     lw = _norm_w(lw) if sum(lw.values()) > 0 else prior
@@ -181,6 +183,9 @@ def parse_scene(task: dict, instruction: str | None) -> dict:
     out["prior_weights"] = prior
     out["llm_weights"] = lw
     out["weights"] = final
+    # 将编排采用的两类判断来源显式记录下来，方便作品页向使用者解释：
+    # 结构化规则负责场景基线，自由文本解析负责本次需求的调整。
+    out["weight_mix"] = {"structured": round(mix, 3), "unstructured": round(1 - mix, 3)}
     out["top_dims"] = [d for d, _ in sorted(final.items(), key=lambda x: -x[1])[:4]]
     out["audience"] = out.get("audience") or task.get("audience") or ""
     out["scenario"] = out.get("scenario") or task.get("scenario") or ""
@@ -210,6 +215,7 @@ def plan_strategy(task: dict, scene: dict, kb, model_id: str, instruction: str |
         "reader": spec["reader"], "structure": spec["structure"], "tone": spec["tone"],
         "cta_style": spec["cta_style"], "images": spec["images"], "chars": spec["chars"],
         "writing_limits": spec.get("writing_limits", {}),
+        "formats": spec.get("formats", []),
         "max_facts": spec["max_facts"], "tags": spec["tags"],
         "price_policy": policy, "price_snippets": prices,
         "priority_dims": scene["top_dims"], "user_problem": scene.get("user_problem", ""),
@@ -243,10 +249,10 @@ def decide_model(task: dict, scene: dict, kb) -> dict:
     payload = {"需求画像": {k: scene.get(k) for k in (
         "audience", "scenario", "user_problem", "stage", "hard_constraints", "soft_preferences",
         "tradeoffs", "weights", "unmappable")}, "候选型号": cards,
-        "原始需求": task,
+        "原始需求": {k: v for k, v in task.items() if k not in ("creative_context", "similarity_feedback")},
         "问询": {"已完成轮数": _clarify_round(task), "最多轮数": MAX_CLARIFY_ROUNDS,
                  "已回答": task.get("clarify_answers") or []}}
-    rec = llm.ask_json(prompt("recommend"), jdump(payload), model=settings.FAST_MODEL, role="fast")
+    rec = llm.ask_json(prompt("recommend", task.get("prompt_variant", prompt_variants.DEFAULT)), jdump(payload), model=settings.FAST_MODEL, role="fast")
     valid = {m.id for m in kb.models()}
     primary = rec.get("primary")
     if primary not in valid:
@@ -286,18 +292,24 @@ def retrieve(kb, model_id: str, strat: dict, on_activity=None) -> dict:
 
 
 def plan_content(doc: ModelDoc, scene: dict, strat: dict, task: dict, instruction=None) -> dict:
+    task = marketing_templates.prepare_task(task)
     snippets: list[Snippet] = list(doc.snippets) + list(strat["price_snippets"])
     payload = {
-        "原始需求": task,
+        "原始需求": {k: v for k, v in task.items() if k not in ("creative_context", "similarity_feedback")},
         "需求画像": {k: scene.get(k) for k in ("audience", "scenario", "goal", "user_problem", "top_dims",
                                                       "hard_constraints", "soft_preferences", "tradeoffs", "unmappable")},
-        "平台": {"name": strat["platform_name"], "max_facts": strat["max_facts"], "price_policy": strat["price_policy"]},
+        "平台": {"name": strat["platform_name"], "max_facts": strat["max_facts"], "price_policy": strat["price_policy"],
+                   "formats": strat.get("formats", []), "structure": strat.get("structure", []),
+                   "chars": strat.get("chars", []), "writing_limits": strat.get("writing_limits", {})},
+        "创作上下文": task.get("creative_context") or {},
         "资料片段": [{"sid": s.id, "kind": s.kind, "text": s.text, "source": s.label,
                       "evidence_type": "parameter" if s.kind in ("spec", "price") else "editorial"}
                      for s in snippets],
         "修改指令": instruction or "",
     }
-    out = llm.ask_json(prompt("extract"), jdump(payload), model=settings.FAST_MODEL, role="fast")
+    if task.get("creative_context", {}).get("template_product_pair"):
+        payload["已审核样板对应的华为型号"] = task["creative_context"]["template_product_pair"]
+    out = llm.ask_json(prompt("extract", task.get("prompt_variant", prompt_variants.DEFAULT)), jdump(payload), model=settings.FAST_MODEL, role="fast")
     by_id = {s.id: s for s in snippets}
     picked, seen = [], set()
     for it in out.get("selected", []):
@@ -328,12 +340,30 @@ def plan_content(doc: ModelDoc, scene: dict, strat: dict, task: dict, instructio
         raise llm.LLMError("策划未选定有效切入点。")
     for angle in angles:
         angle["sids"] = [sid for sid in angle.get("sids", []) if sid in by_id]
+        angle["needs_new_evidence"] = any(sid not in {s.id for s, _ in picked + boundaries} for sid in angle["sids"])
+    context = task.get("creative_context") or {}
+    additions = context_facts(context, out.get("context_ids") or [])
+    facts.extend(additions)
+    formats = strat.get("formats") or []
+    selected_format = out.get("format", "")
+    if selected_format not in formats:
+        selected_format = formats[0] if formats else "场景短笺"
     risks = [{"sid": s.id, "text": s.text, "source": s.label} for s, _ in boundaries]
-    return {"facts": facts, "angles": angles, "selected_angle": selected,
+    result = {"facts": facts, "angles": angles, "selected_angle": selected,
+            "format": selected_format, "reader_value": out.get("reader_value", ""),
+            "method_id": out.get("method_id", "") if out.get("method_id") in {m["id"] for m in context.get("methods", [])} else "",
+            "context_ids": [f["id"] for f in additions], "avoidance": out.get("avoidance") or [],
             "decision_reason": out.get("decision_reason", ""), "reader_task": out.get("reader_task", ""),
-            "goal": out.get("goal") or scene.get("goal") or task.get("goal", ""),
+            "goal": task.get("goal") or out.get("goal") or scene.get("goal", ""),
             "unsupported_requests": out.get("unsupported_requests") or [],
             "critical_gaps": out.get("critical_gaps") or [], "risks": risks}
+    if task.get("prompt_variant") == "differentiated":
+        try:
+            result["template"] = marketing_templates.bind_plan(out, task, facts)
+        except ValueError as exc:
+            raise llm.LLMError(str(exc)) from None
+        result["format"] = result["template"]["format"]
+    return result
 
 
 def style_examples(platform):
@@ -356,6 +386,8 @@ def compose(task: dict, scene: dict, strat: dict, facts: list[dict], images: lis
                                             "hard_constraints", "soft_preferences", "tradeoffs", "unmappable",
                                             )},
         "用户限制": task.get("constraints") or [],
+        "创作上下文": task.get("creative_context") or {},
+        "相似检查结果": task.get("similarity_feedback") or {},
         "补充": task.get("extra") or "",
         "平台策略": {k: strat[k] for k in ("platform_name", "reader", "structure", "tone", "cta_style", "images",
                                           "chars", "tags", "price_policy", "writing_limits")},
@@ -365,7 +397,12 @@ def compose(task: dict, scene: dict, strat: dict, facts: list[dict], images: lis
     }
     if plan:
         payload["内容主张"] = {k: plan[k] for k in ("reader_task", "goal", "unsupported_requests", "critical_gaps", "risks")}
+        payload["内容主张"].update({k: plan.get(k) for k in ("format", "reader_value", "method_id", "context_ids", "avoidance")})
         payload["内容主张"]["选定切入点"] = next(a for a in plan["angles"] if a["id"] == plan["selected_angle"])
+        if plan.get("template"):
+            payload["采用的已审核样板"] = plan["template"]
+            payload["须独立展示的概念标识"] = marketing_templates.disclosures(task, plan["template"])
+            payload["对标的华为产品与场景"] = plan["template"].get("product_pair")
     payload["风格正反例（不是产品依据）"] = style_examples(strat["platform"])
     mdl = writer_model or settings.WRITER_MODEL
     if previous is not None:
@@ -374,14 +411,14 @@ def compose(task: dict, scene: dict, strat: dict, facts: list[dict], images: lis
         payload["上一版"] = previous
         payload["核验意见"] = issues or []
         payload["必须保留"] = "选定立意、未被指出问题的句段、单一行动目标以及已有适用条件"
-        sys_p = prompt("repair")
+        sys_p = prompt("repair", task.get("prompt_variant", prompt_variants.DEFAULT))
     else:
-        sys_p = prompt("compose")
+        sys_p = prompt("compose", task.get("prompt_variant", prompt_variants.DEFAULT))
     return llm.ask_json(sys_p, jdump(payload), model=mdl,
                         role="fast" if mdl == settings.FAST_MODEL and mdl != settings.WRITER_MODEL else "writer")
 
 
-def normalize_article(raw: dict, facts: list[dict], images: list[Image]) -> dict:
+def normalize_article(raw: dict, facts: list[dict], images: list[Image], *, task=None, plan=None) -> dict:
     fids = {f["id"] for f in facts}
     id2img = {f"I{n}": i for n, i in enumerate(images, 1)}
     blocks, used = [], set()
@@ -396,18 +433,21 @@ def normalize_article(raw: dict, facts: list[dict], images: list[Image]) -> dict
             blocks.append({"type": "text", "text": b["text"].strip(),
                            "fact_refs": [r for r in b.get("fact_refs", []) if r in fids]})
     tags = [t if t.startswith("#") else f"#{t}" for t in (raw.get("tags") or []) if str(t).strip()]
-    return {"title": (raw.get("title") or "").strip(), "title_options": raw.get("title_options") or [],
+    article = {"title": (raw.get("title") or "").strip(), "title_options": raw.get("title_options") or [],
             "lead": (raw.get("lead") or "").strip(), "blocks": blocks, "cta": (raw.get("cta") or "").strip(),
             "tags": tags, "pending_confirm": [p for p in (raw.get("pending_confirm") or []) if str(p).strip()],
             "fact_refs": {k: [r for r in (raw.get("fact_refs") or {}).get(k, []) if r in fids]
                           for k in ("title", "lead", "cta")}}
+    article = marketing_templates.normalize_structure(article, task or {}, plan, facts)
+    return marketing_templates.decorate(article, task or {}, plan)
 
 
 # ---------- 核验 ----------
 def deterministic_check(article: dict, facts: list[dict], doc: ModelDoc, strat: dict,
-                        images: list[Image]) -> dict:
+                        images: list[Image], task: dict | None = None) -> dict:
     by_id = {f["id"]: f for f in facts}
-    all_text = " ".join(f["text"] + " " + " ".join(c["text"] for c in f.get("conditions", [])) for f in facts)
+    all_text = " ".join(f["text"] + " " + " ".join(c["text"] for c in f.get("conditions", []))
+                        for f in facts if f.get("kind") not in ("store_context", "demo_context"))
     all_nums = set(re.findall(r"\d+(?:\.\d+)?", all_text.replace(",", "")))
     issues: list[dict] = []   # {where, index, kind, detail}
 
@@ -416,12 +456,18 @@ def deterministic_check(article: dict, facts: list[dict], doc: ModelDoc, strat: 
             return
         sup = all_nums if refs is None else set(re.findall(
             r"\d+(?:\.\d+)?", " ".join(by_id[r]["text"] + " " + " ".join(c["text"] for c in by_id[r].get("conditions", []))
-                                          for r in refs if r in by_id).replace(",", "")))
+                                          for r in refs if r in by_id and by_id[r].get("kind") not in ("store_context", "demo_context")).replace(",", "")))
         if refs is not None and not refs:
             sup = set()
         for h in verify.scan_compliance(text, all_text):
             issues.append({"where": where, "index": idx, "kind": "compliance", "rule": h["rule"], "detail": h["hit"]})
-        bad = verify.check_numbers(text, sup)
+        # C/D 中的活动时刻不能为产品参数提供同号数字依据。
+        number_text = text
+        for ref in refs or []:
+            if ref in by_id and by_id[ref].get("kind") in ("store_context", "demo_context"):
+                for clock in re.findall(r"(?<!\d)\d{1,2}[:：]\d{2}(?!\d)", by_id[ref]["text"]):
+                    number_text = number_text.replace(clock, "")
+        bad = verify.check_numbers(number_text, sup)
         for n in bad:
             issues.append({"where": where, "index": idx, "kind": "number", "detail": f"数字 {n} 不在所引用事实中"})
         for m in verify.check_model_mentions(text, doc):
@@ -467,6 +513,8 @@ def deterministic_check(article: dict, facts: list[dict], doc: ModelDoc, strat: 
         issues.append({"where": "image", "index": img_at[0][0], "kind": "image_hero",
                        "detail": "首图应换成含整机的产品图（可用图片里有整机图）"})
     plat = verify.check_platform(article, platforms_cfg()[strat["platform"]])
+    if (task or {}).get("_template_plan", {}).get("id") == "C07" and sum(b["type"] == "text" for b in article["blocks"]) != 4:
+        plat.append("C07 四格样板需要恰好四个 text 块，逐格提供可见文案")
     # 配图数少于下限、且知识库可用图本就不够时，这是资料限制，不是模型写错：不进修订循环，改在 image_notice 提示
     if len(images) < platforms_cfg()[strat["platform"]]["images"][0]:
         plat = [p for p in plat if not p.startswith("配图") or "多于" in p]
@@ -479,7 +527,11 @@ def judge(article: dict, facts: list[dict], strat: dict, det: dict, judge_model:
     payload = {
         "平台策略": {"name": strat["platform_name"], "price_policy": strat["price_policy"], "tone": strat["tone"],
                      "structure": strat["structure"], "chars": strat["chars"], "writing_limits": strat["writing_limits"]},
-        "原始需求": task or {},
+        "原始需求": {k: v for k, v in (task or {}).items() if k not in ("creative_context", "similarity_feedback", "prompt_variant")},
+        "创作上下文": (task or {}).get("creative_context") or {},
+        "相似检查结果": (task or {}).get("similarity_feedback") or {},
+        "采用的已审核样板": (task or {}).get("_template_plan"),
+        "须独立展示的概念标识": article.get("disclosures", []),
         "相关风险与待确认原文": risks or [],
         "已选事实": [{k: f.get(k) for k in ("id", "text", "kind", "conditions", "source", "evidence_type")} for f in facts],
         "配图资料": image_catalog(images or []),
@@ -491,7 +543,7 @@ def judge(article: dict, facts: list[dict], strat: dict, det: dict, judge_model:
     selected = judge_model or settings.JUDGE_MODEL
     if feedback:
         payload["用户对上次审核的反馈（不是产品事实依据）"] = feedback
-    result = llm.ask_json(prompt("judge"), jdump(payload), model=selected,
+    result = llm.ask_json(prompt("judge", (task or {}).get("prompt_variant", prompt_variants.DEFAULT)), jdump(payload), model=selected,
                          role="fast" if selected == settings.FAST_MODEL and selected != settings.JUDGE_MODEL else "judge")
     # 旧格式仍兼容；表达意见最多两项，事实/需求问题不设截断。
     must = result.get("must_fix", result.get("problems", []))
@@ -556,7 +608,7 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
         *, enable_revision: bool = True) -> dict:
     tr = Trace(on_update, budget_seconds=settings.GENERATION_BUDGET_SECONDS)
     kb = get_kb()
-    task = {**task, "constraints": list(task.get("constraints") or [])}
+    task = marketing_templates.prepare_task({**task, "constraints": list(task.get("constraints") or [])})
     clarify_round = _clarify_round(task)
     fast = (task.get("speed") or "").strip().lower() == "fast"
     writer_model = settings.FAST_MODEL if fast else settings.WRITER_MODEL
@@ -587,10 +639,13 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
     def review(version):
         nonlocal budget_hit
         suffix = "" if version == 1 else "re"
+        similarity = check_similarity(article, task.get("creative_context") or {}, facts)
+        task["similarity_feedback"] = similarity
+        tr.publish(f"similarity:{version}", similarity, "verify", "历史稿字面重合检查已完成", version=version)
 
         def check_rules():
             checks = tr.run(suffix + "verify", "规则检查" if version == 1 else "终稿规则复核",
-                            lambda: deterministic_check(article, facts, doc, strat, images),
+                            lambda: deterministic_check(article, facts, doc, strat, images, task),
                             inputs=f"稿件 v{version} · 数字、型号、图片与平台规格", depends_on=[f"draft:{version}"])
             tr.publish(f"rules:{version}", checks, "verify", "规则检查已完成", version=version)
             return checks
@@ -618,8 +673,15 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
         return checks, review0
 
     def fin(res: dict) -> dict:
+        if res.get("article"):
+            res["article"] = marketing_templates.decorate(res["article"], task, plan)
         res = form_result(res, task)
         res["task"] = task
+        res["prompt_version"] = prompt_variants.manifest(task.get("prompt_variant", prompt_variants.DEFAULT))
+        res["creative_context"] = task.get("creative_context") or {}
+        res["marketing_template"] = (plan or {}).get("template")
+        res["similarity"] = check_similarity(res["article"], task.get("creative_context") or {},
+                                             (plan or {}).get("facts", [])) if res.get("article") else None
         res["total_ms"] = int((time.monotonic() - tr.started) * 1000)
         res["kb"] = kb.whoami()
         res["budget"] = {"limit_seconds": settings.GENERATION_BUDGET_SECONDS, "exhausted": budget_hit}
@@ -639,6 +701,7 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
     miss = check_task(task)
     tr.publish("request", {k: task.get(k) for k in ("product", "audience", "scenario", "platform", "goal", "constraints", "extra")},
                "controller", "创作简报已接收")
+    tr.publish("creative_context", task.get("creative_context") or {}, "planner", "本次门店资料、方法与历史已载入")
     if miss:
         return fin(miss)
 
@@ -656,14 +719,21 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
         tr.publish("brief", scene, "planner", "需求已整理")
         if scene["need_info"].get("blocking"):
             return fin({"status": "need_info", "questions": scene["need_info"].get("questions", []), "scene_judgement": scene})
-        dm = perform("model", "匹配指定型号" if task.get("product") else "按需求推荐型号",
-                    lambda: decide_model(task, scene, kb), inputs=task.get("product") or scene.get("user_problem", ""))
+        model_task = task
+        if task.get("_template_product") and not task.get("product"):
+            model_task = {**task, "product": task["_template_product"]}
+        dm = perform("model", "匹配样板对应型号" if task.get("_template_product") else ("匹配指定型号" if task.get("product") else "按需求推荐型号"),
+                    lambda: decide_model(model_task, scene, kb), inputs=model_task.get("product") or scene.get("user_problem", ""))
         if dm["status"] != "ok":
             return fin({"status": "need_info", "questions": dm["questions"], "question_field": dm.get("question_field", ""),
                         "reason": dm.get("reason", ""),
                         "candidates": dm.get("candidates", []),
                         "candidate_ids": dm.get("candidate_ids", []), "scene_judgement": scene})
         model_id = dm["model_id"]
+        task["_resolved_model_id"] = model_id
+        info = kb.info(model_id)
+        name = getattr(info, "name", "")
+        task["_resolved_model_name"] = name if isinstance(name, str) else str(name or "")
         if dm["mode"] == "given":
             tr.skip("recommend", "按需求推荐", "已指定并匹配型号，无需模型推荐")
         tr.publish("model", dm, "model", "型号已确定")
@@ -685,16 +755,19 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
                            view=lambda r: {"selected_angle": r[0]["selected_angle"], "facts": len(r[0]["facts"]), "cache_hit": r[1]},
                            inputs="需求画像 · 完整候选证据 · 平台目标", depends_on=["brief", "sources", "style"])
         facts = plan["facts"]
+        if plan.get("template"):
+            task["_template_plan"] = copy.deepcopy(plan["template"])
         tr.publish("evidence", {"facts": facts, "risks": plan["risks"]}, "planner", "证据已选定")
         tr.publish("plan", {**plan, "cache_hit": hit}, "planner", "立意已确定", to="editor")
         raw = perform("compose", "按选定立意创作完整稿件",
                      lambda: compose(task, scene, strat, facts, images, instruction, writer_model=writer_model, plan=plan),
                      view=lambda a: {"title": a.get("title"), "blocks": len(a.get("blocks", []))},
                      inputs="选定立意 · 证据及条件 · 图片候选 · 平台风格", depends_on=["plan", "evidence"])
-        article = normalize_article(raw, facts, images)
+        article = normalize_article(raw, facts, images, task=task, plan=plan)
         tr.publish("draft:1", article, "editor", "初稿已完成", version=1, to="reviewer")
         det, jd = review(1)
         msgs = collect_issues(det, jd)
+        msgs += task.get("similarity_feedback", {}).get("suggestions", [])
         attempts.append({"round": 1, "issues": msgs, "version": 1})
         if msgs and jd.get("overall") != "incomplete" and enable_revision:
             tr.emit("route_selected", "controller", label="评审发现问题，定向修订", reason="；".join(msgs),
@@ -715,13 +788,13 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
                                          issues=msgs, writer_model=writer_model, plan=plan),
                          view=lambda a: {"title": a.get("title"), "blocks": len(a.get("blocks", []))},
                          inputs="当前稿件 · 具体问题 · 相关证据 · 必须保留内容", depends_on=["review:1", "rules:1"])
-            article = normalize_article(raw, facts, images)
+            article = normalize_article(raw, facts, images, task=task, plan=plan)
             revisions = article_changes(before, article, jd, facts)
             tr.publish("revision", {"changes": revisions, "issues": msgs}, "editor", "修订已完成", version=2, to="reviewer")
             tr.publish("draft:2", article, "editor", "修订稿已完成", version=2)
             # 先撤销初稿通过状态，复审超时也不能借用初稿的评审。
             jd = {"overall": "not_reviewed", "problems": []}
-            det = deterministic_check(article, facts, doc, strat, images)
+            det = deterministic_check(article, facts, doc, strat, images, task)
             det, jd = review(2)
             attempts.append({"round": 2, "issues": collect_issues(det, jd), "version": 2})
         else:
@@ -738,7 +811,7 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
         tr.emit("budget_exhausted", "controller", label="时间预算已用尽，未完成审核需人工复核")
         if article is None:
             return fin({"status": "budget_exceeded", "questions": ["已达到创作时间预算，尚无完整稿件。请调整需求后重试。"]})
-        det = deterministic_check(article, facts, doc, strat, images)
+        det = deterministic_check(article, facts, doc, strat, images, task)
     except Exception:
         with tr.lock:
             tr.closed = True
@@ -759,7 +832,7 @@ def run(task: dict, instruction: str | None = None, on_update: Callable[[dict], 
     res["evidence"]["risks"] = plan.get("risks", [])
     res["revisions"] = revisions
     res["workflow_version"] = WORKFLOW_VERSION
-    res["context_version"] = context_version(doc)
+    res["context_version"] = context_version(doc, task.get("prompt_variant", prompt_variants.DEFAULT))
     res["verification"]["article_version"] = 2 if revisions or "draft:2" in tr.artifacts else 1
     res["verification"]["state"] = "passed" if res["status"] == "ok" else "needs_review"
     res["verification"]["judge"]["model"] = judge_model
@@ -778,13 +851,19 @@ def continue_review(source: dict, decision: dict, on_update=None) -> dict:
     tr = Trace(on_update, budget_seconds=settings.GENERATION_BUDGET_SECONDS)
     kb = get_kb()
     task = copy.deepcopy(source["task"])
+    # 延续同一资料快照；原稿不在生成前快照中，仍显式排除本稿与父稿。
+    context = task.get("creative_context") or {}
+    context["history"] = [h for h in context.get("history", []) if h["job_id"] not in
+                          (source.get("job_id"), source.get("review_parent"), source.get("poster_parent"))]
     doc = kb.load(source["model"]["id"])
     artifacts = source.get("artifacts") or {}
     scene = artifacts.get("brief") or source["scene_judgement"]
     dm = source["model"]
     strat = plan_strategy(task, scene, kb, doc.id)
     facts = copy.deepcopy(source["evidence"]["facts"])
-    plan = artifacts.get("plan")
+    plan = artifacts.get("plan") or source.get("planning")
+    if (plan or {}).get("template"):
+        task["_template_plan"] = copy.deepcopy(plan["template"])
     available = {im.id: im for im in doc.images}
     available.update({im.id: im for im in web_images.cached_images(doc, require_fresh=False)})
     catalog = (artifacts.get("sources") or {}).get("images") or source.get("images", [])
@@ -793,7 +872,8 @@ def continue_review(source: dict, decision: dict, on_update=None) -> dict:
         if row["name"] in available:
             images.append(available[row["name"]])
             mapping[row["id"]] = f"I{len(images)}"
-    previous = copy.deepcopy(source["article"])
+    previous = marketing_templates.decorate(source["article"], task, plan)
+    task["similarity_feedback"] = check_similarity(previous, context, facts)
     for block in previous.get("blocks", []):
         if block.get("type") == "image":
             if block["image_id"] not in mapping:
@@ -819,13 +899,13 @@ def continue_review(source: dict, decision: dict, on_update=None) -> dict:
                 raw = tr.run("repair", "根据用户选择定向修订", lambda: compose(
                     task, scene, strat, facts, images, None, previous=previous, issues=feedback,
                     writer_model=writer_model, plan=plan), view=lambda a: {"title": a.get("title")})
-                article = normalize_article(raw, facts, images)
+                article = normalize_article(raw, facts, images, task=task, plan=plan)
                 changes = article_changes(previous, article, source["verification"].get("judge", {}), facts)
                 tr.publish("revision", {"changes": changes, "issues": feedback}, "editor", "用户要求的修订已完成")
             else:
                 tr.skip("repair", "定向修订", "用户要求重新判断原稿，未授权改写")
             tr.publish(f"draft:{version}", article, "editor", "待复审稿件已就绪", version=version)
-            det = tr.run("reverify", "终稿规则复核", lambda: deterministic_check(article, facts, doc, strat, images))
+            det = tr.run("reverify", "终稿规则复核", lambda: deterministic_check(article, facts, doc, strat, images, task))
             tr.publish(f"rules:{version}", det, "verify", "规则复核已完成", version=version)
             jd = tr.run("rejudge", "结合用户反馈独立复审", lambda: judge(
                 article, facts, strat, det, judge_model, images, task,
@@ -836,7 +916,7 @@ def continue_review(source: dict, decision: dict, on_update=None) -> dict:
             tr.publish(f"review:{version}", jd, "reviewer", "用户反馈复审已完成", version=version)
     except llm.LLMError as exc:
         budget_hit = isinstance(exc, llm.BudgetExceeded)
-        det = deterministic_check(article, facts, doc, strat, images)
+        det = deterministic_check(article, facts, doc, strat, images, task)
         if jd.get("overall") == "not_reviewed":
             jd["pending_confirm"] = ["复审未完成，请重试。"]
         else:
@@ -858,10 +938,15 @@ def continue_review(source: dict, decision: dict, on_update=None) -> dict:
         result["status"] = "ok_with_flags"
         result["verification"]["remaining"].append("时间预算耗尽，必要修订或复核尚未完成。")
     result.update(task=task, revisions=changes, planning=source.get("planning", {}),
-                  workflow_version=WORKFLOW_VERSION, context_version=context_version(doc),
+                  workflow_version=WORKFLOW_VERSION, context_version=context_version(doc, task.get("prompt_variant", prompt_variants.DEFAULT)),
                   review_parent=source.get("job_id"), total_ms=int((time.monotonic() - tr.started) * 1000),
                   budget={"limit_seconds": settings.GENERATION_BUDGET_SECONDS, "exhausted": budget_hit},
                   models_used={"writer": writer_model, "judge": judge_model, "fast": settings.FAST_MODEL})
+    result["prompt_version"] = prompt_variants.manifest(task.get("prompt_variant", prompt_variants.DEFAULT))
+    result["creative_context"] = context
+    result["marketing_template"] = (plan or source.get("planning") or {}).get("template")
+    result["similarity"] = check_similarity(article, context, facts)
+    tr.publish("similarity:final", result["similarity"], "verify", "复审稿历史重合检查已完成")
     result["verification"].update(article_version=version, state="passed" if result["status"] == "ok" else "needs_review")
     tr.publish("final", {"article": article, "state": result["verification"]["state"], "version": version,
                          "remaining": result["verification"]["remaining"]}, "controller", "用户反馈处理已结束")
@@ -985,6 +1070,8 @@ def build_result(task, scene, dm, strat, doc, images, facts, article, det, jd, a
             "goal": scene.get("goal", ""), "stage": scene.get("stage", ""), "platform": strat["platform_name"],
             "strategy_notes": scene.get("strategy_notes", ""), "weights": scene["weights"],
             "prior_weights": scene["prior_weights"], "llm_weights": scene["llm_weights"],
+            "weight_mix": scene.get("weight_mix", {"structured": 0.4, "unstructured": 0.6}),
+            "top_dims": scene.get("top_dims", []),
             "hard_constraints": scene.get("hard_constraints", []), "soft_preferences": scene.get("soft_preferences", []),
             "tradeoffs": scene.get("tradeoffs", []), "unmappable": scene.get("unmappable", []),
             "matched_scenario_rule": scene.get("matched_scenario_rule")},

@@ -1,0 +1,102 @@
+version: huawei-product-pairs-v1
+description: 用户审核的友商营销手法与华为知识库型号的对标关系；样例图只作预制视觉 fallback，不是产品事实。
+pairs:
+  C01:
+    reference_brand: 惠普
+    technique: 参与式互动：真实细节→具体征集→真实回复
+    model_id: HUAWEI MateBook 14
+    model_name: HUAWEI MateBook 14（鸿蒙版）
+    scene: 新生在开学季为电脑配色或随身物品发起一个可回答的征集
+    evidence_dimensions: [portability, display]
+    fallback_asset: fallback-samples/c01-matebook14-color-interaction.png
+    fallback_note: 预制互动背景；留白由实际文案覆盖，不含网友评论、点赞或获选结果。
+  C02:
+    reference_brand: 联想
+    technique: 统一微缩世界：功能映射→镜头游览→产品落点
+    model_id: HUAWEI MateBook 14
+    model_name: HUAWEI MateBook 14（鸿蒙版）
+    scene: 新生把图书馆、课程资料和电脑携带任务组织成一座微缩学习城市
+    evidence_dimensions: [display, portability, ports]
+    fallback_asset: fallback-samples/c02-matebook14-miniature-library.png
+    fallback_note: 微缩城市是视觉隐喻，不代表性能、空间或真实使用效果。
+  C04:
+    reference_brand: 华硕
+    technique: 原创试验角色：一致人设→固定栏目→任务回应
+    model_id: HUAWEI MateBook Pro S
+    model_name: HUAWEI MateBook Pro S
+    scene: 内容创作者用原创角色讲一个屏幕、手写或协同任务
+    evidence_dimensions: [creation, display, ecosystem]
+    fallback_asset: fallback-samples/c07-matebook14-library-comic.png
+    fallback_note: 共享四格叙事样例，仅作角色栏目构图参考；与品牌方暂无联系。
+  C07:
+    reference_brand: 惠普
+    technique: 四格小剧场：任务→难处→有据动作→收尾
+    model_id: HUAWEI MateBook 14
+    model_name: HUAWEI MateBook 14（鸿蒙版）
+    scene: 大学生带课程资料去图书馆，围绕携带或查看资料讲一集
+    evidence_dimensions: [portability, display]
+    fallback_asset: fallback-samples/c07-matebook14-library-comic.png
+    fallback_note: 预制四格分镜，空白框由实际文案覆盖；情景演绎不是真人经历。
+  C08:
+    reference_brand: 华为
+    technique: 轻反差：日常预期→醒目反差→准确事实
+    model_id: HUAWEI MateBook Pro S
+    model_name: HUAWEI MateBook Pro S
+    scene: 内容创作者在一个日常创作动作里呈现一个准确细节
+    evidence_dimensions: [creation, display]
+    fallback_asset: fallback-samples/c01-matebook14-color-interaction.png
+    fallback_note: 共享留白产品场景样例，现场文案必须换成 MateBook Pro S 的真实事实。
+  C09:
+    reference_brand: 英特尔
+    technique: 生活双视角：现实任务→概念分身问答→有据落点
+    model_id: HUAWEI MateBook Pro S
+    model_name: HUAWEI MateBook Pro S
+    scene: 创作者在一个生活化任务里与原创概念分身对话
+    evidence_dimensions: [creation, ecosystem]
+    fallback_asset: fallback-samples/c07-matebook14-library-comic.png
+    fallback_note: 共享叙事样例；不表示真人数字孪生，也不证明产品拥有分身能力。
+  C10:
+    reference_brand: 华硕
+    technique: 细节悬念：真实细节→线索→概念揭晓→统一视觉
+    model_id: HUAWEI MateBook Pro
+    model_name: HUAWEI MateBook Pro
+    scene: 为一个拟议的原创 IP 联动提出非真实概念提案
+    evidence_dimensions: [display, creation, portability]
+    fallback_asset: fallback-samples/c01-matebook14-color-interaction.png
+    fallback_note: 共享概念背景，必须独立展示非真实合作；产品外观应替换为 MateBook Pro 官方图。
+  C13:
+    reference_brand: 戴尔
+    technique: 具体选购问答：问题→约束→有据判断→下一步
+    model_id: MateBook D 14
+    model_name: HUAWEI MateBook D 14 2024
+    scene: 家庭换新或预算有限时，回答一个边界清楚的选购问题
+    evidence_dimensions: [value, portability, os_compat]
+    fallback_asset: fallback-samples/c01-matebook14-color-interaction.png
+    fallback_note: 共享问题卡背景，不能把样例图中的 MateBook 14 外观当作 D 14 依据。
+  C14:
+    reference_brand: 微软
+    technique: 统一主题延展：核心主题→渠道任务→一个入口
+    model_id: HUAWEI MateBook 14
+    model_name: HUAWEI MateBook 14（鸿蒙版）
+    scene: 同一款华为电脑从小红书任务转成公众号职场办公图文
+    evidence_dimensions: [ports, ecosystem, portability]
+    fallback_asset: fallback-samples/c01-matebook14-color-interaction.png
+    fallback_note: 共享统一主题背景，公众号正文仍需使用真实 MateBook 14 事实。
+  C15:
+    reference_brand: 联想
+    technique: 时效议题单任务：节点→生活任务→有据动作→主题收尾
+    model_id: HUAWEI MateBook Pro S
+    model_name: HUAWEI MateBook Pro S
+    scene: 在用户提供且七日内核对的文化节点下讲一个创作任务
+    evidence_dimensions: [creation, display]
+    fallback_asset: fallback-samples/c07-matebook14-library-comic.png
+    fallback_note: 共享单任务叙事样例；议题热度未联网核实，不得编造传播结果。
+  C16:
+    reference_brand: 联想
+    technique: 体验邀请：项目→适合任务→时间地点→参与动作
+    model_id: MateBook D 14
+    model_name: HUAWEI MateBook D 14 2024
+    scene: 家庭换新或职场办公的门店真机体验邀请
+    evidence_dimensions: [value, portability, ports]
+    fallback_asset: fallback-samples/c02-matebook14-miniature-library.png
+    fallback_note: 预制体验概念背景；正式活动必须有 C 门店资料，演示活动必须醒目标注虚构。

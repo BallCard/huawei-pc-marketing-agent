@@ -1,0 +1,289 @@
+version: reviewed-patterns-v1
+review:
+  report_id: pc-marketing-review-20261021
+  exported_at: '2026-10-21T11:56:15.147Z'
+  sha256: de5237b2872b250136d993d0cdf07072d71e2601e919db48445af88bc8b315df
+  approved:
+  - C01
+  - C02
+  - C04
+  - C07
+  - C08
+  - C09
+  - C10
+  - C13
+  - C14
+  - C15
+  - C16
+  rejected:
+  - C03
+  - C05
+  - C06
+  - C11
+  - C12
+templates:
+- id: C01
+  title: 把新品颜色的命名权交给用户
+  source: https://m.adquan.com/case2/detail-345330
+  user_note: 小红书示例的评论区可以参考这个设计，海报也可以按照这个
+  reference_pattern:
+  - 展示一个真实、可被观察的新品细节
+  - 提出一道有明确答案空间的征集题
+  - 收集真实投稿，说明采用结果
+  - 下一篇回应结果，再介绍相关事实
+  platforms:
+  - xiaohongshu
+  - poster
+  format: 互动征集
+  slots:
+  - 真实细节
+  - 可回答的问题
+  - 邀请与后续回应
+  visual: interaction
+  pattern:
+  - 用一个有证据的产品细节开场
+  - 抛出一个具体而轻量的问题
+  - 邀请真实评论；没有反馈记录就不写征集结果
+- id: C02
+  title: 把笔记本拍成一座微缩城市
+  source: https://www.digitaling.com/projects/361031.html
+  user_note: 海报可以做这个风格的生图
+  reference_pattern:
+  - 为一组相关功能选定一个统一空间隐喻
+  - 逐项建立功能与空间部件的对应关系
+  - 按同一世界观安排镜头
+  - 回到真实产品与可核对的功能
+  platforms:
+  - poster
+  format: 微缩世界
+  slots:
+  - 空间隐喻
+  - 事实与空间的对应
+  - 产品落点
+  visual: miniature
+  pattern:
+  - 选一个统一的微缩空间隐喻
+  - 只将已选事实映射为背景部件
+  - 回到真实产品与一句简短主张
+- id: C04
+  title: 让电脑品牌有一个会持续说话的角色
+  source: https://www.admen.cn/caseContent/2813
+  user_note: 可以做，但是表明仅作试验，与品牌方暂无联系
+  reference_pattern:
+  - 明确角色的性格、兴趣与行为边界
+  - 围绕兴趣生产固定栏目
+  - 给粉丝可收藏或使用的内容
+  - 在相关情境中自然出现产品
+  platforms:
+  - poster
+  - xiaohongshu
+  - wechat_article
+  format: 试验角色
+  slots:
+  - 角色语气
+  - 单一兴趣任务
+  - 产品出现的理由
+  visual: avatar
+  demo: true
+  pattern:
+  - 用原创试验角色的一致语气切入
+  - 围绕一个兴趣任务组织内容
+  - 以有据功能回应任务；标注角色试验与暂无品牌合作
+- id: C07
+  title: 一个创业难题，对应一项 AI 能力
+  source: https://www.adquan.com/article/347751
+  user_note: 可以生图做一系列的小剧场，做成动漫样式或者四格漫画之类的
+  reference_pattern:
+  - 先出现一个具体职业的工作难题
+  - 让难题在场景中变得可见
+  - 引入一项相关功能并展示动作
+  - 回到工作任务，形成这一集的收尾
+  platforms:
+  - poster
+  format: 四格小剧场
+  slots:
+  - 第一格任务
+  - 第二格难处
+  - 第三格有据动作
+  - 第四格收尾
+  visual: comic
+  pattern:
+  - 第一格只交代一个职业任务
+  - 第二格让难处可见
+  - 第三格使用一项有证据的能力
+  - 第四格回到任务，轻巧收尾；明确情景演绎
+- id: C08
+  title: 严肃合唱团，唱一段不太严肃的卖点
+  source: https://www.digitaling.com/projects/315328.html
+  user_note: 反差，故事感，醒目，简洁
+  reference_pattern:
+  - 选择一个与日常卖点表达有距离的形式
+  - 用少量准确关键词建立节奏
+  - 让角色对应具体使用情境
+  - 回到产品主张
+  platforms:
+  - poster
+  - xiaohongshu
+  - wechat_article
+  - moments
+  format: 简洁反差
+  slots:
+  - 预期
+  - 轻反差
+  - 事实落点
+  visual: contrast
+  pattern:
+  - 设一个读者能理解的预期
+  - 用一句话或一个画面制造轻反差
+  - 立即落回一个准确事实；醒目简洁，不强套合唱或长剧情
+- id: C09
+  title: 让创作者和自己的 AI 分身对话
+  source: https://www.digitaling.com/projects/288287.html
+  user_note: 生活化场景，海报可用，数字孪生。
+  reference_pattern:
+  - 确定一个真实创作者的具体任务
+  - 提出该任务中的一个问题
+  - 用问答或双视角展开过程
+  - 展示实际作品或可验证能力
+  platforms:
+  - poster
+  format: 生活双视角
+  slots:
+  - 生活任务
+  - 现实视角
+  - 概念分身视角
+  - 有据落点
+  visual: twin
+  demo: true
+  pattern:
+  - 在一个具体生活任务中安排双视角
+  - 用原创虚构人物与概念分身的对话展开
+  - 只陈述已选事实；标明非真人数字孪生
+- id: C10
+  title: 先问：擦香水的电脑是什么样的？
+  source: https://www.digitaling.com/projects/339450.html
+  user_note: 可以拟一些可能的品牌联动，ip联动，但是非真需标注
+  reference_pattern:
+  - 用真实罕见细节提出悬念
+  - 逐条放出可验证线索
+  - 揭示该细节的结构或用法
+  - 用统一视觉承接正式产品内容
+  platforms:
+  - poster
+  - xiaohongshu
+  - wechat_article
+  format: 联动概念提案
+  slots:
+  - 拟议联动对象
+  - 真实产品细节
+  - 共同视觉主题
+  - 概念揭晓
+  visual: collaboration
+  demo: true
+  subject: true
+  pattern:
+  - 围绕用户给定的拟议对象提出联动概念
+  - 用真实产品细节作为联动切口
+  - 统一主题并揭晓概念；全程注明非真实合作，不制造授权或联名配置
+- id: C13
+  title: 进入用户已经在问的选购问题
+  source: https://www.5iidea.com/caseContent/2530
+  user_note: ''
+  reference_pattern:
+  - 选一个真实且有边界的购买问题
+  - 先明确使用任务与约束
+  - 用证据逐项回答判断条件
+  - 列出适合与不适合、待核对项
+  platforms:
+  - poster
+  - xiaohongshu
+  - wechat_article
+  - moments
+  format: 具体选购问答
+  slots:
+  - 一个具体问题
+  - 有据判断
+  - 适用条件
+  - 一个下一步
+  visual: question
+  pattern:
+  - 先问一个与本次任务有关的具体问题
+  - 用所选事实回答一个判断
+  - 保留必要条件，只给一个下一步动作
+- id: C14
+  title: 同一主题，延展成电商与内容两套素材
+  source: https://www.5iidea.com/caseContent/2495
+  user_note: ''
+  reference_pattern:
+  - 确定一个活动主题与核心事实
+  - 保留统一视觉和主张
+  - 按入口的任务拆分素材
+  - 每个渠道给出适配的下一步动作
+  platforms:
+  - poster
+  - xiaohongshu
+  - wechat_article
+  - moments
+  format: 统一主题延展
+  slots:
+  - 核心主题
+  - 本渠道任务
+  - 核心事实
+  - 一个入口
+  visual: theme
+  pattern:
+  - 确定一个主题与核心事实
+  - 按当前渠道的阅读任务安排内容
+  - 使用一致主张与一个行动入口；未确认活动不写优惠
+- id: C15
+  title: 同一个 AI 主题，按生活节点分成三集
+  source: https://www.adquan.com/article/344513
+  user_note: 结合某个文化现象，或者社会热题，具有时效性和传播性
+  reference_pattern:
+  - 确认与本次需求有关的真实节点
+  - 选择该节点中的一件具体任务
+  - 设置一个与功能有因果关系的难处
+  - 展示相关能力后回到人物关系
+  platforms:
+  - poster
+  - xiaohongshu
+  - wechat_article
+  - moments
+  format: 时效议题单任务
+  slots:
+  - 议题关联
+  - 具体任务
+  - 有据动作
+  - 主题收尾
+  visual: topical
+  topic: true
+  pattern:
+  - 使用本次提供且仍在有效期的文化或社会议题
+  - 只选议题下一个相关生活任务
+  - 用本型号事实回应，回到主题；不编热搜排名或热度
+- id: C16
+  title: 把内容邀请落到真实的线下体验
+  source: https://brand.lenovo.com.cn/brand/ppn03436.html
+  user_note: 更真实，但是具体信息可以fake数据，仅展示我们的demo想法
+  reference_pattern:
+  - 提出一个可亲自体验的具体项目
+  - 说明适合谁以及能做什么
+  - 给出真实时间、地点和参与方式
+  - 以体验后反馈形成后续内容
+  platforms:
+  - poster
+  - xiaohongshu
+  - wechat_article
+  - moments
+  format: 体验邀请
+  slots:
+  - 可体验项目
+  - 适合的任务
+  - 时间地点
+  - 参与动作
+  visual: invitation
+  store: true
+  pattern:
+  - 提出确实可体验的项目，或明确标注的演示安排
+  - 说明能完成的一项任务
+  - 给出有依据的参与信息；演示数据不可冒充真实门店或活动

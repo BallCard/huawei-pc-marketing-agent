@@ -67,6 +67,17 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(result["scene_judgement"]["hard_constraints"], [])
         self.assertFalse(any("价格" in item for item in result["verification"]["pending_confirm"]))
 
+    def test_scene_judgement_exposes_orchestration_sources_and_weights(self):
+        # 作品页“选型与 Agent 编排”直接读取这些字段，缺失会让公开示例退回默认 40/60。
+        result = pipeline.run(self.task)
+        sj = result["scene_judgement"]
+        self.assertEqual(set(sj["weight_mix"]), {"structured", "unstructured"})
+        self.assertAlmostEqual(sum(sj["weight_mix"].values()), 1, places=2)
+        self.assertTrue(sj["top_dims"])
+        self.assertTrue(all(isinstance(d, str) for d in sj["top_dims"]))
+        if sj["weights"]:
+            self.assertLessEqual(set(sj["weights"]), set(sj["prior_weights"]))
+
     def test_only_optional_style_notes_pass_without_revision_or_manual_question(self):
         self.mocks[5].return_value = review([{"where": "lead", "type": "expression", "detail": "可以再轻松些"}])
         result = pipeline.run(self.task)

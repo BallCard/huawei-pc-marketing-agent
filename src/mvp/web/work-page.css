@@ -17,9 +17,9 @@
 .page-work .work-refine-options { display: grid; gap: 10px; margin-top: 20px; }
 .page-work .work-refine-options button:not(.work-refine-custom) { display: grid; grid-template-columns: 34px minmax(0, 1fr) 18px; align-items: center; gap: 12px; padding: 10px 14px; text-align: left; background: #eeece5; border: 1.5px solid transparent; border-radius: 12px; }
 .page-work .work-refine-options button:not(.work-refine-custom):hover { background: #e8e4da; }
-.page-work .work-refine-options button[aria-pressed="true"]:not(.work-refine-custom) { background: #f3e8df; border-color: #c08a70; }
-.page-work .refine-number { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; font: 500 17px/1 var(--font-serif); background: #fffefa; }
-.page-work .work-refine-options button[aria-pressed="true"] .refine-number { background: var(--text-main); color: #fffefa; }
+.page-work .work-refine-options button[aria-pressed="true"]:not(.work-refine-custom) { background: var(--accent-tint); border-color: var(--accent-terracotta); }
+.page-work .refine-number { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; font: 500 17px/1 var(--font-serif); background: var(--bg-surface); }
+.page-work .work-refine-options button[aria-pressed="true"] .refine-number { background: var(--text-main); color: var(--bg-surface); }
 .page-work .work-refine-options b { display: block; font-size: 15px; font-weight: 600; line-height: 1.6; }
 .page-work .work-refine-options small { display: block; font-size: 12px; line-height: 1.7; color: var(--text-muted); }
 .page-work .work-refine-options .icon { width: 16px; height: 16px; color: var(--text-muted); }

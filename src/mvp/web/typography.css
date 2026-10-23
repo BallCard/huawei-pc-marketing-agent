@@ -2,7 +2,7 @@
 :root {
   --weight-body: 450; --weight-label: 600; --weight-heading: 650; --weight-emphasis: 700;
   --type-body: 15px; --type-small: 13px; --type-meta: 12px;
-  --text-main: #25241f; --text-muted: #625d53; --text-faint: #756c5e;
+  --text-main: #1b1b1b; --text-muted: #5f5b54; --text-faint: #6f6a63;
 }
 html { font-synthesis: none; text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
 body { font-family: var(--font-sans); font-size: var(--type-body); font-weight: var(--weight-body); line-height: 1.65; }

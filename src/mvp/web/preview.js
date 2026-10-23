@@ -207,7 +207,14 @@
       PV.renderers[platform] || PV.renderers.xiaohongshu;
 
     if (typeof renderer === "function") {
-      return renderer(r, options);
+      const node = renderer(r, options);
+      if (r?.article?.disclosures?.length) {
+        const notice = para(r.article.disclosures.join(' · '), 'concept-disclosure');
+        notice.style.cssText = 'padding:10px 14px;margin:10px 0;border:1px solid #c9b89a;background:#fff4dc;color:#614b29;font-size:12px;line-height:1.6;white-space:normal;';
+        const target = ['.xhs-body', '.wx-article', '.mm-main', '.po-body'].map(s => node.querySelector?.(s)).find(Boolean) || node;
+        target.prepend(notice);
+      }
+      return node;
     }
 
     const tip = document.createElement("div");

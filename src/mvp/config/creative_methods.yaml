@@ -1,0 +1,36 @@
+- id: task-first
+  case: Intel × 小红书「工作不一定上班」（2023）
+  source: https://www.digitaling.com/projects/243403.html
+  method: 从具体工作任务与生活地点切入，不先念参数。
+  formats: [任务清单, 轻反差]
+  boundary: 只借创作方法，不能借案例人物经历或产品能力。
+- id: real-discipline
+  case: Apple 高校生用 Mac
+  source: https://www.apple.com.cn/mac/college-students/
+  method: 用一个专业、一项作业和具体操作组织叙事。
+  formats: [任务拆解, 问答]
+  boundary: 不把 Mac 的软件支持情况用于华为产品。
+- id: everyday-ritual
+  case: 华硕 a豆 × 安娜苏香氛版
+  source: https://www.digitaling.com/projects/339450.html
+  method: 用可核实的外观细节和日常仪式建立记忆点。
+  formats: [细节观察, 场景短笺]
+  boundary: 不暗示华为电脑具有香氛或未经证实的颜色与设计。
+- id: local-question
+  case: 联想区域导购运营（2021）
+  source: https://brand.lenovo.com.cn/brand/PPGS00086.html
+  method: 将真实门店问题转成一次一问的答疑；本地语气只来自门店设置。
+  formats: [问答, 核对清单]
+  boundary: 没有本店记录不能写成客户亲历，不能随机造方言或地名。
+- id: action-and-condition
+  case: 小米 HyperConnect
+  source: https://hyperos.mi.com/continuity
+  method: 先展示想完成的动作，再说功能与版本条件。
+  formats: [轻科普, 任务拆解]
+  boundary: 不引用小米的产品事实；华为功能只由本型号原文支持。
+- id: listen-and-localize
+  case: SocialBeta 2025 年中盘点：听劝与在地营销
+  source: https://api.socialbeta.com/article/110467
+  method: 将用户提出的真实问题变成下一篇选题，使用经核对的本地生活细节。
+  formats: [兴趣任务, 问答, 门店记录]
+  boundary: 不编评论、热点热度、城市经历或传播效果，不照抄品牌故事。

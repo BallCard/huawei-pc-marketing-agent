@@ -10,76 +10,276 @@ const DIM = {
   value: "预算与价值"
 };
 
+/* 门店状态带：把「门店经营意识」接到创作简报上。
+   角色、门店目标、私域触点全部沿用现有 store_id / goal / extra 契约，不改后端。 */
+const STORE_GOALS = ["引导到店", "预约体验", "私信咨询", "消化库存"];
+const STORE_TOUCHPOINTS = ["企业微信私信", "朋友圈", "门店社群", "到店邀约"];
+const STORE_ROLE_LABELS = { manager: "门店店长", sales: "销售顾问" };
+const storeDesk = {
+  role: "manager",
+  goals: [],
+  touchpoints: [],
+  readSession() {
+    try {
+      const r = sessionStorage.getItem("studio-role");
+      if (r === "manager" || r === "sales") this.role = r;
+      this.goals = JSON.parse(sessionStorage.getItem("studio-goals") || "[]");
+      this.touchpoints = JSON.parse(sessionStorage.getItem("studio-touchpoints") || "[]");
+      if (!Array.isArray(this.goals)) this.goals = [];
+      if (!Array.isArray(this.touchpoints)) this.touchpoints = [];
+      this.goals = this.goals.filter(g => STORE_GOALS.includes(g));
+      this.touchpoints = this.touchpoints.filter(t => STORE_TOUCHPOINTS.includes(t));
+    } catch (e) { /* 浏览器禁存储时保持默认 */ }
+  },
+  writeSession() {
+    try {
+      sessionStorage.setItem("studio-role", this.role);
+      sessionStorage.setItem("studio-goals", JSON.stringify(this.goals));
+      sessionStorage.setItem("studio-touchpoints", JSON.stringify(this.touchpoints));
+    } catch (e) { /* 忽略 */ }
+  },
+  syncChips() {
+    document.querySelectorAll("[data-role]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.role === this.role)));
+    document.querySelectorAll("[data-goal]").forEach(b => b.setAttribute("aria-pressed", String(this.goals.includes(b.dataset.goal))));
+    document.querySelectorAll("[data-touchpoint]").forEach(b => b.setAttribute("aria-pressed", String(this.touchpoints.includes(b.dataset.touchpoint))));
+  },
+  syncGoalInput() {
+    const input = UI.$("goal");
+    if (!input) return;
+    const composed = this.goals.join("、");
+    if (composed) {
+      input.value = composed;
+    } else if (!input.value || STORE_GOALS.some(g => input.value.includes(g))) {
+      input.value = "";
+    }
+  },
+  syncFromGoalInput() {
+    const value = UI.$("goal")?.value || "";
+    this.goals = STORE_GOALS.filter(g => value.includes(g));
+    this.writeSession();
+    this.syncChips();
+  },
+  init() {
+    this.readSession();
+    this.syncChips();
+    document.querySelectorAll("[data-role]").forEach(button => button.addEventListener("click", () => {
+      this.role = button.dataset.role === "sales" ? "sales" : "manager";
+      this.writeSession();
+      this.syncChips();
+      window.dispatchEvent(new CustomEvent("store-role-change", { detail: this.role }));
+    }));
+    document.querySelectorAll("[data-goal]").forEach(button => button.addEventListener("click", () => {
+      const label = button.dataset.goal;
+      const i = this.goals.indexOf(label);
+      if (i >= 0) this.goals.splice(i, 1); else this.goals.push(label);
+      this.writeSession();
+      this.syncChips();
+      this.syncGoalInput();
+    }));
+    document.querySelectorAll("[data-touchpoint]").forEach(button => button.addEventListener("click", () => {
+      const label = button.dataset.touchpoint;
+      const i = this.touchpoints.indexOf(label);
+      if (i >= 0) this.touchpoints.splice(i, 1); else this.touchpoints.push(label);
+      this.writeSession();
+      this.syncChips();
+    }));
+    const dialog = UI.$("options-dialog");
+    if (dialog) dialog.addEventListener("close", () => this.syncFromGoalInput());
+    window.addEventListener("store-context-updated", () => refreshStoreBoard().catch(() => {}));
+  }
+};
+
+/* 门店私域链路：讲清思路，并把焦点直接落到第四步（触点） */
+function initStoreLoop() {
+  const dialog = UI.$("store-loop-dialog");
+  const open = UI.$("open-store-loop");
+  if (!dialog || !open) return;
+  open.addEventListener("click", () => dialog.showModal());
+  UI.$("start-store-loop")?.addEventListener("click", () => {
+    dialog.close();
+    document.querySelector(".touchpoint-field")?.scrollIntoView({ block: "center", behavior: "smooth" });
+    document.querySelector("[data-touchpoint]")?.focus({ preventScroll: true });
+  });
+}
+
+/* 平台标注：与第一页「发到哪里」使用同一套图标与名称，避免两套叫法。 */
+const PLATFORM_META = {
+  xiaohongshu: { label: "小红书", icon: "i-book" },
+  wechat_article: { label: "公众号", icon: "i-file" },
+  moments: { label: "朋友圈", icon: "i-grid" },
+  poster: { label: "门店海报", icon: "i-poster" }
+};
+
+const REVIEW_LABELS = {
+  passed: { text: "已通过核验", ok: true },
+  needs_review: { text: "待复核", ok: false },
+  pending: { text: "待核验", ok: false },
+  unknown: { text: "未标记", ok: false }
+};
+
+function platformTag(platform) {
+  const meta = PLATFORM_META[platform] || { label: platform || "图文", icon: "i-file" };
+  return UI.el("span", { class: "plat-tag" }, UI.svg(meta.icon), UI.el("span", {}, meta.label));
+}
+
+function refreshStoreBoard() {
+  const box = UI.$("store-history");
+  if (!box) return Promise.resolve();
+  const sid = (window.CreativeContext && window.CreativeContext.storeId) ? window.CreativeContext.storeId() : "default";
+  return fetch(`/api/context/${encodeURIComponent(sid)}`)
+    .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+    .then(data => {
+      const rows = data.history || [];
+      const count = UI.$("store-history-count");
+      if (count) count.textContent = rows.length ? `${rows.length} 篇` : "暂无稿件";
+      if (!rows.length) {
+        box.replaceChildren(UI.el("p", { class: "store-empty" }, "这家门店还没有稿件记录，生成第一篇后会自动出现在这里。"));
+        return;
+      }
+      box.replaceChildren(...rows.map(row => {
+        const state = REVIEW_LABELS[row.review_state] || { text: row.review_state || "未标记", ok: false };
+        return UI.el("article", { class: "history-row" },
+          UI.el("p", { class: "history-title" }, row.title || "未命名稿件"),
+          UI.el("div", { class: "history-meta" },
+            platformTag(row.platform),
+            UI.el("span", { class: "history-state" + (state.ok ? " ok" : "") }, state.text)));
+      }));
+    })
+    .catch(err => {
+      box.replaceChildren(UI.el("p", { class: "store-empty" }, `读取失败：${err.message}。请确认本地服务已启动。`));
+    });
+}
+
+/* 看板交互：动态筛选、角色切换后的视角与数字联动。 */
+function initStoreBoard() {
+  const list = document.querySelector(".feed-list");
+  if (!list) return;
+  const items = Array.from(list.querySelectorAll("li"));
+  const filters = Array.from(document.querySelectorAll("[data-feed-filter]"));
+  const kindNames = { new: "新客加微", group: "社群接龙", visit: "到店 / 预约", ask: "待确认", stock: "库存", old: "老客换新" };
+  let filter = "all";
+
+  const inScope = () => items.filter(li => storeDesk.role === "manager" || li.dataset.owner !== "manager");
+
+  function sync() {
+    const scoped = inScope();
+    const shown = scoped.filter(li => filter === "all" || li.dataset.kind === filter);
+    items.forEach(li => { li.hidden = !shown.includes(li); });
+    filters.forEach(button => {
+      const key = button.dataset.feedFilter;
+      const count = key === "all" ? scoped.length : scoped.filter(li => li.dataset.kind === key).length;
+      button.querySelector("b").textContent = String(count);
+      button.hidden = key !== "all" && count === 0;
+      button.setAttribute("aria-pressed", String(key === filter));
+    });
+    const status = UI.$("feed-status");
+    if (status) {
+      status.textContent = filter === "all"
+        ? `${storeDesk.role === "manager" ? "全店" : "本人"}视角 · 共 ${scoped.length} 条动态`
+        : `${kindNames[filter]} · ${shown.length} 条`;
+    }
+    const scope = UI.$("store-scope");
+    if (scope) {
+      scope.textContent = storeDesk.role === "manager"
+        ? "全店视角 · 含社群、库存与全部跟进"
+        : "我的顾客视角 · 只看本人跟进的顾客";
+    }
+    document.querySelectorAll(".store-kpi b[data-mgr]").forEach(node => {
+      node.textContent = storeDesk.role === "manager" ? node.dataset.mgr : node.dataset.sales;
+    });
+  }
+
+  filters.forEach(button => button.addEventListener("click", () => { filter = button.dataset.feedFilter; sync(); }));
+  window.addEventListener("store-role-change", sync);
+  sync();
+}
+
+
 const PRESETS = [
   {
     title: "新生买电脑 · 小红书",
-    sub: "鸿蒙版 · 开学季 · 手机笔记",
+    sub: "鸿蒙版 · 模仿惠普 C01 · 颜色征集",
     v: {
+      prompt_variant: "differentiated",
+      marketing_template: "C01",
       product: "HUAWEI MateBook 14（鸿蒙版）",
       audience: "大学新生",
       scenario: "开学季",
       platform: "xiaohongshu",
       goal: "种草并引导到店咨询",
       constraints: "",
-      extra: "经常背去图书馆，希望轻一点，语气轻松"
+      extra: "参考惠普 C01 的“细节→征集→真实回复”结构：先展示华为真实配色或外观细节，再问一个新生能直接回答的问题。只交付首帖，不编网友评论、获选名称、奖励或官方采纳。"
     }
   },
   {
     title: "同一款 · 换公众号",
-    sub: "职场办公",
+    sub: "职场办公 · 模仿微软 C14 · 主题延展",
     v: {
+      prompt_variant: "differentiated",
+      marketing_template: "C14",
       product: "HUAWEI MateBook 14（鸿蒙版）",
       audience: "经常出差的职场人",
       scenario: "职场办公",
       platform: "wechat_article",
       goal: "引导预约体验",
       constraints: "",
-      extra: "要接投影仪、外设"
+      extra: "参考微软 C14 的“同一主题→按渠道拆内容→一个入口”结构，把同一条华为产品主张改成公众号阅读，不新增活动、折扣或渠道承诺。要接投影仪、外设的具体兼容性仍需真实资料支持。"
     }
   },
   {
     title: "内容创作 · 小红书",
-    sub: "屏幕与手写",
+    sub: "屏幕与手写 · 模仿华硕 C04 · 试验角色",
     v: {
+      prompt_variant: "differentiated",
+      marketing_template: "C04",
+      demo_mode: true,
       product: "HUAWEI MateBook Pro S",
       audience: "摄影与设计创作者",
       scenario: "内容创作",
       platform: "xiaohongshu",
       goal: "收藏清单并到店体验",
       constraints: "",
-      extra: ""
+      extra: "参考华硕 C04 的“一致人设+固定栏目”结构，使用原创试验角色讲一个创作任务。角色与华为品牌方暂无联系，不能复制天选姬或声称官方合作；产品能力仍只写真实资料。"
     }
   },
   {
     title: "门店到访 · 海报",
-    sub: "竖版海报",
+    sub: "竖版海报 · 模仿联想 C16 · 体验邀请演示",
     v: {
+      prompt_variant: "differentiated",
+      marketing_template: "C16",
+      demo_mode: true,
       product: "HUAWEI MateBook Pro",
       audience: "附近看机的职场新人",
       scenario: "门店到访",
       platform: "poster",
       goal: "引导到店",
       constraints: "",
-      extra: ""
+      extra: "参考联想 C16 的“体验项目→适合任务→时间地点→参与动作”结构。这里是概念演示，使用虚构体验点和安排，海报必须醒目标注非真实门店活动；真实地址、服务、库存和活动只能来自门店确认资料。"
     }
   },
   {
     title: "家庭换新 · 朋友圈",
-    sub: "短文 + 九宫格",
+    sub: "短文 + 九宫格 · 模仿戴尔 C13 · 选购问答",
     v: {
+      prompt_variant: "differentiated",
+      marketing_template: "C13",
       product: "HUAWEI MateBook D 14 2024",
       audience: "准备给孩子换电脑的家长",
       scenario: "家庭换新",
       platform: "moments",
       goal: "私信咨询",
       constraints: "",
-      extra: "家里多人共用，旧电脑资料要迁移"
+      extra: "参考戴尔 C13 的“真实问题→约束→有据判断→下一步”结构，只回答一个家庭换新问题。家里多人共用、资料迁移的事实需有产品或门店资料支持，不做伪横评。"
     }
   },
   {
     title: "缺整机图 · D 16",
-    sub: "验证缺图提示",
+    sub: "验证缺图提示 · 不套案例",
     v: {
+      prompt_variant: "baseline",
+      marketing_template: "auto",
+      demo_mode: false,
       product: "HUAWEI MateBook D 16 2024",
       audience: "大学生",
       scenario: "内容创作",
@@ -91,8 +291,11 @@ const PRESETS = [
   },
   {
     title: "只给需求 · 让它选",
-    sub: "按画像推荐",
+    sub: "按画像推荐 · 可手动改选 C13",
     v: {
+      prompt_variant: "baseline",
+      marketing_template: "auto",
+      demo_mode: false,
       product: "",
       audience: "大学新生",
       scenario: "开学季",
@@ -104,8 +307,11 @@ const PRESETS = [
   },
   {
     title: "诱导违规 · 拦截",
-    sub: "测合规闸门",
+    sub: "测合规闸门 · 不套案例",
     v: {
+      prompt_variant: "baseline",
+      marketing_template: "auto",
+      demo_mode: false,
       product: "MateBook Pro S",
       audience: "内容创作者",
       scenario: "内容创作",
@@ -128,6 +334,13 @@ let activeJobId = null;
 
 async function init() {
   Studio.init();
+  window.CreativeContext?.init();
+  storeDesk.init();
+  initStoreLoop();
+  initStoreBoard();
+  refreshStoreBoard().catch(() => {});
+  window.PromptCompare?.init(readTask);
+  window.MarketingTemplates?.init();
   window.ReviewQuestions.init();
   UI.$("work-review-questions").addEventListener("click", () => window.ReviewQuestions.open(current));
   UI.$("poster-regenerate").addEventListener("click", async () => {
@@ -304,6 +517,10 @@ function fill(v) {
   const extra = UI.$("#extra");
   if (extra && v.extra !== undefined) extra.value = v.extra;
   if (v.speed) UI.$("speed").value = v.speed;
+  if (v.prompt_variant && UI.$("prompt-variant")) UI.$("prompt-variant").value = v.prompt_variant;
+  window.MarketingTemplates?.restore(v);
+  storeDesk.syncFromGoalInput();
+  storeDesk.syncChips();
 }
 
 function readTask() {
@@ -313,15 +530,26 @@ function readTask() {
     .map(s => s.trim())
     .filter(Boolean);
 
+  const baseExtra = UI.$("#extra")?.value.trim() || "";
+  const extras = [];
+  if (baseExtra) extras.push(baseExtra);
+  extras.push(`创作人：华为门店${STORE_ROLE_LABELS[storeDesk.role] || "门店店长"}，站在门店经营与顾客转化的角度组织内容。`);
+  const touchpoints = storeDesk.touchpoints.join("、");
+  if (touchpoints) extras.push(`私域触达：${touchpoints}。内容按这些触点来写，便于直接分发。`);
+
   const task = {
+    ...(window.MarketingTemplates?.read() || {}),
+    prompt_variant: UI.$("prompt-variant")?.value || "baseline",
+    store_id: window.CreativeContext?.storeId() || "default",
     product: UI.$("#product")?.value.trim() || "",
     audience: UI.$("#audience")?.value.trim() || "",
     scenario: UI.$("#scenario")?.value.trim() || "",
     platform: UI.$("#platform")?.value || "xiaohongshu",
     speed: UI.$("#speed")?.value || "quality",
     goal: UI.$("#goal")?.value.trim() || "",
+    touchpoints: storeDesk.touchpoints.slice(),
     constraints,
-    extra: UI.$("#extra")?.value.trim() || ""
+    extra: extras.join("\n\n")
   };
   if (Studio.getMode() === "sentence") {
     task.audience = "";
@@ -546,6 +774,13 @@ function showFlow(steps, running, presentation = null) {
 function showResult(r) {
   current = r;
   if (!r) return;
+  if (r.mode === "prompt_comparison") {
+    Studio.stopRun();
+    sessionStorage.removeItem("studio-active-job");
+    window.PromptCompare?.show(r);
+    return;
+  }
+  window.CreativeContext?.showResult(r);
   const posterDownload = UI.$("poster-download"), posterRedo = UI.$("poster-regenerate");
   posterDownload.hidden = !r.poster?.image_url;
   UI.$("dl").disabled = Boolean(r.poster && !r.poster.image_url);
@@ -585,6 +820,12 @@ function showResult(r) {
   const notice = UI.$("#notice");
   if (notice) {
     notice.replaceChildren();
+    if (r.poster?.fallback_used) {
+      notice.appendChild(UI.el("div", { class: "warnbar", role: "alert" }, [
+        UI.el("b", {}, ["海报回退："]),
+        document.createTextNode(r.poster.fallback_warning || r.poster.fallback_note || "现场生图未完成，当前展示预制样例。")
+      ]));
+    }
     if (Array.isArray(r.image_notice) && r.image_notice.length > 0) {
       r.image_notice.forEach(n => {
         const text = typeof n === "string" ? n : (n.text || n.message || "");
@@ -605,6 +846,7 @@ function showResult(r) {
 
   renderChips(r);
   renderJudge(r);
+  window.MarketingTemplates?.showResult(r);
   renderEvidence(r);
   renderVerify(r);
 
@@ -616,6 +858,7 @@ function showResult(r) {
     if (el) el.hidden = false;
   });
   Studio.finishRun(r);
+  refreshStoreBoard().catch(() => {});
 }
 
 function showNeedInfo(r) {
@@ -696,7 +939,7 @@ function plainText(r) {
   if (!r || !r.article) return "";
   if (r.poster?.copy?.length) return r.poster.copy.join("\n\n");
   const art = r.article;
-  const parts = [];
+  const parts = [...(art.disclosures || [])];
 
   if (art.title) parts.push(art.title.trim());
   if (art.lead) parts.push(art.lead.trim());
@@ -853,405 +1096,581 @@ function renderChips(r) {
 
 }
 
-function weightRows(weights, prior, llm) {
-  const frag = document.createDocumentFragment();
-  const w = weights || {};
-  const p = prior || {};
-  const l = llm || {};
-  const sorted = Object.keys(w).sort((a, b) => (Number(w[b]) || 0) - (Number(w[a]) || 0));
-
-  for (const key of sorted) {
-    const v = Number(w[key]) || 0;
-    const row = document.createElement("div");
-    row.className = "dimrow";
-
-    const spanName = document.createElement("span");
-    spanName.textContent = DIM[key] || key;
-    row.appendChild(spanName);
-
-    const bar = document.createElement("div");
-    bar.className = "bar";
-    const i = document.createElement("i");
-    i.style.width = `${Math.min(100, v * 250)}%`;
-    bar.appendChild(i);
-    row.appendChild(bar);
-
-    const spanVal = document.createElement("span");
-    spanVal.className = "muted";
-    spanVal.textContent = v.toFixed(2);
-    const pVal = p[key] !== undefined ? p[key] : "-";
-    const lVal = l[key] !== undefined ? l[key] : "-";
-    spanVal.title = `先验 ${pVal} · 模型 ${lVal}`;
-    row.appendChild(spanVal);
-
-    frag.appendChild(row);
+function insHead(title, note) {
+  const head = document.createElement("div");
+  head.className = "ins-head";
+  const h = document.createElement("h3");
+  h.textContent = title;
+  head.appendChild(h);
+  if (note) {
+    const span = document.createElement("span");
+    span.textContent = note;
+    head.appendChild(span);
   }
-  return frag;
+  return head;
 }
 
-function renderJudge(r) {
-  const dbg = document.getElementById("dbg-judge");
-  if (dbg) dbg.hidden = false;
+function clip(text, max) {
+  const s = String(text || "").replace(/\s+/g, " ").trim();
+  return s.length > max ? s.slice(0, max) + "…" : s;
+}
 
-  const judgeEl = document.getElementById("judge");
-  if (!judgeEl) return;
-  judgeEl.textContent = "";
+const SPEC_RE = /([\u4e00-\u9fa5]{2,6}|[A-Za-z]{2,12})\s*(约)?\s*(\d+(?:\.\d+)?(?:\s*[×x]\s*\d+(?:\.\d+)?)?)\s*(mm|cm|kg|g|英寸|寸|Wh|mAh|GB|TB|Hz|W|%|nit)?/g;
 
-  const sj = (r && r.scene_judgement) || {};
-
-  const pTags = document.createElement("p");
-  if (sj.audience) pTags.appendChild(UI.tag(sj.audience));
-  if (sj.scenario) pTags.appendChild(UI.tag(sj.scenario));
-  if (sj.stage) pTags.appendChild(UI.tag(sj.stage));
-  if (sj.platform) pTags.appendChild(UI.tag(sj.platform));
-  judgeEl.appendChild(pTags);
-
-  const pProblem = document.createElement("p");
-  pProblem.textContent = "用户问题：" + (sj.user_problem || "");
-  judgeEl.appendChild(pProblem);
-
-  const pGoal = document.createElement("p");
-  pGoal.textContent = "内容目标：" + (sj.goal || "");
-  judgeEl.appendChild(pGoal);
-
-  const pStrat = document.createElement("p");
-  pStrat.textContent = "策略解释：" + (sj.strategy_notes || "");
-  judgeEl.appendChild(pStrat);
-
-  const h3W = document.createElement("h3");
-  h3W.textContent = "需求维度权重（规则先验 × 模型推理）";
-  judgeEl.appendChild(h3W);
-  judgeEl.appendChild(weightRows(sj.weights, sj.prior_weights, sj.llm_weights));
-
-  const pSoft = document.createElement("p");
-  pSoft.appendChild(document.createTextNode("软偏好："));
-  const sps = sj.soft_preferences || [];
-  if (sps.length === 0) {
-    pSoft.appendChild(document.createTextNode("无"));
-  } else {
-    sps.forEach((sp, idx) => {
-      if (idx > 0) pSoft.appendChild(document.createTextNode("；"));
-      pSoft.appendChild(document.createTextNode(sp.text + " "));
-      (sp.dims || []).forEach(d => {
-        pSoft.appendChild(UI.tag(DIM[d] || d));
-      });
-    });
+// 备注跟随所属数值：只把紧跟在数值后的括号归给这一项，避免每张卡重复同一段话。
+function parseSpec(text) {
+  const src = String(text || "");
+  const hits = [];
+  SPEC_RE.lastIndex = 0;
+  let m;
+  while ((m = SPEC_RE.exec(src))) {
+    hits.push({ label: m[1], value: `${m[2] || ""}${m[3]}${m[4] || ""}`, at: m.index, end: SPEC_RE.lastIndex });
   }
-  judgeEl.appendChild(pSoft);
+  const specs = hits.map((hit, i) => {
+    const after = src.slice(hit.end, i + 1 < hits.length ? hits[i + 1].at : src.length);
+    const note = (after.match(/^[（(]([^）)]{1,40})[）)]/) || [])[1] || "";
+    return { label: hit.label, value: hit.value, note };
+  });
+  const tail = (src.slice(hits.length ? hits[hits.length - 1].end : 0).match(/[*＊][^*＊]{0,90}/) || [""])[0];
+  return { specs, tail: tail.replace(/^[*＊]\s*/, "") };
+}
 
-  const pHard = document.createElement("p");
-  pHard.appendChild(document.createTextNode("硬约束："));
-  const hcs = sj.hard_constraints || [];
-  if (hcs.length === 0) {
-    pHard.appendChild(document.createTextNode("无"));
-  } else {
-    hcs.forEach(c => {
-      pHard.appendChild(UI.tag(c, "warn"));
-    });
+// 只挑最有辨识度的几项展示：厚度/重量优先，其余收进折叠区
+const SPEC_RANK = ["厚度", "重量", "长度", "宽度", "屏幕", "分辨率", "刷新率", "电池", "续航", "处理器", "内存", "硬盘", "存储", "接口"];
+
+function pickSpecs(specs, limit) {
+  const seen = new Set();
+  const uniq = specs.filter(s => {
+    const key = `${s.label}|${s.value}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const rank = s => {
+    const i = SPEC_RANK.findIndex(k => String(s.label).includes(k));
+    return i < 0 ? SPEC_RANK.length : i;
+  };
+  const sorted = uniq.slice().sort((a, b) => rank(a) - rank(b));
+  const chosen = sorted.slice(0, limit);
+  const rest = sorted.slice(limit);
+  return { chosen, rest };
+}
+
+function specCard(label, value, note, opts = {}) {
+  const card = document.createElement("div");
+  card.className = opts.wide ? "spec-card wide" : "spec-card";
+  const k = document.createElement("div");
+  k.className = "spec-k";
+  const dot = document.createElement("i");
+  if (opts.used === false) dot.className = "idle";
+  k.append(dot, document.createTextNode(label));
+  card.appendChild(k);
+  const v = document.createElement("div");
+  v.className = opts.text ? "spec-v text" : (String(value).length > 16 ? "spec-v long" : "spec-v");
+  v.textContent = value;
+  card.appendChild(v);
+  if (note) {
+    const n = document.createElement("div");
+    n.className = "spec-note";
+    n.textContent = note;
+    card.appendChild(n);
   }
-  judgeEl.appendChild(pHard);
-
-  const pTrade = document.createElement("p");
-  const toText = (sj.tradeoffs || []).join("；");
-  pTrade.appendChild(document.createTextNode("取舍：" + (toText || "无") + " · 无依据诉求："));
-  const unmap = sj.unmappable || [];
-  if (unmap.length === 0) {
-    pTrade.appendChild(document.createTextNode("无"));
-  } else {
-    unmap.forEach(u => {
-      pTrade.appendChild(UI.tag(u, "bad"));
-    });
-  }
-  judgeEl.appendChild(pTrade);
-
-  const model = (r && r.model) || {};
-  const pModel = document.createElement("p");
-  pModel.appendChild(document.createTextNode("型号：" + (model.name || "") + " "));
-  const isRec = model.mode === "recommended";
-  pModel.appendChild(UI.tag(isRec ? "按需求推荐" : "用户指定", isRec ? "warn" : "ok"));
-  judgeEl.appendChild(pModel);
-
-  if (model.recommendation) {
-    const rec = model.recommendation;
-    if (rec.reasons && rec.reasons.length) {
-      const ul = document.createElement("ul");
-      rec.reasons.forEach(item => {
-        const li = document.createElement("li");
-        const dName = DIM[item.dimension] || item.dimension || "";
-        li.textContent = `${dName}：${item.claim || ""}（${item.evidence_field || ""}：${item.evidence_value || ""}）`;
-        ul.appendChild(li);
-      });
-      judgeEl.appendChild(ul);
-    }
-    if (rec.trade_off) {
-      const pTo = document.createElement("p");
-      pTo.className = "muted";
-      pTo.textContent = rec.trade_off;
-      judgeEl.appendChild(pTo);
-    }
-  }
-
-  if (model.alternatives && model.alternatives.length) {
-    const pAlt = document.createElement("p");
-    pAlt.textContent = "备选：" + model.alternatives.join("、");
-    judgeEl.appendChild(pAlt);
-  }
+  return card;
 }
 
 function renderEvidence(r) {
   const dbg = document.getElementById("dbg-evidence");
   if (dbg) dbg.hidden = false;
+  const container = document.getElementById("evidence") || dbg;
+  if (!container) return;
+  container.textContent = "";
 
   const facts = (r && r.evidence && r.evidence.facts) || [];
   const images = (r && r.images) || [];
+  const sources = (r && r.evidence && r.evidence.sources) || [];
+  const model = (r && r.model) || {};
   const evSum = document.getElementById("ev-sum");
   if (evSum) evSum.textContent = `${facts.length} 个事实点 · ${images.length} 张图`;
 
-  const container = document.getElementById("evidence") || dbg;
-  container.textContent = "";
-
-  const fTable = document.createElement("table");
-  const fThead = document.createElement("thead");
-  const fTrH = document.createElement("tr");
-  ["#", "事实点", "来源", "已用"].forEach(h => {
-    const th = document.createElement("th");
-    th.textContent = h;
-    fTrH.appendChild(th);
-  });
-  fThead.appendChild(fTrH);
-  fTable.appendChild(fThead);
-
-  const fTbody = document.createElement("tbody");
+  // 事实点：只留关键数据，其余收进折叠区，避免一屏塞满参数
+  const factSection = document.createElement("section");
+  factSection.className = "ins-section";
+  factSection.appendChild(insHead("产品事实", facts.length ? `${facts.filter(f => f.used).length} 条进入正文` : "本次没有引用事实"));
+  const grid = document.createElement("div");
+  grid.className = "spec-grid";
+  if (model.name) {
+    grid.appendChild(specCard("型号", model.name, model.mode === "recommended" ? "按需求推荐" : "用户指定", { wide: true }));
+  }
+  const specPool = [];
+  const plainFacts = [];
+  let tailText = "";
+  let sourceText = "";
   facts.forEach(f => {
-    const tr = document.createElement("tr");
-
-    const tdId = document.createElement("td");
-    tdId.textContent = f.id || "";
-    tr.appendChild(tdId);
-
-    const tdText = document.createElement("td");
-    tdText.textContent = f.text || "";
-    if (f.why) tdText.title = f.why;
-    tr.appendChild(tdText);
-
-    const tdSrc = document.createElement("td");
+    const parsed = parseSpec(f.text);
     const src = f.source || {};
-    tdSrc.textContent = [src.title, src.label].filter(Boolean).join(" · ");
-    tr.appendChild(tdSrc);
-
-    const tdUsed = document.createElement("td");
-    tdUsed.textContent = f.used ? "是" : "否";
-    tr.appendChild(tdUsed);
-
-    fTbody.appendChild(tr);
+    sourceText = sourceText || [src.title, src.label].filter(Boolean).join(" · ");
+    tailText = tailText || parsed.tail;
+    if (parsed.specs.length >= 2) specPool.push(...parsed.specs);
+    else plainFacts.push(f);
   });
-  fTable.appendChild(fTbody);
-  container.appendChild(fTable);
-
-  const iTable = document.createElement("table");
-  const iThead = document.createElement("thead");
-  const iTrH = document.createElement("tr");
-  ["编号", "文件名", "画面类型", "含整机", "来源页面", "插入位置", "图注"].forEach(h => {
-    const th = document.createElement("th");
-    th.textContent = h;
-    iTrH.appendChild(th);
+  const picked = pickSpecs(specPool, 3);
+  picked.chosen.forEach(spec => grid.appendChild(specCard(spec.label, spec.value, spec.note, { used: true })));
+  plainFacts.slice(0, 1).forEach(f => {
+    grid.appendChild(specCard(f.label || "要点", clip(f.text, 60), "", { text: true, wide: true, used: f.used !== false }));
   });
-  iThead.appendChild(iTrH);
-  iTable.appendChild(iThead);
+  const rest = picked.rest;
+  if (rest.length || plainFacts.length > 1) {
+    const more = document.createElement("details");
+    more.className = "spec-more";
+    const sum = document.createElement("summary");
+    sum.textContent = `其余 ${rest.length + Math.max(0, plainFacts.length - 1)} 项参数`;
+    more.appendChild(sum);
+    rest.forEach(spec => more.appendChild(specCard(spec.label, spec.value, spec.note, { used: true })));
+    plainFacts.slice(1).forEach(f => more.appendChild(specCard(f.label || "要点", clip(f.text, 60), "", { text: true, used: f.used !== false })));
+    grid.appendChild(more);
+  }
+  if (sourceText || tailText) {
+    const foot = document.createElement("p");
+    foot.className = "spec-foot";
+    foot.textContent = [tailText, sourceText].filter(Boolean).join(" · ");
+    grid.appendChild(foot);
+  }
+  factSection.appendChild(grid);
+  container.appendChild(factSection);
 
-  const iTbody = document.createElement("tbody");
-  images.forEach(i => {
-    const tr = document.createElement("tr");
+  // 配图：直接展示
+  if (images.length) {
+    const shotSection = document.createElement("section");
+    shotSection.className = "ins-section";
+    shotSection.appendChild(insHead("配图", "来自知识库登记图片"));
+    const shots = document.createElement("div");
+    shots.className = "shot-grid";
+    images.forEach(im => {
+      const fig = document.createElement("figure");
+      fig.className = "shot";
+      if (window.PV && window.PV.imgUrl) {
+        const img = document.createElement("img");
+        img.src = window.PV.imgUrl(r, im);
+        img.alt = im.caption || im.name || "产品图";
+        img.loading = "lazy";
+        fig.appendChild(img);
+      }
+      const cap = document.createElement("figcaption");
+      const capText = document.createElement("span");
+      capText.className = "shot-cap";
+      capText.textContent = im.caption || im.name || "";
+      cap.appendChild(capText);
+      const meta = document.createElement("div");
+      meta.className = "shot-meta";
+      if (im.position) {
+        const pos = document.createElement("span");
+        pos.textContent = im.position;
+        meta.appendChild(pos);
+      }
+      if (window.UI && UI.KIND_ZH && im.kind) {
+        const kind = document.createElement("span");
+        kind.textContent = UI.KIND_ZH[im.kind];
+        meta.appendChild(kind);
+      }
+      const url = im.source_url || im.origin_url || "";
+      if (/^https:\/\//i.test(url)) {
+        const a = document.createElement("a");
+        a.href = url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = "官方页面 ↗";
+        meta.appendChild(a);
+      }
+      cap.appendChild(meta);
+      fig.appendChild(cap);
+      shots.appendChild(fig);
+    });
+    shotSection.appendChild(shots);
 
-    const tdId = document.createElement("td");
-    tdId.textContent = i.id || "";
-    tr.appendChild(tdId);
+    // 知识库文件路径默认折叠：属于佐证细节，不必占版面
+    const tree = document.createElement("details");
+    tree.className = "kb-fold";
+    const sum = document.createElement("summary");
+    sum.textContent = `${images.length} 个知识库文件路径`;
+    tree.appendChild(sum);
+    const treeBody = document.createElement("div");
+    treeBody.className = "kb-tree";
+    images.forEach(im => {
+      const parts = String(im.local_path || "").split(/[\\/]/).filter(Boolean);
+      const at = parts.lastIndexOf("kb");
+      const rel = at >= 0 ? parts.slice(at + 1) : parts.slice(-4);
+      const row = document.createElement("div");
+      row.className = "kb-path";
+      const root = document.createElement("b");
+      root.textContent = "知识库";
+      row.appendChild(root);
+      rel.forEach((part, i) => {
+        row.appendChild(document.createTextNode(" / "));
+        if (i === rel.length - 1) {
+          const file = document.createElement("span");
+          file.className = "kb-file";
+          file.textContent = part;
+          row.appendChild(file);
+        } else {
+          row.appendChild(document.createTextNode(part));
+        }
+      });
+      treeBody.appendChild(row);
+    });
+    tree.appendChild(treeBody);
+    shotSection.appendChild(tree);
+    container.appendChild(shotSection);
+  }
 
-    const tdName = document.createElement("td");
-    tdName.textContent = i.name || "";
-    tr.appendChild(tdName);
-
-    const tdKind = document.createElement("td");
-    tdKind.textContent = (UI.KIND_ZH && UI.KIND_ZH[i.kind]) || "未标注";
-    tr.appendChild(tdKind);
-
-    const tdDev = document.createElement("td");
-    tdDev.textContent = (i.shows_device === null || i.shows_device === undefined) ? "?" : (i.shows_device ? "是" : "否");
-    tr.appendChild(tdDev);
-
-    const tdSrc = document.createElement("td");
-    if (/^https:\/\//i.test(i.source_url || "")) {
-      const link = document.createElement("a");
-      link.href = i.source_url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.textContent = i.source_title || "查看官方来源";
-      tdSrc.appendChild(link);
-    } else {
-      tdSrc.textContent = i.source_title || i.source_url || "";
-    }
-    if (i.checked_at) tdSrc.appendChild(document.createTextNode(`（核验 ${i.checked_at.slice(0, 10)}）`));
-    tr.appendChild(tdSrc);
-
-    const tdPos = document.createElement("td");
-    tdPos.textContent = i.position || "";
-    tr.appendChild(tdPos);
-
-    const tdCap = document.createElement("td");
-    tdCap.textContent = i.caption || "";
-    tr.appendChild(tdCap);
-
-    iTbody.appendChild(tr);
-  });
-  iTable.appendChild(iTbody);
-  container.appendChild(iTable);
-
-  const sources = (r && r.evidence && r.evidence.sources) || [];
-  if (sources.length > 0) {
-    const h3Src = document.createElement("h3");
-    h3Src.textContent = "官方来源页面";
-    container.appendChild(h3Src);
-
-    const ulSrc = document.createElement("ul");
+  // 官方来源：可直接跳转
+  if (sources.length) {
+    const srcSection = document.createElement("section");
+    srcSection.className = "ins-section";
+    srcSection.appendChild(insHead("官方来源", "产品页与规格页"));
+    const list = document.createElement("ul");
+    list.className = "src-list";
     sources.forEach(x => {
       const li = document.createElement("li");
-      li.textContent = `${x.type || ""}：${x.title || ""} ${x.url || ""}（抓取 ${x.fetched || ""}）`;
-      ulSrc.appendChild(li);
+      const a = document.createElement("a");
+      a.href = x.url || "#";
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      if (x.type) {
+        const em = document.createElement("em");
+        em.textContent = x.type;
+        a.appendChild(em);
+      }
+      const b = document.createElement("b");
+      b.textContent = x.title || x.url || "";
+      a.appendChild(b);
+      const arrow = document.createElement("i");
+      arrow.textContent = "↗";
+      a.appendChild(arrow);
+      if (x.fetched) a.title = `抓取 ${x.fetched}`;
+      li.appendChild(a);
+      list.appendChild(li);
     });
-    container.appendChild(ulSrc);
+    srcSection.appendChild(list);
+    container.appendChild(srcSection);
   }
+}
+
+function renderJudge(r) {
+  const dbg = document.getElementById("dbg-judge");
+  if (dbg) dbg.hidden = false;
+  const judgeEl = document.getElementById("judge");
+  if (!judgeEl) return;
+  judgeEl.textContent = "";
+
+  const sj = (r && r.scene_judgement) || {};
+  const model = (r && r.model) || {};
+  const hero = ((r && r.images) || [])[0];
+
+  // 图优先：先给产品，再给结论
+  const heroBox = document.createElement("div");
+  heroBox.className = "judge-hero";
+  if (hero && window.PV && window.PV.imgUrl) {
+    const fig = document.createElement("figure");
+    const img = document.createElement("img");
+    img.src = window.PV.imgUrl(r, hero);
+    img.alt = hero.caption || hero.name || "产品图";
+    img.loading = "lazy";
+    fig.appendChild(img);
+    if (hero.caption) {
+      const cap = document.createElement("figcaption");
+      cap.textContent = hero.caption;
+      fig.appendChild(cap);
+    }
+    heroBox.appendChild(fig);
+  }
+  const side = document.createElement("div");
+  const name = document.createElement("p");
+  name.className = "judge-model";
+  name.textContent = model.name || "未指定型号";
+  side.appendChild(name);
+  const chips = document.createElement("div");
+  chips.className = "judge-chips";
+  [sj.audience, sj.scenario, sj.stage, sj.platform].filter(Boolean).slice(0, 4).forEach(v => chips.appendChild(UI.tag(v)));
+  side.appendChild(chips);
+  if (sj.strategy_notes) {
+    const lead = document.createElement("p");
+    lead.className = "judge-lead";
+    lead.textContent = clip(sj.strategy_notes, 110);
+    side.appendChild(lead);
+  }
+  heroBox.appendChild(side);
+  judgeEl.appendChild(heroBox);
+
+  // 权重构成：一条比例条，不再堆文字
+  const mix = sj.weight_mix || { structured: 0.4, unstructured: 0.6 };
+  const structuredPct = Math.round((Number(mix.structured) || 0.4) * 100);
+  const unstructuredPct = 100 - structuredPct;
+  const mixSection = document.createElement("section");
+  mixSection.className = "ins-section";
+  mixSection.appendChild(insHead("权重构成", "结构化规则 × 非结构化理解"));
+  const bar = document.createElement("div");
+  bar.className = "mix-bar";
+  const left = document.createElement("div");
+  left.className = "structured";
+  left.style.width = `${structuredPct}%`;
+  left.textContent = `结构化 ${structuredPct}%`;
+  const right = document.createElement("div");
+  right.className = "unstructured";
+  right.style.width = `${unstructuredPct}%`;
+  right.textContent = `非结构化 ${unstructuredPct}%`;
+  bar.append(left, right);
+  mixSection.appendChild(bar);
+  const legend = document.createElement("p");
+  legend.className = "mix-legend";
+  const l1 = document.createElement("span");
+  l1.className = "structured";
+  l1.textContent = sj.matched_scenario_rule ? `场景规则先验 · 命中「${sj.matched_scenario_rule}」` : "场景规则先验 · 通用基线";
+  const l2 = document.createElement("span");
+  l2.className = "unstructured";
+  l2.textContent = sj.user_problem ? `自然语言理解 · ${clip(sj.user_problem, 34)}` : "自然语言理解 · 本次没有额外问题";
+  legend.append(l1, l2);
+  mixSection.appendChild(legend);
+  judgeEl.appendChild(mixSection);
+
+  // 最终需求维度：条形图为主，数字为辅
+  const weights = sj.weights || {};
+  const prior = sj.prior_weights || {};
+  const keys = Object.keys(weights).sort((a, b) => (Number(weights[b]) || 0) - (Number(weights[a]) || 0));
+  if (keys.length) {
+    const dimSection = document.createElement("section");
+    dimSection.className = "ins-section";
+    dimSection.appendChild(insHead("最终需求维度", "按权重排序"));
+    const max = Math.max(...keys.map(k => Number(weights[k]) || 0), 0.01);
+    const list = document.createElement("div");
+    list.className = "vdim-list";
+    const row = k => {
+      const wrap = document.createElement("div");
+      wrap.className = "vdim";
+      const nm = document.createElement("span");
+      nm.className = "vdim-name";
+      nm.textContent = DIM[k] || k;
+      const track = document.createElement("div");
+      track.className = "vdim-track";
+      const fill = document.createElement("i");
+      fill.className = "vdim-fill";
+      fill.style.width = `${Math.min(100, ((Number(weights[k]) || 0) / max) * 100)}%`;
+      track.appendChild(fill);
+      if (prior[k] !== undefined) {
+        const tick = document.createElement("i");
+        tick.className = "vdim-tick";
+        tick.style.left = `${Math.min(100, ((Number(prior[k]) || 0) / max) * 100)}%`;
+        tick.title = `规则先验 ${Number(prior[k]).toFixed(2)}`;
+        track.appendChild(tick);
+      }
+      const val = document.createElement("span");
+      val.className = "vdim-val";
+      val.textContent = (Number(weights[k]) || 0).toFixed(2);
+      wrap.append(nm, track, val);
+      return wrap;
+    };
+    keys.slice(0, 5).forEach(k => list.appendChild(row(k)));
+    if (keys.length > 5) {
+      const more = document.createElement("details");
+      more.className = "vdim-more";
+      const sum = document.createElement("summary");
+      sum.textContent = `展开其余 ${keys.length - 5} 项`;
+      more.appendChild(sum);
+      keys.slice(5).forEach(k => more.appendChild(row(k)));
+      list.appendChild(more);
+    }
+    const note = document.createElement("p");
+    note.className = "vdim-note";
+    note.textContent = "竖线为场景规则先验；条形为规则与自然语言判断合成后的最终权重。";
+    dimSection.append(list, note);
+    judgeEl.appendChild(dimSection);
+  }
+
+  // 完整解释与已审核样板放进折叠区，保持主视觉简洁
+  const more = document.createElement("details");
+  const sum = document.createElement("summary");
+  sum.textContent = "完整策略说明";
+  more.appendChild(sum);
+  const detail = document.createElement("p");
+  detail.textContent = sj.strategy_notes || "本次没有额外策略说明。";
+  more.appendChild(detail);
+  judgeEl.appendChild(more);
 }
 
 function renderVerify(r) {
   const dbg = document.getElementById("dbg-verify");
   if (dbg) dbg.hidden = false;
+  const container = document.getElementById("verify") || dbg;
+  if (!container) return;
+  container.textContent = "";
 
   const vf = (r && r.verification) || {};
-  const review = window.processReviewStatus(r,r.artifacts || {},r.trace || []);
-  const remaining = (vf.remaining || []).filter(s=>review.state !== "incomplete" || typeof s !== "string" || !/独立评审未通过或未完成|预算/.test(s));
+  const judge = vf.judge || {};
+  const triage = vf.triage || {};
+  const review = window.processReviewStatus ? window.processReviewStatus(r, r.artifacts || {}, r.trace || []) : { label: "", detail: "" };
   const vfSum = document.getElementById("vf-sum");
   if (vfSum) {
-    vfSum.textContent = review.label;
-    vfSum.title = review.detail;
+    vfSum.textContent = review.label || "";
+    vfSum.title = review.detail || "";
   }
 
-  const container = document.getElementById("verify") || dbg;
-  container.textContent = "";
-  const triage = vf.triage;
-  if (review.needsReview || r.human_review || r.automatic_followup) container.appendChild(UI.el("div", {class:"review-feedback-entry"},
-    UI.el("div", {}, UI.el("b", {}, triage ? triage.human ? `仅 ${triage.human} 项重要条件需要确认` : "继续自动修订或核验" : "查看评审处理结果"),
-      UI.el("p", {}, triage ? `已排除 ${triage.dismissed} 项误报，合并 ${triage.merged} 条重复意见；${triage.automatic} 项自动处理，${triage.optional} 项可选优化。` : "轻微建议无需裁定；仅保留重要未决事项。")),
-    UI.el("button", {type:"button", class:"btn-secondary", onclick:() => window.ReviewQuestions.open(r)}, "问题详情 ↗")));
-  if (review.state === "incomplete") container.appendChild(UI.el("p", {}, review.detail));
+  const chat = document.createElement("div");
+  chat.className = "chat";
+  const addBubble = (tone, title, body, meta, opts = {}) => {
+    const rowEl = document.createElement("div");
+    rowEl.className = opts.threaded === false ? "chat-row untethered" : "chat-row";
+    const avatar = document.createElement("div");
+    avatar.className = "chat-avatar";
+    avatar.setAttribute("aria-hidden", "true");
+    if (opts.threaded === false) {
+      avatar.className = "chat-spacer";
+    } else if (window.BotPortrait) {
+      avatar.appendChild(window.BotPortrait(opts.bot ?? 2, "#c28c6c"));
+    }
+    const bubble = document.createElement("div");
+    bubble.className = `chat-bubble ${tone}`.trim();
+    const b = document.createElement("b");
+    b.textContent = title;
+    bubble.appendChild(b);
+    if (body) {
+      if (typeof body === "string") {
+        const p = document.createElement("p");
+        p.textContent = body;
+        bubble.appendChild(p);
+      } else {
+        bubble.appendChild(body);
+      }
+    }
+    if (meta) {
+      const m = document.createElement("p");
+      m.className = "chat-meta";
+      m.textContent = meta;
+      bubble.appendChild(m);
+    }
+    rowEl.append(avatar, bubble);
+    chat.appendChild(rowEl);
+    return bubble;
+  };
 
-  if (remaining.length > 0) {
-    const pRem = document.createElement("p");
-    pRem.textContent = "自动流程的剩余记录（具体处理见问题详情）：";
-    container.appendChild(pRem);
+  const rules = vf.rules || {};
+  const ruleIssues = (rules.issues || []).length + (rules.platform_issues || []).length;
+  const imageChecks = (vf.images || []).length;
+  addBubble(
+    ruleIssues ? "warn" : "ok",
+    ruleIssues ? `规则检查：${ruleIssues} 处需要处理` : "规则检查通过",
+    ruleIssues
+      ? "数字、型号、图片与平台规格里有需要修正的地方，处理记录见下方。"
+      : `数字、型号与平台规格已逐项核对，${imageChecks} 张图全部通过画面检查。`,
+    "",
+    { bot: 2 }
+  );
 
-    const ulRem = document.createElement("ul");
-    remaining.forEach(item => {
-      const li = document.createElement("li");
-      li.textContent = typeof item === "string" ? item : (item.detail || JSON.stringify(item));
-      ulRem.appendChild(li);
-    });
-    container.appendChild(ulRem);
-  }
+  const overall = judge.overall || vf.state || "-";
+  const pass = overall === "pass" || overall === "ok";
+  addBubble(
+    pass ? "ok" : "warn",
+    pass ? "独立评审通过" : (overall === "not_reviewed" ? "独立评审未完成" : "独立评审提出意见"),
+    pass ? "" : "评审问题与处理结果保留在下方，未完成的部分不会算作通过。",
+    "独立上下文，不看写作过程，只看终稿",
+    { bot: 4, threaded: false }
+  );
 
   const rounds = vf.repair_rounds || [];
-  if (rounds.length > 0) {
-    const det = document.createElement("details");
-    const sum = document.createElement("summary");
-    sum.textContent = "核验—修订过程";
-    det.appendChild(sum);
-
-    rounds.forEach((rd, idx) => {
-      const b = document.createElement("b");
-      b.textContent = `第 ${rd.round !== undefined ? rd.round : idx + 1} 轮`;
-      det.appendChild(b);
-
-      const ul = document.createElement("ul");
-      const issues = rd.issues || [];
-      if (issues.length === 0) {
-        const li = document.createElement("li");
-        li.textContent = "通过";
-        ul.appendChild(li);
-      } else {
-        issues.forEach(iss => {
-          const li = document.createElement("li");
-          li.textContent = typeof iss === "string" ? iss : (iss.detail || JSON.stringify(iss));
-          ul.appendChild(li);
-        });
-      }
-      det.appendChild(ul);
-    });
-    container.appendChild(det);
+  if (rounds.length) {
+    addBubble("ok", `自动修订 ${rounds.length} 轮`, "按评审意见定向修改后重新核验，只改被指出的位置。", "", { threaded: false });
   }
 
-  const judge = vf.judge || {};
-  if (judge.improvements?.length) container.appendChild(UI.el("details", {}, UI.el("summary", {}, "可选优化 · 不影响通过"),
-    UI.el("ul", {}, ...judge.improvements.map(p => UI.el("li", {}, p.detail || p.direction || "")))));
   const problems = judge.problems || [];
-  if (problems.length > 0) {
-    const det = document.createElement("details");
-    const sum = document.createElement("summary");
-    sum.textContent = "实际终稿的评审意见";
-    det.appendChild(sum);
-
-    const ul = document.createElement("ul");
-    problems.forEach(prob => {
+  if (problems.length) {
+    const wrap = document.createElement("div");
+    const list = document.createElement("ul");
+    problems.slice(0, 6).forEach(p => {
       const li = document.createElement("li");
-      const where = prob.where || "";
-      const detail = prob.detail || "";
-      li.textContent = `${where}：${detail}`;
-      ul.appendChild(li);
+      li.textContent = `${p.where || ""}：${p.detail || ""}`.replace(/^：/, "");
+      list.appendChild(li);
     });
-    det.appendChild(ul);
-    container.appendChild(det);
+    wrap.appendChild(list);
+    addBubble("bad", "仍需人工确认的表达", wrap, "", { threaded: false });
   }
 
-  const compliance = vf.compliance || [];
-  if (compliance.length > 0) {
+  const improvements = judge.improvements || [];
+  if (improvements.length) {
     const det = document.createElement("details");
     const sum = document.createElement("summary");
-    sum.textContent = "合规处理记录";
+    sum.textContent = `${improvements.length} 条可选优化 · 不影响通过`;
     det.appendChild(sum);
-
-    const ul = document.createElement("ul");
-    compliance.forEach(c => {
+    const list = document.createElement("ul");
+    improvements.forEach(p => {
       const li = document.createElement("li");
-      const rule = c.rule || "";
-      const hit = c.hit || "";
-      const action = c.action || "";
-      li.textContent = `${rule}：${hit} → ${action}`;
-      ul.appendChild(li);
+      li.textContent = p.detail || p.direction || "";
+      list.appendChild(li);
     });
-    det.appendChild(ul);
-    container.appendChild(det);
-  }
-
-  const platform = vf.platform || [];
-  if (Array.isArray(platform) ? platform.length > 0 : Boolean(platform)) {
-    const pPlat = document.createElement("p");
-    pPlat.className = "muted";
-    pPlat.textContent = "平台规格提示：" + (Array.isArray(platform) ? platform.join("；") : platform);
-    container.appendChild(pPlat);
+    det.appendChild(list);
+    addBubble("ok", "可以更好的地方", det, "", { threaded: false });
   }
 
   const pendingConfirm = (r && r.pending_confirm) || vf.pending_confirm || [];
-  if (pendingConfirm.length > 0) {
-    const h3Pending = document.createElement("h3");
-    h3Pending.textContent = "待确认信息";
-    container.appendChild(h3Pending);
-
-    const ulPending = document.createElement("ul");
+  if (pendingConfirm.length) {
+    const det = document.createElement("details");
+    const sum = document.createElement("summary");
+    sum.textContent = `${pendingConfirm.length} 条发布前待确认`;
+    det.appendChild(sum);
+    const list = document.createElement("ul");
     pendingConfirm.forEach(item => {
       const li = document.createElement("li");
       li.textContent = typeof item === "string" ? item : (item.detail || JSON.stringify(item));
-      ulPending.appendChild(li);
+      list.appendChild(li);
     });
-    container.appendChild(ulPending);
+    det.appendChild(list);
+    addBubble("warn", "这些信息需要门店核实", det, "", { threaded: false });
   }
+
+  const compliance = vf.compliance || [];
+  if (compliance.length) {
+    const det = document.createElement("details");
+    const sum = document.createElement("summary");
+    sum.textContent = `${compliance.length} 条合规处理`;
+    det.appendChild(sum);
+    const list = document.createElement("ul");
+    compliance.forEach(c => {
+      const li = document.createElement("li");
+      li.textContent = `${c.rule || ""}：${c.hit || ""} → ${c.action || ""}`.replace(/^：/, "");
+      list.appendChild(li);
+    });
+    det.appendChild(list);
+    addBubble("warn", "合规规则拦截", det, "", { threaded: false });
+  }
+
+  const platform = vf.platform || [];
+  if (Array.isArray(platform) ? platform.length : Boolean(platform)) {
+    addBubble("warn", "平台规格提示", Array.isArray(platform) ? platform.join("；") : String(platform), "", { threaded: false });
+  }
+
+  if (review.needsReview || r.human_review || r.automatic_followup || (triage.human || 0) > 0) {
+    const rowEl = document.createElement("div");
+    rowEl.className = "chat-row";
+    const avatar = document.createElement("div");
+    avatar.className = "chat-avatar";
+    avatar.setAttribute("aria-hidden", "true");
+    if (window.BotPortrait) avatar.appendChild(window.BotPortrait(5, "#c28c6c"));
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble warn";
+    const b = document.createElement("b");
+    b.textContent = (triage.human || 0) > 0 ? `有 ${triage.human} 项需要你决定` : "可以继续自动修订或复审";
+    bubble.appendChild(b);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn-secondary";
+    btn.textContent = "打开问题详情 ↗";
+    btn.addEventListener("click", () => window.ReviewQuestions.open(r));
+    const action = document.createElement("p");
+    action.className = "chat-action";
+    action.appendChild(btn);
+    bubble.appendChild(action);
+    rowEl.append(avatar, bubble);
+    chat.appendChild(rowEl);
+  }
+
+  container.appendChild(chat);
 }
 
 init();
