@@ -18,6 +18,7 @@ data/
 # 本地视频成品（大文件，保留在 D 盘）
 output/demo/
 *.mp4
+*.pdf
 
 # 工具与系统
 .codex-tmp/
