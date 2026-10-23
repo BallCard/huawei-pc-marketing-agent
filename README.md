@@ -9,7 +9,7 @@ v1.2.0（version1.2）· 两轮问询与评审减负。[在线体验](https://ba
 - **线上体验**：<https://ballcard-huazhang-youju.ms.show>，公开演示，无需工作台账号或魔搭账号；创空间保持 `protected`，源码与资料包不公开。
 - **本次部署**：源提交 `67d15b7`，状态 Running；上线前 196 项 Python 与 34 项前端测试通过，并在 320/390/1440 宽度复验追问与续跑。
 - **线上真实任务**：小红书直接生成 49.4 秒 `ok`；未知型号两轮追问后返回补充提示；带回答续跑 66.9 秒 `ok_with_flags`（剩余意见为真实审核问题）。
-- **生图链路**：美国 VPS 网关与 worker 在线，魔搭 ↔ worker 心跳正常；但 2026-10-23 复检时 ChatGPT 上游返回 401（短期 access token 已被拒绝），GPT 生图需本人刷新令牌。主链路失败时按配置降级到魔搭免费 `Qwen/Qwen-Image-Edit-2511`，成图标注“免费备选链路，待复核”。
+- **生图链路**：美国 VPS 网关与 worker 在线，魔搭 ↔ worker 心跳正常；但 2026-10-23 复检时 ChatGPT 上游返回 401（短期 access token 已被拒绝），GPT 生图需本人刷新令牌；刷新后运行 `python -X utf8 scripts/check_gpt_proxy.py` 自检。主链路失败时按配置降级到魔搭免费 `Qwen/Qwen-Image-Edit-2511`，成图标注“免费备选链路，待复核”。
 - **魔搭能否再挂反代**：不能作为 ChatGPT 出站代理。独立网络测试显示 `chatgpt.com`、`files.oaiusercontent.com` 请求失败，`auth.openai.com` 返回 403；Docker 创空间只暴露单个 Web 端口，也没有浏览器会话。详见 [网页生图私有链路](docs/web-image-proxy.md)。
 
 > 个人项目副本，独立于比赛协作仓库。产品资料不进入 GitHub，仅在本机和已授权的私有创空间保留部署副本。

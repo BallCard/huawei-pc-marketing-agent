@@ -39,7 +39,8 @@ POSTER_REVIEW_API_KEY=魔搭推理令牌
 - VPS 上 `huazhang-gpt-web.service` 与 `huazhang-poster-worker.service` 均为 active；网关 `/healthz` 返回 200，`/readyz` 返回 `ready=true`；`auth.json` 内 access token 的 JWT 有效期到 2026-10-30。
 - 用专用本地密钥请求 `/v1/models` 时，ChatGPT 上游返回 **401 `authentication was rejected`**（`cf-ray=…-LAX`）。10-20 的真实出图曾成功，因此当前是账号 access token 被上游拒绝，不是网关或网络不通。
 - 因此 `/api/info` 的 `poster_service.connected=true` 只代表 worker 心跳与配置就绪，**不代表上游可出图**。首次出图会收到主链路错误，随后按 `POSTER_FALLBACK_PROVIDER=modelscope` 降级到 `Qwen/Qwen-Image-Edit-2511`，成图标注“免费备选链路，待复核”。
-- 恢复步骤：本人重新从浏览器取短期 access token，写入本机忽略的 `deploy/gpt-direct/auth.json`，运行 `python -X utf8 scripts/connect_gpt_account.py` 安装并重启网关；随后用 `/v1/models` 和一次真实海报验证。
+- 恢复步骤：本人重新从浏览器取短期 access token，写入本机忽略的 `deploy/gpt-direct/auth.json`，运行 `python -X utf8 scripts/connect_gpt_account.py` 安装并重启网关；随后运行 `python -X utf8 scripts/check_gpt_proxy.py` 检查 `/v1/models`，再用一次真实海报验证。
+- 自检脚本只读取本机忽略的部署配置，不打印令牌：服务/就绪/上游三项分别输出，上游 401 时会给出刷新步骤并以非零退出。心跳或 `ready=true` 不能替代这一项。
 
 ## 网络与备选
 
