@@ -90,8 +90,9 @@ async def access_control(request: Request, call_next):
               "/static/gallery/welcome.jpg", "/static/gallery/brief.jpg", "/static/gallery/workflow.jpg",
               "/static/gallery/result.jpg", "/static/gallery/evidence.jpg", "/static/gallery/clarify.jpg",
               "/static/gallery/store.jpg"}
+    public_gallery = request.url.path.startswith("/static/gallery/") and request.url.path.endswith((".jpg", ".png", ".jpeg"))
     public_font = request.url.path.startswith("/static/fonts/") and request.url.path.endswith((".woff2", "/OFL.txt"))
-    if settings.AUTH_PASSWORD and request.url.path not in public and not public_font:
+    if settings.AUTH_PASSWORD and request.url.path not in public and not public_font and not public_gallery:
         if not valid_session(request.cookies.get("studio-session", "")):
             if request.url.path == "/":
                 linked = request.query_params.get("job", "")
