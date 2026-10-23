@@ -32,13 +32,29 @@ POSTER_REVIEW_BASE_URL=https://api-inference.modelscope.cn/v1
 POSTER_REVIEW_API_KEY=魔搭推理令牌
 ```
 
-`GET /api/info` 需工作台登录，仅返回连接与账号已配置的布尔状态，不提供密钥。心跳成功证明控制链路可达；真实账号出图、两张参考图是否生效和成图质量仍须实测。配置凭据不等于账号额度或上游网络已验证可用。
+`GET /api/info` 只返回连接与账号已配置的布尔状态（公开演示下匿名可读），不提供密钥。心跳成功证明控制链路可达；真实账号出图、两张参考图是否生效和成图质量仍须实测。配置凭据不等于账号额度或上游网络已验证可用。
+
+## 2026-10-23 复检
+
+- VPS 上 `huazhang-gpt-web.service` 与 `huazhang-poster-worker.service` 均为 active；网关 `/healthz` 返回 200，`/readyz` 返回 `ready=true`；`auth.json` 内 access token 的 JWT 有效期到 2026-10-30。
+- 用专用本地密钥请求 `/v1/models` 时，ChatGPT 上游返回 **401 `authentication was rejected`**（`cf-ray=…-LAX`）。10-20 的真实出图曾成功，因此当前是账号 access token 被上游拒绝，不是网关或网络不通。
+- 因此 `/api/info` 的 `poster_service.connected=true` 只代表 worker 心跳与配置就绪，**不代表上游可出图**。首次出图会收到主链路错误，随后按 `POSTER_FALLBACK_PROVIDER=modelscope` 降级到 `Qwen/Qwen-Image-Edit-2511`，成图标注“免费备选链路，待复核”。
+- 恢复步骤：本人重新从浏览器取短期 access token，写入本机忽略的 `deploy/gpt-direct/auth.json`，运行 `python -X utf8 scripts/connect_gpt_account.py` 安装并重启网关；随后用 `/v1/models` 和一次真实海报验证。
 
 ## 网络与备选
 
 独立免费测试空间 `BallCard/huazhang-gpt-network-check` 实测普通 HTTPS 可用；ChatGPT 主站和图片域请求失败，认证域返回 Cloudflare 403。测试没有上传会话或产品资料，已请求停止。不能根据一次失败断言永久封锁，也不能把普通 HTTPS 成功算作完整 GPT 生图已通。结果保存在本机忽略目录 `data/qa/network-check/`。
 
-VPS 的普通 HTTPS 探测也遇到 Cloudflare 403，但真实账号的模型列表与带参考图生图成功；不能用匿名主站探测代替实际接口验证。若以后上游要求交互式浏览器，需调整资源或使用浏览器方案，不能自动处理验证码。
+### 能否在魔搭再部署一个反代
+
+结论：**不能作为 ChatGPT 的出站代理，也不建议作为主备切换。**
+
+- 同一测试空间（2vCPU/8G，免费 Docker）的结果：`www.example.com` 返回 200；`chatgpt.com` 与 `files.oaiusercontent.com` 请求失败；`auth.openai.com` 返回 Cloudflare 403。从该空间看，ChatGPT 域名不可达。
+- Docker 创空间只暴露一个 Web 端口（`app_port: 7860`），没有任意公网端口。把网关塞进同一容器只能经应用路由转发，仍需容器到 ChatGPT 的网络与会话，却多一层攻击面。
+- 网页生图依赖 ChatGPT 账号会话；把会话放进公开演示容器会扩大凭据暴露面，免费 CPU 也没有浏览器与持久磁盘。
+- 可用的备选是应用里已有的魔搭 `Qwen/Qwen-Image-Edit-2511` 免费降级；如确需第二出口，应另用海外 VPS 或官方付费图片 API。把反代“放在魔搭上”不会改善出站连通性。
+
+VPS 的普通 HTTPS 探测也遇到 Cloudflare 403；10-21 真实账号的模型列表与带参考图生图曾成功，10-23 复检时同一链路返回 401（见上节）。不能用匿名主站探测代替实际接口验证；若以后上游要求交互式浏览器，需调整资源或使用浏览器方案，不能自动处理验证码。
 
 备选 [stufently/gpt-web-gateway](https://github.com/stufently/gpt-web-gateway) 固定提交 `893f553be358210a5c045aa9f62b56ba1edc5c78`，材料在 `deploy/gpt-web/`，支持浏览器登录、`reference_images[]` 和实际上传数量确认；本机鉴权验证通过，尚未登录或出图。已补强强制鉴权、静态图片保护、监听地址和人工验证码处理。其浏览器内存需求不适合当前 VPS。
 

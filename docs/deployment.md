@@ -8,7 +8,7 @@ v1.2.0（version1.2，2026-10-21）统一文字模型为魔搭 DeepSeek 1017，�
 
 本版发布前 140 项 Python 与 32 项前端测试通过，并在 320、390、1440 像素宽度验证两轮问询、七项修改直接提交、失败重试及答案恢复，另通过 152 项页面适配检查。部署配置的三个文字角色均通过真实模型连接检查。发布后的运行版本通过 `/api/info` 核对。性能与质量边界见 [验收记录](editorial-validation.md)，未将自动检查通过视为人工盲评结论。
 
-2026-10-23 部署（源提交 `67d15b7`）：创空间 [BallCard/huazhang-youju](https://modelscope.cn/studios/BallCard/huazhang-youju) 返回 **Running**，保持 `protected` 模式，首次以 `PUBLIC_ACCESS=1` 公开演示、不再需要工作台账号。上线前 196 项 Python 与 34 项前端测试通过；线上匿名实测开屏进入、两轮追问逐条自动继续、未知型号在两轮后返回补充提示，另用真实任务验证带追问续跑到 `ok_with_flags`（66.9 秒）与一次直接生成（49.4 秒）。
+2026-10-23 部署（源提交 `67d15b7`）：创空间 [BallCard/huazhang-youju](https://modelscope.cn/studios/BallCard/huazhang-youju) 返回 **Running**，保持 `protected` 模式，首次以 `PUBLIC_ACCESS=1` 公开演示、不再需要工作台账号。上线前 196 项 Python 与 34 项前端测试通过；线上匿名实测开屏进入、两轮追问逐条自动继续、未知型号在两轮后返回补充提示，另用真实任务验证带追问续跑到 `ok_with_flags`（66.9 秒）与一次直接生成（49.4 秒）。生图主链路复检发现 ChatGPT 上游 401（短期令牌需刷新），失败时按配置降级到魔搭免费生图，不影响文字生成与事实核验；详见 [网页生图私有链路](web-image-proxy.md)。
 
 以下保留 v1.0 的首次部署记录：
 
