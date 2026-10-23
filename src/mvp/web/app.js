@@ -331,6 +331,36 @@ let flowSteps = [];
 let flowBackendRunning = false;
 let flowSnapshot = {};
 let activeJobId = null;
+// 追问续跑时保留已经走完的环节，只把新出现的进展接在后面，过程页不再从头回放。
+let resumeBase = null;
+
+function stepPhase(step) {
+  const phase = (window.PROCESS_PHASES || []).find(item => item.steps.includes(step));
+  return phase ? phase.id : "";
+}
+
+function captureResumePoint() {
+  const steps = (flowSteps || [])
+    .filter(step => step && step.step)
+    .map(step => ({ ...step, status: step.status === "running" ? "done" : step.status }));
+  const phases = new Set(window.deriveStages({ steps, state: flowSnapshot.state, result: flowSnapshot.result })
+    .filter(stage => stage.id !== "finish")
+    .map(stage => stage.id));
+  const seqs = (flowSnapshot.events || []).map(event => Number(event && event.seq) || 0);
+  resumeBase = { steps, phases, eventSeq: seqs.length ? Math.max(...seqs) : 0 };
+}
+
+function mergeResumeSnapshot(snapshot) {
+  if (!resumeBase) return snapshot;
+  const steps = resumeBase.steps.map(step => ({ ...step }));
+  for (const step of snapshot.steps || []) {
+    if (!step || resumeBase.phases.has(stepPhase(step.step))) continue;
+    steps.push(step);
+  }
+  const offset = resumeBase.eventSeq || 0;
+  const events = (snapshot.events || []).map(event => ({ ...event, seq: (Number(event && event.seq) || 0) + offset }));
+  return { ...snapshot, steps, events };
+}
 
 async function init() {
   Studio.init();
@@ -516,7 +546,6 @@ function fill(v) {
 
   const extra = UI.$("#extra");
   if (extra && v.extra !== undefined) extra.value = v.extra;
-  if (v.speed) UI.$("speed").value = v.speed;
   if (v.prompt_variant && UI.$("prompt-variant")) UI.$("prompt-variant").value = v.prompt_variant;
   window.MarketingTemplates?.restore(v);
   storeDesk.syncFromGoalInput();
@@ -545,7 +574,6 @@ function readTask() {
     audience: UI.$("#audience")?.value.trim() || "",
     scenario: UI.$("#scenario")?.value.trim() || "",
     platform: UI.$("#platform")?.value || "xiaohongshu",
-    speed: UI.$("#speed")?.value || "quality",
     goal: UI.$("#goal")?.value.trim() || "",
     touchpoints: storeDesk.touchpoints.slice(),
     constraints,
@@ -559,8 +587,9 @@ function readTask() {
   return task;
 }
 
-async function submit(instruction, overrideTask = null) {
+async function submit(instruction, overrideTask = null, options = {}) {
   if (UI.$("go").disabled) return;
+  const resuming = Boolean(options && options.resume && resumeBase);
   const error = UI.$("form-error");
   error.hidden = true;
   if (!instruction && !overrideTask && Studio.getMode() === "sentence" && !UI.$("scene-description").value.trim()) {
@@ -579,9 +608,12 @@ async function submit(instruction, overrideTask = null) {
     pollTimer = null;
   }
   const generation = ++pollGeneration;
-  window.ProcessView.reset();
-  flowSnapshot = {};
-  flowSteps = [];
+  if (!resuming) {
+    window.ProcessView.reset();
+    flowSnapshot = {};
+    flowSteps = [];
+    resumeBase = null;
+  }
   flowBackendRunning = true;
 
   const task = overrideTask || (instruction && current?.task ? { ...current.task } : readTask());
@@ -597,7 +629,7 @@ async function submit(instruction, overrideTask = null) {
   if (btnGo) btnGo.disabled = true;
   if (btnRedo) btnRedo.disabled = true;
 
-  startedAt = Date.now();
+  if (!resuming) startedAt = Date.now();
 
   const need = UI.$("#need");
   if (need) need.replaceChildren();
@@ -619,8 +651,8 @@ async function submit(instruction, overrideTask = null) {
   const chips = UI.$("#chips");
   if (chips) chips.replaceChildren();
 
-  Studio.startRun();
-  showFlow([], true);
+  Studio.startRun({ resume: resuming });
+  if (!resuming) showFlow([], true);
 
   try {
     const res = await fetch("/api/run", {
@@ -638,12 +670,13 @@ async function submit(instruction, overrideTask = null) {
     if (!jid) {
       throw new Error("服务端未返回有效的任务 ID");
     }
-    const form = Object.fromEntries(["product", "audience", "scenario", "platform", "goal", "constraints", "extra", "speed"].map(id => [id, UI.$(id).value]));
+    const form = Object.fromEntries(["product", "audience", "scenario", "platform", "goal", "constraints", "extra"].map(id => [id, UI.$(id).value]));
     activeJobId = jid;
     sessionStorage.setItem("studio-active-job", JSON.stringify({ id: jid, task, form, mode: Studio.getMode(), sentence: UI.$("scene-description").value, startedAt }));
-    poll(jid);
+    poll(jid, null, { resume: resuming });
   } catch (err) {
     if (generation !== pollGeneration) return;
+    resumeBase = null;
     unlock();
     flowSnapshot = { state: "error", steps: [] };
     showFlow([], false);
@@ -661,13 +694,14 @@ async function submit(instruction, overrideTask = null) {
   }
 }
 
-function poll(jid, restorePage = null) {
+function poll(jid, restorePage = null, options = {}) {
   if (pollTimer) clearTimeout(pollTimer);
   activeJobId = jid;
   const generation = ++pollGeneration;
   const restoring = restorePage !== null;
+  const resuming = Boolean(options && options.resume && resumeBase);
   let firstSnapshot = true;
-  window.ProcessView.reset();
+  if (!resuming) window.ProcessView.reset();
   let failures = 0;
   const tick = async () => {
     try {
@@ -675,6 +709,7 @@ function poll(jid, restorePage = null) {
       if (generation !== pollGeneration) return;
       if (res.status === 404) {
         pollTimer = null;
+        resumeBase = null;
         unlock();
         if (window.AgentAsk) window.AgentAsk.close({ reset: true });
         flowSnapshot = { ...flowSnapshot, state: "error" };
@@ -691,10 +726,12 @@ function poll(jid, restorePage = null) {
       if (generation !== pollGeneration) return;
       const isRunning = j.state === "running";
       if (isRunning) restorePage = null;
-      flowSteps = j.steps || [];
+      const snapshot = resuming ? mergeResumeSnapshot(j) : j;
+      flowSteps = snapshot.steps || [];
       flowBackendRunning = isRunning;
-      flowSnapshot = j;
-      showFlow(flowSteps, isRunning, { restore: restoring && firstSnapshot });
+      flowSnapshot = snapshot;
+      if (resuming && firstSnapshot) window.ProcessView.resume();
+      showFlow(flowSteps, isRunning, { restore: resuming ? firstSnapshot : restoring && firstSnapshot });
       failures = 0;
       firstSnapshot = false;
 
@@ -706,6 +743,7 @@ function poll(jid, restorePage = null) {
         return;
       } else if (j.state === "error") {
         pollTimer = null;
+        resumeBase = null;
         unlock();
         Studio.stopRun();
         if (window.AgentAsk) window.AgentAsk.close({ reset: true });
@@ -796,11 +834,13 @@ function showResult(r) {
     if (stage) stage.hidden = true;
     showNeedInfo(r);
     Studio.stopRun();
+    if (r.status !== "need_info") resumeBase = null;
     UI.$("process-title").textContent = r.status === "budget_exceeded" ? "本次创作已到时间预算。" : r.status === "input_required" ? "暂时无法安全确定型号。" : "再确认一点，就能继续。";
     return;
   }
 
   if (window.AgentAsk) window.AgentAsk.close({ reset: true });
+  resumeBase = null;
 
   const stage = UI.$("#stage");
   if (stage) stage.hidden = false;
@@ -877,13 +917,15 @@ function showNeedInfo(r) {
 
   // 一次一个问题的悬浮追问；主页面不新增内容，Bot 仍然一屏显示。
   if (r.status === "need_info" && questions.length > 0 && !exhausted && window.AgentAsk) {
+    // 记下问询发生在哪个环节：回答后从这里接着走，过程页不回退、不重播。
+    captureResumePoint();
     window.AgentAsk.open({
       jobId: activeJobId || "",
       questions: specs,
       round: r.clarification?.round || round + 1,
       candidates,
       task: r.task || readTask(),
-      onComplete: (answers, task) => submit("", task),
+      onComplete: (answers, task) => submit("", task, { resume: true }),
       onBack: () => Studio.navigate("create"),
       onProgress: () => {
         if (current?.status !== "need_info") return;
@@ -895,6 +937,7 @@ function showNeedInfo(r) {
   }
 
   if (window.AgentAsk) window.AgentAsk.close({ reset: true });
+  resumeBase = null;
   if (!need) return;
 
   const card = UI.el("div", { class: "card need-card" }, [

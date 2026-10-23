@@ -216,8 +216,13 @@
     clock.reset(); running = false; root = null;
     if (UI.$("step-dialog").open) UI.$("step-dialog").close();
   }
+  // 追问续跑：已完成环节的展示保持原样，只让新出现的环节继续入场。
+  function resume() {
+    clock.holdFloor();
+    rotation.release(["finish"]);
+  }
   reduced.addEventListener("change", () => { rotation.holdMs = reduced.matches ? 0 : 1700; rotation.update(window.deriveStages({ steps: state.steps, state: state.state, result: latest.result })); });
   window.buildFlow = (steps, isRunning) => update({ steps, state: isRunning ? "running" : "idle" });
-  window.ProcessView = { update, reset };
+  window.ProcessView = { update, reset, resume };
   setInterval(tick, 250);
 })();

@@ -13,15 +13,15 @@
   <link rel="stylesheet" href="/static/style.css?v=1.4.0">
   <link rel="stylesheet" href="/static/platforms.css?v=1.2.0">
   <link rel="stylesheet" href="/static/platforms-fixes.css?v=1.2.0">
-  <link rel="stylesheet" href="/static/studio.css?v=1.5.0">
+  <link rel="stylesheet" href="/static/studio.css?v=1.6.0">
   <link rel="stylesheet" href="/static/preview-devices.css?v=1.2.0">
   <link rel="stylesheet" href="/static/work-page.css?v=1.4.0">
   <link rel="stylesheet" href="/static/process.css?v=1.4.0">
-  <link rel="stylesheet" href="/static/agent-ask.css?v=1.4.0">
+  <link rel="stylesheet" href="/static/agent-ask.css?v=1.6.0">
   <link rel="stylesheet" href="/static/review-questions.css?v=1.2.0">
   <link rel="stylesheet" href="/static/poster-image.css?v=1.2.0">
   <link rel="stylesheet" href="/static/typography.css?v=1.2.0">
-  <link rel="stylesheet" href="/static/mobile.css?v=1.3.0">
+  <link rel="stylesheet" href="/static/mobile.css?v=1.4.0">
   <link rel="stylesheet" href="/static/creative-context.css?v=1.6.1">
   <link rel="stylesheet" href="/static/insight-visual.css?v=1.5.0">
 </head>
@@ -281,7 +281,7 @@
     </section>
     <section id="page-evidence" class="page page-evidence" role="tabpanel" aria-labelledby="tab-evidence" tabindex="0" hidden>
       <div class="page-heading"><div><h2>每一句，都有据可查。</h2><p class="page-description">回看引用的事实与配图，确认发布前需要留意的地方。</p></div><button type="button" class="text-button" data-nav="work">返回作品 <svg class="icon"><use href="#i-arrow"/></svg></button></div>
-      <div id="evidence-empty" class="empty-state"><svg class="empty-icon"><use href="#i-book"/></svg><h3>还没有核验记录</h3><button type="button" class="btn-secondary" data-nav="create">开始一次创作</button></div>
+      <div id="evidence-empty" class="empty-state evidence-preview"><svg class="empty-icon"><use href="#i-book"/></svg><h3>还没有核验记录</h3><p class="empty-lead">完成一次创作后，这一页会按三段展开，方便你逐句回看。</p><ol class="evidence-preview-list"><li><b>事实与配图</b><span>每句话引用的资料条目、适用条件与登记图片，都能回到原始出处。</span></li><li><b>选型与 Agent 编排</b><span>为什么是这台机器、哪一步交给哪个角色，连同当时的判断依据。</span></li><li><b>审核记录</b><span>自动评审与交叉核对发现的问题，以及最后怎么处理。</span></li></ol><button type="button" class="btn-secondary" data-nav="create">开始一次创作 <svg class="icon"><use href="#i-arrow"/></svg></button></div>
       <div id="insights" class="insights" hidden>
         <div class="insight-tabs" role="tablist" aria-label="核验内容"><button id="insight-tab-evidence" type="button" role="tab" data-insight="evidence" aria-controls="insight-evidence" aria-selected="true">事实与配图</button><button id="insight-tab-judge" type="button" role="tab" data-insight="judge" aria-controls="insight-judge" aria-selected="false" tabindex="-1">选型与 Agent 编排</button><button id="insight-tab-verify" type="button" role="tab" data-insight="verify" aria-controls="insight-verify" aria-selected="false" tabindex="-1">审核记录</button></div>
         <div id="insight-evidence" class="insight-pane" role="tabpanel" aria-labelledby="insight-tab-evidence" tabindex="0"><section id="dbg-evidence" hidden><div class="insight-caption"><h3>引用的产品事实与图片</h3><span id="ev-sum"></span></div><div id="evidence" class="dbg-content"></div></section></div>
@@ -291,7 +291,8 @@
     </section>
   </main>
   <div id="toast" class="toast" role="status" hidden></div>
-  <aside id="agent-ask" class="agent-ask" role="dialog" aria-labelledby="agent-ask-title" data-state="asking" hidden>
+  <div id="agent-ask-scrim" class="ask-scrim" aria-hidden="true" hidden></div>
+  <aside id="agent-ask" class="agent-ask" role="dialog" aria-modal="true" aria-labelledby="agent-ask-title" data-state="asking" hidden>
     <header class="ask-head">
       <span id="agent-ask-avatar" class="ask-avatar" aria-hidden="true"></span>
       <div class="ask-id"><b id="agent-ask-title">需求确认</b><span id="agent-ask-hint">每轮只问一个关键问题，最多两轮</span></div>
@@ -322,7 +323,7 @@
   </aside>
   <button id="agent-ask-pill" class="agent-ask-pill" type="button" hidden>继续补充需求 <span id="agent-ask-pill-count">1/1</span></button>
   <dialog id="presets-dialog" class="studio-dialog" aria-labelledby="presets-title"><div class="dialog-heading"><div><h2 id="presets-title">场景示例</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭示例"><svg class="icon"><use href="#i-close"/></svg></button></div><div id="presets" class="presets-grid"></div></dialog>
-  <dialog id="options-dialog" class="studio-dialog options-dialog" aria-labelledby="options-title"><div class="dialog-heading"><div><h2 id="options-title">内容偏好</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭内容偏好"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="options-fields"><div class="form-group"><label for="goal">希望读者看完做什么</label><input id="goal" placeholder="例如：到店体验、私信咨询；留空由场景决定"></div><div class="form-group"><label for="constraints">有哪些不能写的内容</label><input id="constraints" placeholder="留空表示无额外限制，例如：不写竞品对比"></div><div class="form-group"><label for="extra">还有什么想补充</label><textarea id="extra" rows="3" placeholder="真实痛点、语气偏好，或希望优先突出的卖点"></textarea></div><div class="form-group"><label for="prompt-variant">提示词版本</label><select id="prompt-variant"><option value="baseline">A · 原版基线</option><option value="differentiated">B · 已审核样板模仿</option></select></div><div class="form-group"><label for="speed">创作模型</label><select id="speed"><option value="quality">DeepSeek 1017</option><option value="fast" hidden>DeepSeek 1017</option></select></div><button id="save-options" class="btn-primary" type="button">保存偏好 <svg class="icon"><use href="#i-check"/></svg></button></div></dialog>
+  <dialog id="options-dialog" class="studio-dialog options-dialog" aria-labelledby="options-title"><div class="dialog-heading"><div><h2 id="options-title">内容偏好</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭内容偏好"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="options-fields"><div class="form-group"><label for="goal">希望读者看完做什么</label><input id="goal" placeholder="例如：到店体验、私信咨询；留空由场景决定"></div><div class="form-group"><label for="constraints">有哪些不能写的内容</label><input id="constraints" placeholder="留空表示无额外限制，例如：不写竞品对比"></div><div class="form-group"><label for="extra">还有什么想补充</label><textarea id="extra" rows="3" placeholder="真实痛点、语气偏好，或希望优先突出的卖点"></textarea></div><details class="options-advanced"><summary>实验设置</summary><p class="options-advanced-note">只影响生成策略的对照项，日常创作不用改。</p><div class="form-group"><label for="prompt-variant">提示词版本</label><select id="prompt-variant"><option value="baseline">A · 原版基线</option><option value="differentiated">B · 已审核样板模仿</option></select></div></details><button id="save-options" class="btn-primary" type="button">保存偏好 <svg class="icon"><use href="#i-check"/></svg></button></div></dialog>
   <dialog id="step-dialog" class="studio-dialog" aria-labelledby="step-dialog-title"><div class="dialog-heading"><div><p id="step-dialog-meta" class="section-label"></p><h2 id="step-dialog-title"></h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭执行详情"><svg class="icon"><use href="#i-close"/></svg></button></div><p id="step-dialog-note" class="dialog-copy"></p><div id="step-dialog-body" class="step-dialog-body"></div></dialog>
   <!-- Bump the progress asset versions together when changing the handoff UI. -->
   <dialog id="review-dialog" class="studio-dialog review-dialog" aria-labelledby="review-question-title"><div class="dialog-heading"><div><p id="review-question-meta" class="section-label">终审反馈</p><h2 id="review-question-title" tabindex="-1"></h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭问题详情"><svg class="icon"><use href="#i-close"/></svg></button></div><div id="review-question-body"></div><p id="review-question-error" class="review-question-error" role="status"></p><div id="review-question-actions" class="review-question-actions" hidden><button id="review-back" class="text-button" type="button">← 上一条</button><button id="review-next" class="btn-primary" type="button">下一条 →</button></div></dialog>
@@ -340,6 +341,6 @@
 <p id="context-status" role="status"></p><details><summary>近期稿件与发布状态</summary><div id="context-history"></div></details>
 </div></dialog>
   <dialog id="compare-dialog" class="studio-dialog" aria-labelledby="compare-title"><div class="dialog-heading"><h2 id="compare-title">提示词 A/B 对照</h2><button type="button" class="text-button" data-close-dialog>关闭</button></div><p id="compare-status" role="status"></p><div id="compare-body"></div><details><summary>查看两套完整提示词</summary><div id="compare-prompt-texts"></div></details></dialog>
-  <script src="/static/dom.js?v=1.2.0"></script><script src="/static/process-state.js?v=1.2.0"></script><script src="/static/stage-rotation.js?v=1.2.0"></script><script src="/static/bot-portrait.js?v=1.2.0"></script><script src="/static/process-clock.js?v=1.2.0"></script><script src="/static/review-status.js?v=1.2.0"></script><script src="/static/process-activity.js?v=1.2.0"></script><script src="/static/flow.js?v=1.3.2"></script><script src="/static/preview.js?v=1.3.2"></script><script src="/static/preview-xhs.js?v=1.3.2"></script><script src="/static/preview-wx.js?v=1.2.0"></script><script src="/static/preview-mm.js?v=1.2.0"></script><script src="/static/preview-poster.js?v=1.3.2"></script><script src="/static/studio.js?v=1.3.0"></script><script src="/static/font-assets.js?v=1.2.0"></script><script src="/static/agent-ask.js?v=1.2.0"></script><script src="/static/review-questions.js?v=1.2.0"></script><script src="/static/creative-context.js?v=1.4.0"></script><script src="/static/prompt-comparison.js?v=1.3.2"></script><script src="/static/marketing-templates.js?v=1.3.2"></script><script src="/static/app.js?v=1.6.0"></script>
+  <script src="/static/dom.js?v=1.2.0"></script><script src="/static/process-state.js?v=1.2.0"></script><script src="/static/stage-rotation.js?v=1.3.0"></script><script src="/static/bot-portrait.js?v=1.2.0"></script><script src="/static/process-clock.js?v=1.3.0"></script><script src="/static/review-status.js?v=1.2.0"></script><script src="/static/process-activity.js?v=1.2.0"></script><script src="/static/flow.js?v=1.4.0"></script><script src="/static/preview.js?v=1.3.2"></script><script src="/static/preview-xhs.js?v=1.3.2"></script><script src="/static/preview-wx.js?v=1.2.0"></script><script src="/static/preview-mm.js?v=1.2.0"></script><script src="/static/preview-poster.js?v=1.3.2"></script><script src="/static/studio.js?v=1.4.0"></script><script src="/static/font-assets.js?v=1.2.0"></script><script src="/static/agent-ask.js?v=1.3.0"></script><script src="/static/review-questions.js?v=1.2.0"></script><script src="/static/creative-context.js?v=1.4.0"></script><script src="/static/prompt-comparison.js?v=1.3.2"></script><script src="/static/marketing-templates.js?v=1.3.2"></script><script src="/static/app.js?v=1.7.0"></script>
 </body>
 </html>

@@ -141,9 +141,48 @@ class ServiceTests(unittest.TestCase):
             service.JOB_SLOTS.release()
 
     def test_public_bind_requires_credentials(self):
-        with patch.multiple(service.settings, HOST="0.0.0.0", AUTH_PASSWORD="", AUTH_USERNAME=""):
-            with self.assertRaisesRegex(RuntimeError, "访问|AUTH_USERNAME"):
+        with patch.multiple(service.settings, HOST="0.0.0.0", AUTH_PASSWORD="", AUTH_USERNAME="",
+                            PUBLIC_ACCESS=False):
+            with self.assertRaisesRegex(RuntimeError, "访问|AUTH_USERNAME|PUBLIC_ACCESS"):
                 service.settings.validate_runtime()
+
+    def test_public_bind_allowed_only_with_explicit_public_access(self):
+        with patch.multiple(service.settings, HOST="0.0.0.0", AUTH_PASSWORD="", AUTH_USERNAME="",
+                            PUBLIC_ACCESS=True):
+            service.settings.validate_runtime()
+
+
+class PublicAccessTests(unittest.TestCase):
+    """公开演示：没有 AUTH_* 也能直接打开工作台与接口。"""
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        self.store = JobStore(Path(self.folder.name) / "jobs.sqlite3")
+        kb = Mock()
+        kb.whoami.return_value = {"models": 1, "connected": True}
+        kb.models.return_value = []
+        for patcher in (patch.object(service, "STORE", self.store),
+                        patch.object(service, "JOB_SLOTS", threading.BoundedSemaphore(1)),
+                        patch.object(service, "get_kb", return_value=kb),
+                        patch.multiple(service.settings, AUTH_USERNAME="", AUTH_PASSWORD="",
+                                       PUBLIC_ACCESS=True, COOKIE_SECURE=False, HOST="0.0.0.0",
+                                       KB_BACKEND="local")):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.client = TestClient(service.app)
+        self.client.__enter__()
+        self.addCleanup(self.client.__exit__, None, None, None)
+
+    def test_public_access_serves_app_and_api_without_login(self):
+        self.assertEqual(self.client.get("/", follow_redirects=False).status_code, 200)
+        info = self.client.get("/api/info")
+        self.assertEqual(info.status_code, 200)
+        self.assertFalse(info.json()["auth_enabled"])
+        redirect = self.client.get("/login", follow_redirects=False)
+        self.assertEqual(redirect.status_code, 303)
+        self.assertEqual(redirect.headers["location"], "/")
+        self.assertEqual(self.client.post("/api/login", json={"username": "x", "password": "y"}).status_code, 200)
 
 
 if __name__ == "__main__":

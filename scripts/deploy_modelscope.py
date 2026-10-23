@@ -78,8 +78,9 @@ def deploy():
     visibility = TARGET["visibility"]
     if visibility not in ("private", "protected"):
         raise RuntimeError("带资料包的部署仅允许 private 或 protected，不能公开代码仓库")
-    if not cfg.get("AUTH_USERNAME") or not cfg.get("AUTH_PASSWORD"):
-        raise RuntimeError("部署前必须配置演示访问账号和密码")
+    public_access = str(cfg.get("PUBLIC_ACCESS", "")).strip() == "1"
+    if not public_access and (not cfg.get("AUTH_USERNAME") or not cfg.get("AUTH_PASSWORD")):
+        raise RuntimeError("部署前必须配置演示访问账号和密码，或显式设置 PUBLIC_ACCESS=1 公开演示")
     user = api("GET", "/users/me")
     if user.get("username", "").lower() != OWNER.lower():
         raise RuntimeError("魔搭登录账号与 target.json 的 owner 不一致")
@@ -139,6 +140,12 @@ def deploy():
     print("私有源码与资料包已同步，源代码版本：" + source_commit[:8], flush=True)
     variables = {k: v for k, v in cfg.items() if k.startswith(("LLM_", "FAST_", "WRITER_", "JUDGE_", "POSTER_", "IMAGE_VERIFY_"))
                  or k in ("AUTH_USERNAME", "AUTH_PASSWORD", "MAX_CONCURRENT_JOBS", "GENERATION_BUDGET_SECONDS")}
+    if public_access:
+        # 公开演示不需要工作台账号；残留的 AUTH_* 会在启动时被 PUBLIC_ACCESS 忽略。
+        variables.pop("AUTH_USERNAME", None)
+        variables.pop("AUTH_PASSWORD", None)
+    # 显式写 0 或 1，避免上次的公开开关在恢复登录后仍然生效。
+    variables["PUBLIC_ACCESS"] = "1" if public_access else "0"
     variables.update(HOST="0.0.0.0", PORT="7860", COOKIE_SECURE="1", KB_BACKEND="local",
                      KB_DIR="/app/data/kb", CACHE_DIR="/app/data/cache",
                      JOB_DB="/mnt/workspace/huazhang-youju/jobs.sqlite3",

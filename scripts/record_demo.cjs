@@ -82,11 +82,12 @@ async function main(){
             mark('clarification',await question.innerText(),{case:item.id,job:id});
             await pause(3500);
             // The demonstrator supplies an honest content preference, never product evidence.
+            // 选中/提交后追问面板会自动继续，不再等待手动点「继续创作」。
+            const next=page.waitForResponse(r=>r.url()===`${base}/api/run`&&r.request().method()==='POST');
             await fill(page,'#agent-ask-input','只介绍资料中能确认的携带和U盘连接信息；不需要软件适配或续航承诺，邀请到店看真机。');
             await page.locator('#agent-ask-form').evaluate(form=>form.requestSubmit());
             await pause(1200);
-            const next=page.waitForResponse(r=>r.url()===`${base}/api/run`&&r.request().method()==='POST');
-            await click(page,'.ask-submit'); const nr=await next;
+            const nr=await next;
             if(!nr.ok())throw new Error(`clarification start HTTP ${nr.status()}`);
             id=(await nr.json()).job; mark('generation_resume',item.title,{case:item.id,job:id});
             continue;

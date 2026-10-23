@@ -18,6 +18,14 @@ test('refresh accepts server elapsed time; terminal time freezes at authoritativ
   clock.reset();clock.update({state:'running',elapsed_ms:20});assert.equal(clock.read(),20);
 });
 
+test('追问续跑沿用同一条时间线，终态总时长不回退',()=>{
+  let now=0;const clock=new ProcessClock(()=>now);
+  clock.update({state:'running',elapsed_ms:42000});
+  clock.holdFloor();
+  now=5000;clock.update({state:'done',elapsed_ms:8000,result:{total_ms:9000}});
+  assert.equal(clock.read(),47000);
+});
+
 test('phase timers exclude earlier parallel preparation and do not add overlapping checks',()=>{
   const source={id:'sources',status:'running',entries:[{step:'style',started_ms:0,ms:20,status:'done'},{step:'model',started_ms:8000,ms:2000,status:'done'},{step:'retrieve',started_ms:10000,ms:0,status:'running'}]};
   assert.equal(phaseDuration(source,15000),7000);

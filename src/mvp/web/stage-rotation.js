@@ -83,6 +83,16 @@
         this.timer = this.setTimer(() => { this.timer = null; this.advance(); }, this.holdMs);
       }
     }
+    // 续跑前丢掉一次性的收尾环节，让它在新一轮真正结束时再入场。
+    release(ids) {
+      for (const id of ids || []) {
+        this.known.delete(id);
+        this.seen.delete(id);
+        this.queue = this.queue.filter(item => item !== id);
+        if (this.current === id) this.current = null;
+      }
+      if (this.timer != null) { this.clearTimer(this.timer); this.timer = null; }
+    }
     emit(previous, rotate) {
       this.onChange({ stage: this.known.get(this.current) || null,
         next: this.known.get(this.queue[0]) || null, previous, rotate });

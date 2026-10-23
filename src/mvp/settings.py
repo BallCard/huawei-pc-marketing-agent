@@ -77,8 +77,10 @@ IMAGE_VERIFY_API_KEY = os.environ.get("IMAGE_VERIFY_API_KEY") or LLM_API_KEY
 
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "7860"))
-AUTH_USERNAME = os.environ.get("AUTH_USERNAME", "")
-AUTH_PASSWORD = os.environ.get("AUTH_PASSWORD", "")
+# 公开演示可显式关闭工作台账号：PUBLIC_ACCESS=1 时忽略残留的 AUTH_* 配置。
+PUBLIC_ACCESS = os.environ.get("PUBLIC_ACCESS", "0") == "1"
+AUTH_USERNAME = "" if PUBLIC_ACCESS else os.environ.get("AUTH_USERNAME", "")
+AUTH_PASSWORD = "" if PUBLIC_ACCESS else os.environ.get("AUTH_PASSWORD", "")
 COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "1" if HOST not in ("127.0.0.1", "localhost", "::1") else "0") == "1"
 JOB_DB = Path(os.environ.get("JOB_DB") or str(ROOT / "data" / "state" / "jobs.sqlite3"))
 MAX_CONCURRENT_JOBS = int(os.environ.get("MAX_CONCURRENT_JOBS", "1"))
@@ -124,8 +126,8 @@ def validate_runtime() -> None:
         raise RuntimeError("v1.0 只支持 KB_BACKEND=local；IMA 接入尚未实现")
     if bool(AUTH_USERNAME) != bool(AUTH_PASSWORD):
         raise RuntimeError("AUTH_USERNAME 和 AUTH_PASSWORD 必须同时配置")
-    if HOST not in ("127.0.0.1", "localhost", "::1") and not AUTH_PASSWORD:
-        raise RuntimeError("对外监听前必须配置 AUTH_USERNAME 与 AUTH_PASSWORD，并通过 HTTPS 访问")
+    if HOST not in ("127.0.0.1", "localhost", "::1") and not AUTH_PASSWORD and not PUBLIC_ACCESS:
+        raise RuntimeError("对外监听前必须配置 AUTH_USERNAME 与 AUTH_PASSWORD，或显式设置 PUBLIC_ACCESS=1 公开演示")
     if MAX_CONCURRENT_JOBS < 1:
         raise RuntimeError("MAX_CONCURRENT_JOBS 必须至少为 1")
     if LLM_THINKING not in ("auto", "enabled", "disabled"):

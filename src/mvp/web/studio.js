@@ -183,12 +183,13 @@
     UI.$("flow").appendChild(window.buildFlow([], false));
     navigate(location.hash.slice(1) || "create", false);
   }
-  function startRun() {
+  function startRun(options) {
+    const resume = Boolean(options && options.resume);
     UI.$("work-empty").hidden = false;
     UI.$("evidence-empty").hidden = false;
     UI.$("insights").hidden = true;
     UI.$("view-result").hidden = true;
-    UI.$("process-title").textContent = "创作准备";
+    if (!resume) UI.$("process-title").textContent = "创作准备";
     document.querySelector(".nav-indicator").hidden = false;
     navigate("process");
   }

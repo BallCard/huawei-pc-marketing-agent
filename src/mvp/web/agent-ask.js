@@ -96,6 +96,31 @@
 
   let session = null;
   let dom = null;
+  let locked = null;
+  let autoTimer = null;
+
+  function clearAutoTimer() {
+    if (autoTimer) clearTimeout(autoTimer);
+    autoTimer = null;
+  }
+
+  // 询问是一次性的模态动作：压暗并锁住背后的页面，视线只落在这一张卡上。
+  function lockBackground(on) {
+    if (!dom) return;
+    if (on) {
+      if (locked) return;
+      locked = [document.querySelector(".site-header"), UI.$("workspace")]
+        .filter(el => el)
+        .map(el => [el, el.inert]);
+      locked.forEach(([el]) => { el.inert = true; });
+      document.body.classList.add("ask-open");
+      return;
+    }
+    if (!locked) return;
+    locked.forEach(([el, previous]) => { el.inert = previous; });
+    locked = null;
+    document.body.classList.remove("ask-open");
+  }
 
   function readStored() {
     try {
@@ -123,6 +148,7 @@
     if (dom) return dom;
     dom = {
       panel: UI.$("agent-ask"),
+      scrim: UI.$("agent-ask-scrim"),
       avatar: UI.$("agent-ask-avatar"),
       title: UI.$("agent-ask-title"),
       hint: UI.$("agent-ask-hint"),
@@ -163,10 +189,25 @@
       }
     });
     dom.pill.addEventListener("click", () => reopen());
+    if (dom.scrim) dom.scrim.addEventListener("click", () => close());
     document.addEventListener("keydown", event => {
       if (event.key === "Escape" && dom && !dom.panel.hidden) close();
     });
     return dom;
+  }
+
+  function showPanel() {
+    dom.panel.hidden = false;
+    if (dom.scrim) dom.scrim.hidden = false;
+    dom.pill.hidden = true;
+    lockBackground(true);
+  }
+
+  function hidePanel() {
+    if (!dom) return;
+    dom.panel.hidden = true;
+    if (dom.scrim) dom.scrim.hidden = true;
+    lockBackground(false);
   }
 
   function progressText() {
@@ -277,10 +318,21 @@
     session.answers.push({ id: spec.id || "", field: spec.field || "", question: session.questions[index], answer: text });
     persist();
     render({ animate: true });
+    // 选中即视为确认：最后一项答完就继续创作，不再要求额外点一次按钮。
+    if (session.answers.length >= session.questions.length) {
+      clearAutoTimer();
+      autoTimer = setTimeout(() => {
+        autoTimer = null;
+        if (!session || !dom || dom.panel.hidden || session.submitting) return;
+        if (session.answers.length < session.questions.length) return;
+        finish();
+      }, prefersReduced() ? 0 : 420);
+    }
   }
 
   function finish() {
     if (!session || session.submitting) return;
+    clearAutoTimer();
     session.submitting = true;
     const answers = session.answers.slice();
     const task = applyAnswers(session.task, answers, { candidates: session.candidates });
@@ -296,6 +348,7 @@
 
   function open(config) {
     if (!mount()) return false;
+    clearAutoTimer();
     const specs = (config.questions || []).map(item => typeof item === "object" && item ? item : { question: questionText(item) })
       .filter(item => questionText(item)).slice(0, 1);
     const questions = specs.map(questionText);
@@ -319,8 +372,7 @@
       onBack: config.onBack,
       onProgress: config.onProgress
     };
-    dom.panel.hidden = false;
-    dom.pill.hidden = true;
+    showPanel();
     dom.body.scrollTop = 0;
     const submit = dom.done.querySelector(".ask-submit");
     if (submit) {
@@ -334,9 +386,9 @@
 
   function reopen() {
     if (!session || !mount()) return;
+    clearAutoTimer();
     session.collapsed = false;
-    dom.panel.hidden = false;
-    dom.pill.hidden = true;
+    showPanel();
     render({ animate: false });
   }
 
@@ -344,14 +396,13 @@
   function setPage(page) {
     if (!session || !mount()) return;
     if (page !== "process") {
-      dom.panel.hidden = true;
+      hidePanel();
       dom.pill.hidden = true;
     } else if (session.collapsed) {
-      dom.panel.hidden = true;
+      hidePanel();
       dom.pill.hidden = false;
     } else {
-      dom.panel.hidden = false;
-      dom.pill.hidden = true;
+      showPanel();
     }
   }
 
@@ -359,7 +410,8 @@
     const { reset = false } = options || {};
     if (!dom && !session) return;
     if (!mount()) return;
-    dom.panel.hidden = true;
+    clearAutoTimer();
+    hidePanel();
     dom.body.classList.remove("is-swapping");
     if (reset || !session || session.submitting) {
       session = null;

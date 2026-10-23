@@ -47,44 +47,62 @@ fs.mkdirSync(out, { recursive: true });
       await page.waitForFunction(() => !document.querySelector('.site-header').inert);
       await page.locator('#go').click();
       await page.locator('#agent-ask').waitFor({ state: 'visible' });
+
+      // 居中的磨砂面板：落在视口正中，背后有遮罩并锁住页面焦点。
+      const bounds = await page.locator('#agent-ask').boundingBox();
+      assert.ok(Math.abs(bounds.x + bounds.width / 2 - width / 2) < 2, `面板水平居中 @${width}`);
+      assert.ok(Math.abs(bounds.y + bounds.height / 2 - height / 2) < 2, `面板垂直居中 @${width}`);
+      assert.ok(bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= width && bounds.y + bounds.height <= height);
+      assert.equal(await page.locator('#agent-ask-scrim').isVisible(), true);
+      assert.equal(await page.evaluate(() => document.body.classList.contains('ask-open')), true);
+      assert.equal(await page.evaluate(() => document.querySelector('.site-header').inert), true);
+      assert.equal(await page.evaluate(() => document.querySelector('#workspace').inert), true);
+
       assert.equal(await page.locator('#agent-ask-progress').innerText(), '第 1 / 2 轮');
       assert.equal(await page.locator('.ask-option').count(), 4);
       assert.ok(!(await page.locator('#agent-ask-options').innerText()).includes('MateBook'));
       assert.equal(await page.locator('#agent-ask-input').getAttribute('list'), null);
+
+      // 点遮罩收起，再从 pill 恢复；保持原来的暂停点。
+      await page.mouse.click(4, 4);
+      assert.equal(await page.locator('#agent-ask').isVisible(), false);
+      assert.equal(await page.locator('#agent-ask-pill').isVisible(), true);
+      assert.equal(await page.locator('#agent-ask-scrim').isVisible(), false);
+      assert.equal(await page.evaluate(() => document.querySelector('#workspace').inert), false);
+      await page.locator('#agent-ask-pill').click();
+      await page.locator('#agent-ask').waitFor({ state: 'visible' });
+      assert.equal(await page.locator('#agent-ask-pill').isVisible(), false);
+
+      // 选中即继续：不再需要「继续创作」按钮确认。
       await page.locator('.ask-option').first().click();
-      await page.reload();
-      await page.locator('.ask-submit').waitFor({ state: 'visible' });
-      assert.equal(await page.locator('.ask-answer').innerText(), '编程开发，如 VS Code、Python');
-      await page.locator('.ask-submit').click();
       await page.waitForFunction(() => document.querySelector('#agent-ask-progress').textContent === '第 2 / 2 轮');
+      await page.locator('#agent-ask').waitFor({ state: 'visible' });
+      assert.equal(requests.length, 2);
       assert.equal(requests[1].clarify_round, 1);
       assert.equal(requests[1].clarify_answers[0].field, 'software');
       assert.equal(requests[1].clarify_answers[0].answer, '编程开发，如 VS Code、Python');
       assert.equal(await page.locator('.ask-option').count(), 3);
-      await page.reload();
-      await page.waitForFunction(() => document.querySelector('#agent-ask-progress').textContent === '第 2 / 2 轮');
-      assert.equal(await page.locator('#agent-ask-question').innerText(), specs[1].question);
-      const bounds = await page.locator('#agent-ask').boundingBox();
-      assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width && bounds.y >= 0 && bounds.y + bounds.height <= height);
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
+      assert.equal(await page.locator('#agent-ask').getAttribute('aria-modal'), 'true');
       await page.screenshot({ path: `${out}/round-two-${width}.png` });
+
+      // 自填同样自动继续，第二轮结束后停止问询。
       await page.locator('#agent-ask-input').fill('必须在本机 Windows 运行，学校不能联网考试');
       await page.locator('.ask-send').click();
-      await page.locator('.ask-submit').click();
       await page.locator('#need').getByRole('heading', { name: '暂时无法确定合适型号', exact: true }).waitFor();
       assert.equal(requests[2].clarify_round, 2);
       assert.equal(requests[2].clarify_answers.length, 2);
       assert.ok(requests[2].extra.includes('学校不能联网考试'));
       assert.equal(await page.locator('#agent-ask').isVisible(), false);
       assert.equal(await page.locator('#agent-ask-pill').isVisible(), false);
+      assert.equal(await page.locator('#agent-ask-scrim').isVisible(), false);
       assert.equal(await page.locator('#process-live').innerText(), '暂未生成作品');
       assert.equal(requests.length, 3, '初次提交加两次回答，没有第三轮问询');
       assert.deepEqual(errors, []);
-      report.push({ width, height, requests: requests.length, restored: true, errors });
+      report.push({ width, height, requests: requests.length, centered: true, autoContinue: true, errors });
       await page.close();
     }
     fs.writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2));
-    console.log('PASS: 两轮递进、逐题选项、自填、刷新恢复和停止问询；3 种屏幕尺寸');
+    console.log('PASS: 居中磨砂面板、遮罩收起/恢复、选中即继续；3 种屏幕尺寸');
   } finally {
     await browser.close();
   }

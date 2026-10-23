@@ -1,21 +1,37 @@
-/* 悬浮追问：一次一个问题，主页面仍是一屏 Bot。 */
+/* 居中追问：磨砂玻璃压住过程页，一次只问一个问题。 */
+.ask-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: #241d1440;
+  -webkit-backdrop-filter: blur(8px) saturate(.88);
+  backdrop-filter: blur(8px) saturate(.88);
+  animation: ask-fade .22s ease both;
+}
+@keyframes ask-fade { from { opacity: 0; } }
 .agent-ask {
   position: fixed;
-  z-index: 45;
-  right: clamp(18px, 2.4vw, 34px);
-  bottom: clamp(18px, 2.4vw, 30px);
+  z-index: 46;
+  top: 50%;
+  left: 50%;
   display: flex;
   flex-direction: column;
-  width: min(404px, calc(100vw - 28px));
-  max-height: min(76dvh, 640px);
+  width: min(540px, calc(100vw - 32px));
+  max-height: min(82dvh, 700px);
   overflow: hidden;
-  background: var(--bg-surface);
-  border: 1.5px solid #dcd4c4;
-  border-radius: 16px;
-  box-shadow: 0 30px 80px #33291a26, 0 4px 14px #33291a12;
-  animation: ask-rise .34s cubic-bezier(.2, .72, .2, 1) both;
+  background: linear-gradient(180deg, #fdfaf3f5, #f8f3e8ee);
+  border: 1px solid #fff;
+  border-radius: 20px;
+  box-shadow: 0 44px 120px #2e231740, 0 2px 0 #ffffffb3 inset, 0 0 0 1px #3b2e1c12;
+  -webkit-backdrop-filter: blur(22px) saturate(1.12);
+  backdrop-filter: blur(22px) saturate(1.12);
+  transform: translate(-50%, -50%);
+  animation: ask-pop .3s cubic-bezier(.2, .72, .2, 1) both;
 }
-@keyframes ask-rise { from { opacity: 0; transform: translateY(16px) scale(.99); } }
+@keyframes ask-pop {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 18px)) scale(.97); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
 
 .ask-head {
   display: grid;
@@ -23,9 +39,9 @@
   align-items: center;
   gap: 10px;
   flex: 0 0 auto;
-  padding: 12px 12px 11px 14px;
+  padding: 13px 14px 12px 16px;
   border-bottom: 1px solid var(--border-hairline);
-  background: linear-gradient(#fbf7ef, #f7f2e7);
+  background: linear-gradient(#fbf7efdd, #f7f2e7c4);
 }
 .ask-avatar {
   display: grid;
@@ -63,7 +79,7 @@
 
 .ask-body {
   min-height: 0;
-  padding: 15px 18px 6px;
+  padding: 18px 22px 8px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -97,8 +113,8 @@
 }
 
 .ask-question {
-  margin: 1px 0 13px;
-  font-size: 16.5px;
+  margin: 1px 0 14px;
+  font-size: 17.5px;
   font-weight: 650;
   line-height: 1.55;
   letter-spacing: -.01em;
@@ -172,7 +188,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 9px 18px 12px;
+  padding: 10px 22px 14px;
   border-top: 1px solid var(--border-hairline);
 }
 .ask-foot .text-button { font-size: 12px; }
@@ -204,12 +220,27 @@
 .agent-ask-pill:hover { background: #454239; }
 
 @media (max-width: 700px) {
-  .agent-ask { left: 12px; right: 12px; bottom: 12px; width: auto; max-height: 74dvh; border-radius: 14px; }
+  .agent-ask { width: calc(100vw - 24px); max-height: min(84dvh, 620px); border-radius: 18px; }
   .agent-ask-pill { right: 12px; bottom: 12px; }
-  .ask-body { padding: 13px 15px 4px; }
-  .ask-question { font-size: 15.5px; }
+  .ask-body { padding: 16px 16px 6px; }
+  .ask-question { font-size: 16px; }
+  .ask-foot { padding: 9px 16px 12px; }
+}
+
+/* 矮屏上收紧留白，保证自填输入框不必滚动就能看见。 */
+@media (max-height: 660px) {
+  .ask-head { padding: 10px 12px 9px 14px; }
+  .ask-avatar { width: 33px; height: 33px; }
+  .ask-avatar .bot-portrait { width: 25px; height: 25px; }
+  .ask-body { padding: 11px 15px 4px; }
+  .ask-question { margin-bottom: 10px; font-size: 15.5px; }
+  .ask-options-label { margin-bottom: 6px; }
+  .ask-options { gap: 6px; }
+  .ask-option { padding: 8px 10px; }
+  .ask-custom { margin-top: 8px; }
+  .ask-foot { padding: 8px 15px 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .agent-ask, .agent-ask-pill, .ask-body.is-swapping .ask-current { animation: none !important; }
+  .agent-ask, .agent-ask-pill, .ask-scrim, .ask-body.is-swapping .ask-current { animation: none !important; }
 }

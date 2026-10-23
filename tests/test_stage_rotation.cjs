@@ -66,6 +66,20 @@ test('failure or budget termination immediately clears pending presentation',()=
   assert.equal(c.rotation.queue.length,0);
 });
 
+test('追问续跑从定格环节接着走，收尾环节不提前复用',()=>{
+  const c=clock();
+  c.rotation.update([phase('scene'),phase('sources')]);c.advance(2000);
+  c.rotation.update([phase('scene'),phase('sources'),phase('finish','waiting')],{urgent:true});
+  assert.equal(c.rotation.current,'finish');
+  c.rotation.release(['finish']);
+  c.rotation.update([{...phase('scene')},{...phase('sources')},phase('plan','running')],{restore:true});
+  assert.equal(c.rotation.current,'plan','续跑回到新出现的环节，而不是第一个环节');
+  assert.deepEqual(c.rotation.queue,[]);
+  c.rotation.update([phase('scene'),phase('sources'),phase('plan'),phase('finish')]);
+  c.advance(10000);
+  assert.equal(c.rotation.current,'finish');
+});
+
 test('tools and parallel checks are grouped; skipped recommendation is retained as a tool',()=>{
   const stages=deriveStages({state:'running',steps:[
     {step:'scene',status:'done'},{step:'style',status:'done'},

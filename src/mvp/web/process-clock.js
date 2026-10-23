@@ -2,12 +2,15 @@
   "use strict";
   class ProcessClock {
     constructor(now = () => performance.now()) { this.now = now; this.reset(); }
-    reset() { this.base = 0; this.sampledAt = this.now(); this.running = false; }
+    reset() { this.base = 0; this.sampledAt = this.now(); this.running = false; this.floor = false; }
+    // 追问续跑沿用同一条时间线：新任务的总时长再短，也不让「已用」往回跳。
+    holdFloor() { this.floor = true; }
     read() { return this.base + (this.running ? Math.max(0, this.now() - this.sampledAt) : 0); }
     update(snapshot) {
       const previous = this.read(), running = snapshot.state === "running";
       const sample = running ? snapshot.elapsed_ms : snapshot.result?.total_ms ?? snapshot.elapsed_ms;
-      this.base = running ? Math.max(this.running ? previous : 0, Number(sample) || 0) : Number.isFinite(sample) ? sample : previous;
+      const next = running ? Math.max(this.running ? previous : 0, Number(sample) || 0) : Number.isFinite(sample) ? sample : previous;
+      this.base = !running && this.floor ? Math.max(previous, next) : next;
       this.sampledAt = this.now(); this.running = running;
     }
   }
