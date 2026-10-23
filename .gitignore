@@ -10,12 +10,14 @@ __pycache__/
 model.txt
 deploy/gpt-direct/auth.json
 deployment-data/
+scripts/capture_gpt_token.py
 
 # 知识库副本与缓存（举办方资料，不入库）
 data/
 
 # 本地视频成品（大文件，保留在 D 盘）
 output/demo/
+*.mp4
 
 # 工具与系统
 .codex-tmp/

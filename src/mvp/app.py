@@ -88,7 +88,8 @@ async def access_control(request: Request, call_next):
     public = {"/healthz", "/about", "/login", "/api/login", "/static/style.css", "/static/login.css", "/static/fonts.css", "/static/typography.css", "/static/mobile.css",
               "/static/login.js", "/static/brand/logo-mark.svg", "/static/brand/app-icon.svg",
               "/static/gallery/welcome.jpg", "/static/gallery/brief.jpg", "/static/gallery/workflow.jpg",
-              "/static/gallery/result.jpg", "/static/gallery/evidence.jpg"}
+              "/static/gallery/result.jpg", "/static/gallery/evidence.jpg", "/static/gallery/clarify.jpg",
+              "/static/gallery/store.jpg"}
     public_font = request.url.path.startswith("/static/fonts/") and request.url.path.endswith((".woff2", "/OFL.txt"))
     if settings.AUTH_PASSWORD and request.url.path not in public and not public_font:
         if not valid_session(request.cookies.get("studio-session", "")):
