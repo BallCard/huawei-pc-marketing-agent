@@ -12,8 +12,7 @@ v1.2.0（version1.2）· 两轮问询与评审减负。[在线体验](https://ba
 - **生图链路**：美国 VPS 网关与 worker 在线，魔搭 ↔ worker 心跳正常；但 2026-10-23 复检时 ChatGPT 上游返回 401（短期 access token 已被拒绝），GPT 生图需本人刷新令牌；刷新后运行 `python -X utf8 scripts/check_gpt_proxy.py` 自检。主链路失败时按配置降级到魔搭免费 `Qwen/Qwen-Image-Edit-2511`，成图标注“免费备选链路，待复核”。
 - **魔搭能否再挂反代**：不能作为 ChatGPT 出站代理。独立网络测试显示 `chatgpt.com`、`files.oaiusercontent.com` 请求失败，`auth.openai.com` 返回 403；Docker 创空间只暴露单个 Web 端口，也没有浏览器会话。详见 [网页生图私有链路](docs/web-image-proxy.md)。
 
-> 个人项目副本，独立于比赛协作仓库。产品资料不进入 GitHub，仅在本机和已授权的私有创空间保留部署副本。
-本项目与初赛仓库的关系、当前主线和冻结边界见[两个华为项目的统一说明](docs/project-lineage.md)。后续功能、修复、发布和部署均以本复赛仓库为准；初赛仓库仅作历史参考，不再继续更新。
+> 本项目是华为比赛复赛的唯一项目仓库，后续功能、修复、发布和部署均以此仓库为准。产品资料不进入 GitHub，仅在本机和已授权的私有创空间保留部署副本。
 
 [切题检验与复赛优化分析](docs/competition-fit-review.md)（2026-10-21）：对照原始手册和老师补充的业务痛点，记录当前缺口、验证边界与优先级。本机手册和知识库原始压缩包归档于 `data/ref/`，不进入 Git。
 
