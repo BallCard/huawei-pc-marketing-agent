@@ -38,7 +38,7 @@
     const data = r || {};
     if (data.poster) {
       const poster = data.poster;
-      const caption = poster.status === "passed" ? "AI 生成海报 · 成图核验通过" : poster.image_url ? "AI 生成海报 · 待复核" : "海报尚未就绪";
+      const caption = poster.status === "passed" ? "AI 生成海报 · 成图核验通过" : poster.fallback_from ? "AI 生成海报 · 免费备选链路，待复核" : poster.image_url ? "AI 生成海报 · 待复核" : "海报尚未就绪";
       return UI.el("figure", {className:"pv-generated-poster"},
         poster.image_url ? UI.el("img", {src:poster.image_url, alt:"生成的门店海报", loading:"eager"}) :
           UI.el("div", {className:"poster-unavailable"}, UI.el("h3", {}, poster.status === "blocked" ? "先核对文案，再生成海报" : "这张海报尚未生成"),

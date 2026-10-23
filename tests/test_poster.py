@@ -233,6 +233,72 @@ class PosterTests(unittest.TestCase):
         self.assertEqual({k:result["verification"][k] for k in source["verification"]}, source["verification"])
         self.assertNotIn("poster", source)
 
+    def test_primary_failure_falls_back_to_free_modelscope_once(self):
+        attempts = []
+        def fake_generate(prepared, folder, on_activity, deadline, existing_task_id=None, provider=None, model=None):
+            used = provider or settings.POSTER_IMAGE_PROVIDER
+            attempts.append((used, model or settings.POSTER_IMAGE_MODEL, existing_task_id))
+            if used == "private_worker":
+                raise llm.LLMError("生图账号连接尚未就绪，请完成账号连接后重试。")
+            return {"sha256":"x", "width":960, "height":1280, "task_id":"ms-task"}
+        with patch.object(settings, "POSTER_IMAGE_PROVIDER", "private_worker"), \
+             patch.object(settings, "POSTER_IMAGE_MODEL", "chatgpt-web"), \
+             patch.object(settings, "POSTER_FALLBACK_PROVIDER", "modelscope"), \
+             patch.object(settings, "POSTER_FALLBACK_MODEL", "Qwen/Qwen-Image-Edit-2511"), \
+             patch.object(poster, "generate", side_effect=fake_generate):
+            events = []
+            output = poster.generate_with_fallback(self.prepared, self.folder, events.append, time.monotonic() + 300)
+        self.assertEqual([a[0] for a in attempts], ["private_worker", "modelscope"])
+        self.assertIsNone(attempts[1][2], "备选链路必须是新任务，不能复用主链路任务号")
+        self.assertEqual(output["provider"], "modelscope")
+        self.assertEqual(output["model"], "Qwen/Qwen-Image-Edit-2511")
+        self.assertEqual(output["fallback_from"], "private_worker")
+        self.assertIn("连接尚未就绪", output["fallback_reason"])
+        self.assertTrue(any(e.get("provider_status") == "FALLBACK" for e in events))
+
+    def test_primary_timeout_is_not_turned_into_a_second_generation(self):
+        with patch.object(settings, "POSTER_IMAGE_PROVIDER", "private_worker"), \
+             patch.object(settings, "POSTER_FALLBACK_PROVIDER", "modelscope"), \
+             patch.object(poster, "generate", side_effect=llm.BudgetExceeded("等待已超时")) as generate:
+            with self.assertRaises(llm.BudgetExceeded):
+                poster.generate_with_fallback(self.prepared, self.folder, lambda _:None, time.monotonic() + 300)
+        self.assertEqual(generate.call_count, 1)
+
+    def test_fallback_is_skipped_when_no_time_is_left(self):
+        with patch.object(settings, "POSTER_IMAGE_PROVIDER", "private_worker"), \
+             patch.object(settings, "POSTER_FALLBACK_PROVIDER", "modelscope"), \
+             patch.object(settings, "POSTER_FALLBACK_MIN_SECONDS", 180), \
+             patch.object(poster, "generate", side_effect=llm.LLMError("连接未就绪")) as generate:
+            with self.assertRaisesRegex(llm.LLMError, "剩余时间不足"):
+                poster.generate_with_fallback(self.prepared, self.folder, lambda _:None, time.monotonic() + 30)
+        self.assertEqual(generate.call_count, 1)
+
+    def test_fallback_disabled_keeps_original_failure(self):
+        with patch.object(settings, "POSTER_IMAGE_PROVIDER", "private_worker"), \
+             patch.object(settings, "POSTER_FALLBACK_PROVIDER", ""), \
+             patch.object(poster, "generate", side_effect=llm.LLMError("连接未就绪")) as generate:
+            with self.assertRaisesRegex(llm.LLMError, "连接未就绪"):
+                poster.generate_with_fallback(self.prepared, self.folder, lambda _:None, time.monotonic() + 300)
+        self.assertEqual(generate.call_count, 1)
+
+    def test_fallback_image_cannot_be_delivered_as_verified(self):
+        source = {"article":{"title":"测试","lead":"导语","blocks":[],"disclosures":[],"cta":"到店"}, "model":{"name":"测试电脑"},
+                  "task":{}, "verification":{"state":"passed"}, "evidence":{"facts":[]}}
+        generated = {"sha256":"x", "width":960, "height":1280, "provider":"modelscope",
+                     "model":"Qwen/Qwen-Image-Edit-2511", "fallback_from":"private_worker", "fallback_reason":"生图服务尚未配置私有连接。"}
+        prepared = {**self.prepared, "reference":{"id":"minimal-product", "name":"极简产品展示", "source_url":"", "sha256":"r"},
+                    "style_input_sha256":"s", "product_image":"I1", "prompt_sha256":"p"}
+        with patch.object(poster, "prepare", return_value=prepared), \
+             patch.object(poster, "generate_with_fallback", return_value=generated), \
+             patch.object(poster, "inspect_image", return_value={"overall":"pass", "problems":[], "cross_review":{"status":"not_needed"}}), \
+             patch.object(settings, "POSTER_DIR", self.folder):
+            result = poster.attach(source, "b"*32)
+        output = result["poster"]
+        self.assertEqual(output["provider"], "modelscope")
+        self.assertEqual(output["fallback_from"], "private_worker")
+        self.assertEqual(output["status"], "needs_review")
+        self.assertTrue(any(p["type"] == "provider" and p.get("deterministic") for p in output["review"]["problems"]))
+
 
 if __name__ == "__main__":
     unittest.main()

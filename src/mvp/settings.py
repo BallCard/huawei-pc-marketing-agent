@@ -96,6 +96,11 @@ POSTER_REVIEW_BASE_URL = os.environ.get("POSTER_REVIEW_BASE_URL", "https://api-i
 POSTER_REVIEW_API_KEY = os.environ.get("POSTER_REVIEW_API_KEY") or (POSTER_IMAGE_API_KEY if POSTER_IMAGE_PROVIDER == "modelscope" else os.environ.get("FAST_LLM_API_KEY", ""))
 POSTER_IMAGE_TIMEOUT = float(os.environ.get("POSTER_IMAGE_TIMEOUT", "600"))
 POSTER_REVIEW_TIMEOUT = float(os.environ.get("POSTER_REVIEW_TIMEOUT", "60"))
+# 主链路明确失败时的一次性免费备选；留空表示不降级，失败后仍退回预制样例。
+POSTER_FALLBACK_PROVIDER = os.environ.get("POSTER_FALLBACK_PROVIDER", "")
+POSTER_FALLBACK_MODEL = os.environ.get("POSTER_FALLBACK_MODEL", "Qwen/Qwen-Image-Edit-2511")
+# 剩余时间不足以完成一次备选生图时不再切换，避免必然超时。
+POSTER_FALLBACK_MIN_SECONDS = float(os.environ.get("POSTER_FALLBACK_MIN_SECONDS", "180"))
 POSTER_DIR = Path(os.environ.get("POSTER_DIR") or str(JOB_DB.parent / "posters"))
 
 
@@ -104,6 +109,17 @@ def validate_runtime() -> None:
         raise RuntimeError("POSTER_IMAGE_AUTH_MODE 仅支持 bearer、basic")
     if POSTER_IMAGE_PROVIDER not in ("modelscope", "gemini_web_proxy", "chatgpt_web_proxy", "private_worker"):
         raise RuntimeError("POSTER_IMAGE_PROVIDER 仅支持 modelscope、gemini_web_proxy、chatgpt_web_proxy、private_worker")
+    if POSTER_FALLBACK_PROVIDER:
+        if POSTER_FALLBACK_PROVIDER not in ("modelscope", "gemini_web_proxy", "chatgpt_web_proxy", "private_worker"):
+            raise RuntimeError("POSTER_FALLBACK_PROVIDER 仅支持 modelscope、gemini_web_proxy、chatgpt_web_proxy、private_worker")
+        if POSTER_FALLBACK_PROVIDER == POSTER_IMAGE_PROVIDER:
+            raise RuntimeError("POSTER_FALLBACK_PROVIDER 不能与 POSTER_IMAGE_PROVIDER 相同")
+        if POSTER_FALLBACK_PROVIDER == "modelscope" and not POSTER_IMAGE_API_KEY:
+            raise RuntimeError("魔搭免费备选需要 POSTER_IMAGE_API_KEY")
+        if POSTER_FALLBACK_PROVIDER == "private_worker" and not POSTER_WORKER_TOKEN:
+            raise RuntimeError("私有 worker 备选需要 POSTER_WORKER_TOKEN")
+    if POSTER_FALLBACK_MIN_SECONDS < 0:
+        raise RuntimeError("POSTER_FALLBACK_MIN_SECONDS 不能为负")
     if KB_BACKEND != "local":
         raise RuntimeError("v1.0 只支持 KB_BACKEND=local；IMA 接入尚未实现")
     if bool(AUTH_USERNAME) != bool(AUTH_PASSWORD):

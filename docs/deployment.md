@@ -82,9 +82,12 @@ Vercel 的主要障碍是任务和存储方式，并非不能运行 Python。GPT
 | `JOB_DB` | `/mnt/workspace/huazhang-youju/jobs.sqlite3`，使用魔搭持久目录 |
 | `MAX_CONCURRENT_JOBS` | `1` |
 | `GENERATION_BUDGET_SECONDS` | 默认 `240` 秒上限，为质量模型评审及一次修订/复审留出时间；旧配置若显式设为 `90` 需同步调整，预算不足不会宣称审核通过 |
+| `POSTER_IMAGE_PROVIDER` / `POSTER_IMAGE_MODEL` | 主链路 `private_worker` / `chatgpt-web`，经美国 VPS 调用本人网页账号生图 |
+| `POSTER_FALLBACK_PROVIDER` / `POSTER_FALLBACK_MODEL` | 免费兜底 `modelscope` / `Qwen/Qwen-Image-Edit-2511`；主链路明确失败时切换一次，留空则关闭 |
+| `POSTER_FALLBACK_MIN_SECONDS` | 默认 `180`；剩余时间不足时不再切换，避免必然超时 |
 | `MODELSCOPE_API_KEY` | 仅本机部署工具使用的魔搭管理令牌，不整份上传本机配置 |
 
-未配置单独角色接口时复用 `LLM_*`；写作和审核同样支持 `WRITER_LLM_*`、`JUDGE_LLM_*` 覆盖。没有静默切换供应商的回退。2026-10-21 起三个文字角色统一使用魔搭 DeepSeek 1017，已有简报中的质量与快速档位也调用同一模型。DeepSeek 官方密钥仅保留在本机忽略的 `model.txt`，部署版不再调用官方接口，消耗魔搭推理配额或资源。
+未配置单独角色接口时复用 `LLM_*`；写作和审核同样支持 `WRITER_LLM_*`、`JUDGE_LLM_*` 覆盖。**文字角色**没有静默切换供应商的回退。2026-10-21 起三个文字角色统一使用魔搭 DeepSeek 1017，已有简报中的质量与快速档位也调用同一模型。DeepSeek 官方密钥仅保留在本机忽略的 `model.txt`，部署版不再调用官方接口，消耗魔搭推理配额或资源。
 
 其他可评测候选包括 `Qwen/Qwen3.5-122B-A10B`（写作/审核候选）和 `ZhipuAI/GLM-5.2`（复杂任务候选）。模型列表可见不代表适合本任务：需单独验证 JSON、思考模式、延迟和事实审核表现。本版文字角色统一为 DeepSeek 1017，图片核验独立使用视觉模型；连接小样不是文案质量排名。
 

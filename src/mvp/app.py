@@ -263,7 +263,9 @@ def info():
     kb = get_kb()
     return {"name": "华章有据", "version": __version__, "auth_enabled": bool(settings.AUTH_PASSWORD), "kb": kb.whoami(),
             "writer_model": settings.WRITER_MODEL, "judge_model": settings.JUDGE_MODEL,
-            "poster_service": {"provider":settings.POSTER_IMAGE_PROVIDER, **PosterChannel(STORE.path).status()},
+            "poster_service": {"provider":settings.POSTER_IMAGE_PROVIDER, "fallback":settings.POSTER_FALLBACK_PROVIDER,
+                               "fallback_model":settings.POSTER_FALLBACK_MODEL if settings.POSTER_FALLBACK_PROVIDER else "",
+                               **PosterChannel(STORE.path).status()},
             "models": [{"id": m.id, "name": m.name, "group": m.group} for m in kb.models()],
             "platforms": {k: v["name"] for k, v in pipeline.platforms_cfg().items()},
             "scenarios": list(pipeline.scenes_cfg()["scenarios"])}

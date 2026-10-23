@@ -142,10 +142,11 @@
       }
       case "poster_image": {
         const poster = a.poster || result.poster || {};
-        title = active ? ({PENDING:"生图任务等待中", RUNNING:"正在生成整张门店海报"}[poster.provider_status] || "正在等待海报模型返回") : poster.image_url ? "首张海报已返回" : "海报生成已结束";
+        title = active ? ({PENDING:"生图任务等待中", RUNNING:"正在生成整张门店海报", FALLBACK:"主链路不可用，切换到免费备选"}[poster.provider_status] || "正在等待海报模型返回") : poster.image_url ? "首张海报已返回" : "海报生成已结束";
         if (poster.reference) add("已选内置参考",poster.reference.name,{kind:"image"});
         if (poster.product_image) add("本型号外观依据",poster.product_image,{kind:"image"});
         if (poster.model) add("生图模型",poster.model,{kind:"input"});
+        if (poster.fallback_from) add("备选链路", `主链路（${poster.fallback_from}）不可用，已切到魔搭免费生图；文字需人工复核`, {kind:"issue",status:"needs_fix"});
         if (poster.error) add("需要处理",poster.error,{kind:"issue",status:"error"});
         note = active ? "生成可能较慢；任务持续查询中，图片返回后立即展示。" : "不会自动追加一轮生图，可查看结果后手动重生。";
         break;

@@ -124,17 +124,20 @@ def save_image(content: bytes, folder: Path) -> dict:
     return {"sha256": hashlib.sha256(output.read_bytes()).hexdigest(), "width":image.width, "height":image.height}
 
 
-def generate_web_proxy(prepared: dict, folder: Path, on_activity, deadline: float) -> dict:
+def generate_web_proxy(prepared: dict, folder: Path, on_activity, deadline: float,
+                       provider: str | None = None, model: str | None = None) -> dict:
     """两个网页反代的参考图字段独立适配，输出都使用 b64_json。"""
+    provider = provider or settings.POSTER_IMAGE_PROVIDER
+    model = model or settings.POSTER_IMAGE_MODEL
     if not settings.POSTER_IMAGE_API_KEY:
         raise llm.LLMError("尚未配置生图反代访问密钥，请配置 POSTER_IMAGE_API_KEY。")
     remaining = deadline - time.monotonic()
     if remaining <= 0:
         raise llm.BudgetExceeded("海报生成等待已超时。")
     refs = [data_url(prepared["product_path"]), data_url(prepared["reference_path"])]
-    body = {"model":settings.POSTER_IMAGE_MODEL, "prompt":prepared["prompt"], "n":1, "size":"960x1280",
+    body = {"model":model, "prompt":prepared["prompt"], "n":1, "size":"960x1280",
             "response_format":"b64_json"}
-    chatgpt = settings.POSTER_IMAGE_PROVIDER == "chatgpt_web_proxy"
+    chatgpt = provider == "chatgpt_web_proxy"
     if chatgpt:
         body.update(reference_images=refs, aspect_ratio="3:4", thinking_mode="instant")
     else:
@@ -209,18 +212,21 @@ def generate_private_worker(prepared: dict, folder: Path, on_activity, deadline:
     raise llm.BudgetExceeded("海报生成等待已超时，可继续查询原任务；本次不会自动重新提交。")
 
 
-def generate(prepared: dict, folder: Path, on_activity, deadline: float, existing_task_id: str | None = None) -> dict:
-    if settings.POSTER_IMAGE_PROVIDER == "private_worker":
+def generate(prepared: dict, folder: Path, on_activity, deadline: float, existing_task_id: str | None = None,
+             provider: str | None = None, model: str | None = None) -> dict:
+    provider = provider or settings.POSTER_IMAGE_PROVIDER
+    model = model or settings.POSTER_IMAGE_MODEL
+    if provider == "private_worker":
         return generate_private_worker(prepared, folder, on_activity, deadline, existing_task_id)
-    if settings.POSTER_IMAGE_PROVIDER in ("gemini_web_proxy", "chatgpt_web_proxy"):
-        return generate_web_proxy(prepared, folder, on_activity, deadline)
+    if provider in ("gemini_web_proxy", "chatgpt_web_proxy"):
+        return generate_web_proxy(prepared, folder, on_activity, deadline, provider, model)
     if not settings.POSTER_IMAGE_API_KEY:
         raise llm.LLMError("尚未配置魔搭生图凭据，请配置 POSTER_IMAGE_API_KEY 后重试。")
     base = settings.POSTER_IMAGE_BASE_URL
     headers = {"Authorization": f"Bearer {settings.POSTER_IMAGE_API_KEY}", "Content-Type": "application/json"}
-    multi_reference = settings.POSTER_IMAGE_MODEL != "Qwen/Qwen-Image-Edit"
+    multi_reference = model != "Qwen/Qwen-Image-Edit"
     image_input = ([data_url(prepared["product_path"]), data_url(prepared["reference_path"])] if multi_reference else data_url(prepared["board_path"]))
-    body = {"model": settings.POSTER_IMAGE_MODEL, "prompt": prepared["prompt"], "image_url": image_input, "size": "960x1280"}
+    body = {"model": model, "prompt": prepared["prompt"], "image_url": image_input, "size": "960x1280"}
 
     def left():
         seconds = deadline - time.monotonic()
@@ -275,6 +281,29 @@ def generate(prepared: dict, folder: Path, on_activity, deadline: float, existin
             if status in ("FAILED", "CANCELED", "CANCELLED"):
                 raise llm.LLMError("魔搭未能生成这张海报。文案已保留，可手动重新生图。")
             time.sleep(min(5, left()))
+
+
+def generate_with_fallback(prepared: dict, folder: Path, on_activity, deadline: float,
+                           existing_task_id: str | None = None) -> dict:
+    """主链路明确失败时只降级一次到免费备选；超时不切换，保留继续查询原任务的能力。"""
+    primary = settings.POSTER_IMAGE_PROVIDER
+    try:
+        result = generate(prepared, folder, on_activity, deadline, existing_task_id)
+        return {**result, "provider": primary, "model": settings.POSTER_IMAGE_MODEL}
+    except llm.BudgetExceeded:
+        raise
+    except llm.LLMError as exc:
+        fallback = settings.POSTER_FALLBACK_PROVIDER
+        if not fallback or fallback == primary:
+            raise
+        if deadline - time.monotonic() < settings.POSTER_FALLBACK_MIN_SECONDS:
+            raise llm.LLMError(f"{exc}（剩余时间不足，未切换免费备选；请稍后重试）") from exc
+        on_activity({"provider_status": "FALLBACK", "provider": fallback, "model": settings.POSTER_FALLBACK_MODEL,
+                     "fallback_from": primary, "label": "主链路生图不可用，切换到魔搭免费备选"})
+        result = generate(prepared, folder, on_activity, deadline, None, provider=fallback,
+                          model=settings.POSTER_FALLBACK_MODEL)
+        return {**result, "provider": fallback, "model": settings.POSTER_FALLBACK_MODEL,
+                "fallback_from": primary, "fallback_reason": str(exc)}
 
 
 def normalized(text: str) -> str:
@@ -417,7 +446,7 @@ def attach(source: dict, jid: str, on_update=None, *, review_only=False, decisio
                 resume_id = old.get("task_id") if same_provider and (old.get("resume_available") or
                              (old.get("status") == "error" and "超时" in old.get("error", ""))) else None
                 generated = tr.run("poster_image", "继续等待本次海报" if resume_id else "模型生成整张海报",
-                                   lambda: generate(prepared, folder, activity, tr.deadline, existing_task_id=resume_id))
+                                   lambda: generate_with_fallback(prepared, folder, activity, tr.deadline, existing_task_id=resume_id))
             candidate.update(**generated, image_url=f"/api/job/{jid}/poster/image", status="reviewing")
             tr.publish("poster", candidate, "poster_image", "海报已返回，正在审核实际成图")
             tr.deadline = time.monotonic() + settings.POSTER_REVIEW_TIMEOUT
@@ -427,6 +456,15 @@ def attach(source: dict, jid: str, on_update=None, *, review_only=False, decisio
             if candidate.get("reference_upload_warning"):
                 checked["problems"].append({"where":"poster", "index":-1, "type":"reference", "deterministic":True, "detail":candidate["reference_upload_warning"],
                                             "direction":"确认产品图和风格图上传成功后，再由用户决定是否重新生图。"})
+                checked["overall"] = "needs_fix"
+            if generated.get("fallback_from"):
+                candidate["fallback_from"] = generated["fallback_from"]
+                candidate["fallback_model"] = generated.get("model", "")
+                candidate["fallback_reason"] = generated.get("fallback_reason", "")
+                # 免费备选的中文文字不可靠，必须显式留一条确定性意见，不能静默按主链路结果交付。
+                checked["problems"].append({"where":"poster", "index":-1, "type":"provider", "deterministic":True,
+                    "detail":"主链路生图不可用，本图由魔搭免费备选链路生成；中文逐字文案与产品外观需人工复核。",
+                    "direction":"逐字核对文案与产品外观；必要时待主链路恢复后重新生图。"})
                 checked["overall"] = "needs_fix"
             candidate.update(review=checked, status="passed" if checked["overall"] == "pass" else "needs_review")
         except Exception as exc:
