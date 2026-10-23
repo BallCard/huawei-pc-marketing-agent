@@ -43,11 +43,20 @@ def token_expiry():
     except Exception:
         return 0
 
+def token_issued():
+    try:
+        token = json.load(open("/var/lib/huazhang-gpt/auth.json", encoding="utf-8")).get("access_token") or ""
+        payload = json.loads(base64.urlsafe_b64decode(token.split(".")[1] + "=" * (-len(token.split(".")[1]) % 4)))
+        return int(payload.get("iat") or 0)
+    except Exception:
+        return 0
+
 print(json.dumps({
     "health": call("/healthz"),
     "ready": call("/readyz"),
     "upstream": call("/v1/models", True),
     "token_exp": token_expiry(),
+    "token_iat": token_issued(),
     "now": int(time.time()),
 }, ensure_ascii=False))
 '''
@@ -99,6 +108,13 @@ def main() -> int:
     message = upstream_body.strip()[:300]
     print(f"FAIL 上游未通过：{message}")
     exp = int(data.get("token_exp") or 0)
+    iat = int(data.get("token_iat") or 0)
+    now = int(data.get("now") or 0)
+    if iat and now:
+        hours = (now - iat) / 3600
+        print(f"令牌签发于约 {hours:.1f} 小时前。")
+        if hours > 12:
+            print("注意：这不是刚签发的令牌，浏览器会话可能已刷新；请重新加载 chatgpt.com 后取新 token。")
     if exp:
         days = (exp - int(data.get("now") or 0)) / 86400
         print(f"令牌 JWT 到期剩余约 {days:.1f} 天；即使未到期，上游仍可能已吊销。")
