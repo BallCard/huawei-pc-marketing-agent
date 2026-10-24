@@ -85,14 +85,16 @@ async def access_control(request: Request, call_next):
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
         return response
-    public = {"/healthz", "/about", "/login", "/api/login", "/static/style.css", "/static/login.css", "/static/fonts.css", "/static/typography.css", "/static/mobile.css",
+    public = {"/healthz", "/about", "/guide", "/showcase", "/showcase-v2", "/showcase-functions", "/demo", "/login", "/api/login", "/static/style.css", "/static/login.css", "/static/fonts.css", "/static/typography.css", "/static/mobile.css",
+              "/static/showcase.css", "/static/showcase.js", "/static/showcase-functions.css", "/static/showcase-functions.js", "/static/showcase-deck.css", "/static/showcase-deck.js", "/static/demo.js", "/static/studio-pointer.css", "/static/studio-pointer.js",
               "/static/login.js", "/static/brand/logo-mark.svg", "/static/brand/app-icon.svg",
               "/static/gallery/welcome.jpg", "/static/gallery/brief.jpg", "/static/gallery/workflow.jpg",
               "/static/gallery/result.jpg", "/static/gallery/evidence.jpg", "/static/gallery/clarify.jpg",
               "/static/gallery/store.jpg"}
     public_gallery = request.url.path.startswith("/static/gallery/") and request.url.path.endswith((".jpg", ".png", ".jpeg"))
+    public_showcase_asset = request.url.path.startswith("/static/showcase-assets/") and request.url.path.endswith((".jpg", ".png", ".jpeg", ".webp"))
     public_font = request.url.path.startswith("/static/fonts/") and request.url.path.endswith((".woff2", "/OFL.txt"))
-    if settings.AUTH_PASSWORD and request.url.path not in public and not public_font and not public_gallery:
+    if settings.AUTH_PASSWORD and request.url.path not in public and not public_font and not public_gallery and not public_showcase_asset:
         if not valid_session(request.cookies.get("studio-session", "")):
             if request.url.path == "/":
                 linked = request.query_params.get("job", "")
@@ -211,6 +213,30 @@ def login_page():
 def about_page():
     return FileResponse(WEB / "about.html")
 
+
+@app.get("/guide")
+def guide_page():
+    return FileResponse(WEB / "guide.html")
+
+
+@app.get("/showcase")
+def showcase_page():
+    return FileResponse(WEB / "showcase.html")
+
+
+@app.get("/showcase-v2")
+def showcase_v2_page():
+    return FileResponse(WEB / "showcase-v2.html")
+
+
+@app.get("/showcase-functions")
+def showcase_functions_page():
+    return FileResponse(WEB / "showcase-functions.html")
+
+
+@app.get("/demo")
+def demo_page():
+    return FileResponse(WEB / "demo.html")
 
 @app.post("/api/login")
 def login(credentials: LoginIn):

@@ -177,11 +177,19 @@
 }
 .ask-send:hover { background: #454239; }
 
-.ask-done { display: grid; gap: 10px; padding: 4px 0 8px; }
+.ask-done { display: grid; gap: 8px; padding: 4px 0 8px; }
+.ask-done-mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--state-ok-bg);
+  color: var(--state-ok);
+  font-weight: 700;
+}
 .ask-done h4 { margin: 0; font: 650 17px/1.5 var(--font-serif); }
 .ask-done p { margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.7; }
-.ask-submit { justify-content: space-between; width: 100%; min-height: 44px; margin-top: 4px; }
-
 .ask-foot {
   display: flex;
   flex: 0 0 auto;

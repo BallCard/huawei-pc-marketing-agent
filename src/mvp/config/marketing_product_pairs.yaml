@@ -26,8 +26,8 @@ pairs:
     model_name: HUAWEI MateBook Pro S
     scene: 内容创作者用原创角色讲一个屏幕、手写或协同任务
     evidence_dimensions: [creation, display, ecosystem]
-    fallback_asset: fallback-samples/c07-matebook14-library-comic.png
-    fallback_note: 共享四格叙事样例，仅作角色栏目构图参考；与品牌方暂无联系。
+    fallback_asset: fallback-samples/c04-matebook-pro-s-role.png
+    fallback_note: 预制角色栏目样例，仅作构图参考；与品牌方暂无联系，产品事实仍需使用 MateBook Pro S 官方登记图。
   C07:
     reference_brand: 惠普
     technique: 四格小剧场：任务→难处→有据动作→收尾
@@ -62,8 +62,8 @@ pairs:
     model_name: HUAWEI MateBook Pro
     scene: 为一个拟议的原创 IP 联动提出非真实概念提案
     evidence_dimensions: [display, creation, portability]
-    fallback_asset: fallback-samples/c01-matebook14-color-interaction.png
-    fallback_note: 共享概念背景，必须独立展示非真实合作；产品外观应替换为 MateBook Pro 官方图。
+    fallback_asset: fallback-samples/c10-matebook-pro-concept.png
+    fallback_note: 预制概念提案背景，必须独立展示非真实合作；样例电脑不是产品事实，正式稿应替换为 MateBook Pro 官方图。
   C13:
     reference_brand: 戴尔
     technique: 具体选购问答：问题→约束→有据判断→下一步
@@ -71,8 +71,8 @@ pairs:
     model_name: HUAWEI MateBook D 14 2024
     scene: 家庭换新或预算有限时，回答一个边界清楚的选购问题
     evidence_dimensions: [value, portability, os_compat]
-    fallback_asset: fallback-samples/c01-matebook14-color-interaction.png
-    fallback_note: 共享问题卡背景，不能把样例图中的 MateBook 14 外观当作 D 14 依据。
+    fallback_asset: fallback-samples/c13-matebook-d14-buying-question.png
+    fallback_note: 预制选购问答背景，不能把样例图中的通用电脑外观当作 D 14 依据；正式稿仍需使用登记图片。
   C14:
     reference_brand: 微软
     technique: 统一主题延展：核心主题→渠道任务→一个入口

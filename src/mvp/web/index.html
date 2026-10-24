@@ -13,17 +13,18 @@
   <link rel="stylesheet" href="/static/style.css?v=1.4.0">
   <link rel="stylesheet" href="/static/platforms.css?v=1.2.0">
   <link rel="stylesheet" href="/static/platforms-fixes.css?v=1.2.0">
-  <link rel="stylesheet" href="/static/studio.css?v=1.6.0">
-  <link rel="stylesheet" href="/static/preview-devices.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/studio.css?v=1.6.1">
+  <link rel="stylesheet" href="/static/preview-devices.css?v=1.3.1">
   <link rel="stylesheet" href="/static/work-page.css?v=1.4.0">
   <link rel="stylesheet" href="/static/process.css?v=1.4.0">
-  <link rel="stylesheet" href="/static/agent-ask.css?v=1.6.0">
+  <link rel="stylesheet" href="/static/agent-ask.css?v=1.7.0">
   <link rel="stylesheet" href="/static/review-questions.css?v=1.2.0">
   <link rel="stylesheet" href="/static/poster-image.css?v=1.2.0">
   <link rel="stylesheet" href="/static/typography.css?v=1.2.0">
   <link rel="stylesheet" href="/static/mobile.css?v=1.4.0">
   <link rel="stylesheet" href="/static/creative-context.css?v=1.6.1">
   <link rel="stylesheet" href="/static/insight-visual.css?v=1.5.0">
+  <link rel="stylesheet" href="/static/studio-pointer.css?v=1.0.0">
 </head>
 <body>
   <section id="welcome" class="welcome" aria-labelledby="welcome-title">
@@ -31,9 +32,12 @@
       <img class="welcome-logo" src="/static/brand/logo-mark.svg" width="76" height="76" alt="">
       <h1 id="welcome-title">华章有据</h1>
       <p>为门店店长与销售，围绕门店与私域，生成有据可查的华为电脑营销图文。</p>
-      <button id="enter-studio" class="welcome-enter" type="button">进入体验 <span aria-hidden="true">↗</span></button>
+      <div style="display:flex; gap:12px; justify-content:center; align-items:center;">
+        <button id="enter-studio" class="welcome-enter" type="button">进入体验 <span aria-hidden="true">↗</span></button>
+        <a href="/guide" target="_blank" class="welcome-enter" style="background:transparent; color:var(--text-main,#2b2825); border:1px solid var(--border-line,#dcd7cc); text-decoration:none; font-size:14px; font-weight:600; padding:12px 20px; border-radius:999px; display:inline-flex; align-items:center; gap:6px;">展示指南 ↗</a>
+      </div>
     </div>
-    <span class="welcome-edition">华章有据 · v1.2</span>
+    <span class="welcome-edition">华章有据 · v2.0</span>
   </section>
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <!-- Lucide outline icons, ISC license: https://lucide.dev/license -->
@@ -63,7 +67,8 @@
       <button id="tab-evidence" type="button" role="tab" data-page="evidence" aria-controls="page-evidence" aria-selected="false" tabindex="-1">事实核验</button>
     </nav>
     <div class="header-actions">
-      <button id="tab-store" type="button" class="store-entry" data-page="store" aria-controls="page-store"><svg class="icon"><use href="#i-store"/></svg><span>我的门店</span><i class="store-entry-dot" id="store-entry-dot" aria-hidden="true"></i></button>
+      <a href="/guide" target="_blank" class="guide-entry" title="查看决赛战略与展示理念指南"><span>展示指南 ↗</span></a>
+      <button id="tab-store" type="button" class="store-entry" data-page="store" aria-label="我的门店" aria-controls="page-store"><svg class="icon"><use href="#i-store"/></svg><span>我的门店</span><i class="store-entry-dot" id="store-entry-dot" aria-hidden="true"></i></button>
       <form id="session-exit" class="session-exit" action="/logout" method="post" hidden><button type="submit">退出登录</button></form>
     </div>
   </header>
@@ -291,6 +296,7 @@
     </section>
   </main>
   <div id="toast" class="toast" role="status" hidden></div>
+  <div class="studio-pointer-spotlight" aria-hidden="true"><span></span></div>
   <div id="agent-ask-scrim" class="ask-scrim" aria-hidden="true" hidden></div>
   <aside id="agent-ask" class="agent-ask" role="dialog" aria-modal="true" aria-labelledby="agent-ask-title" data-state="asking" hidden>
     <header class="ask-head">
@@ -311,9 +317,10 @@
           <button class="ask-send" type="submit">发送</button>
         </form>
       </div>
-      <div id="agent-ask-done" class="ask-done" hidden>
-        <h4>补充完成</h4>
-        <p>这些回答会并入本次创作简报，原来的输入不会丢失。</p>
+      <div id="agent-ask-done" class="ask-done" role="status" aria-live="polite" hidden>
+        <span class="ask-done-mark" aria-hidden="true">✓</span>
+        <h4>已收到回答</h4>
+        <p>正在继续创作，请稍候…</p>
       </div>
     </div>
     <footer class="ask-foot">
@@ -327,7 +334,7 @@
   <dialog id="step-dialog" class="studio-dialog" aria-labelledby="step-dialog-title"><div class="dialog-heading"><div><p id="step-dialog-meta" class="section-label"></p><h2 id="step-dialog-title"></h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭执行详情"><svg class="icon"><use href="#i-close"/></svg></button></div><p id="step-dialog-note" class="dialog-copy"></p><div id="step-dialog-body" class="step-dialog-body"></div></dialog>
   <!-- Bump the progress asset versions together when changing the handoff UI. -->
   <dialog id="review-dialog" class="studio-dialog review-dialog" aria-labelledby="review-question-title"><div class="dialog-heading"><div><p id="review-question-meta" class="section-label">终审反馈</p><h2 id="review-question-title" tabindex="-1"></h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭问题详情"><svg class="icon"><use href="#i-close"/></svg></button></div><div id="review-question-body"></div><p id="review-question-error" class="review-question-error" role="status"></p><div id="review-question-actions" class="review-question-actions" hidden><button id="review-back" class="text-button" type="button">← 上一条</button><button id="review-next" class="btn-primary" type="button">下一条 →</button></div></dialog>
-<dialog id="store-loop-dialog" class="studio-dialog store-loop-dialog" aria-labelledby="store-loop-title"><div class="dialog-heading"><div><p class="section-label">门店私域</p><h2 id="store-loop-title">一条能走到店里的链路</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭门店私域链路"><svg class="icon"><use href="#i-close"/></svg></button></div><p class="dialog-copy">门店营销不是写一篇稿就结束：内容要能承接进私域，私域要能把人带到店里。</p><ol class="store-loop-steps"><li><b>内容</b><span>小红书、公众号、朋友圈、门店海报，每个事实都可回溯到资料</span></li><li><b>私域</b><span>企业微信、门店社群、朋友圈承接，一条内容只服务一个动作</span></li><li><b>到店</b><span>预约、体验、核销，把这次到店变成下一次触达</span></li></ol><p class="store-loop-note">下面这两个选择，就是这条链路的起点。</p><button id="start-store-loop" class="btn-primary store-loop-start" type="button">按这条链路开始</button></dialog>
+<dialog id="store-loop-dialog" class="studio-dialog store-loop-dialog" aria-labelledby="store-loop-title"><div class="dialog-heading"><div><p class="section-label">门店私域</p><h2 id="store-loop-title">一条能走到店里的链路</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="关闭门店私域链路"><svg class="icon"><use href="#i-close"/></svg></button></div><p class="dialog-copy">门店营销不是写一篇稿就结束：内容要能承接进私域，私域要能把人带到店里。</p><ol class="store-loop-steps"><li><b>内容</b><span>小红书、公众号、朋友圈、门店海报，每个事实都可回溯到资料</span></li><li><b>私域</b><span>企业微信、门店社群、朋友圈承接，一条内容只服务一个动作</span></li><li><b>到店</b><span>预约、体验、核销，把这次到店变成下一次触达</span></li></ol><p class="store-loop-note">开始后会预填“引导到店”和“企业微信私信”，你可以继续调整。</p><button id="start-store-loop" class="btn-primary store-loop-start" type="button">按这条链路开始</button></dialog>
 <dialog id="context-dialog" class="studio-dialog options-dialog" aria-labelledby="context-title">
 <div class="dialog-heading"><h2 id="context-title">门店资料与历史</h2><button type="button" class="text-button" data-close-dialog>关闭</button></div>
 <div class="options-fields">
@@ -341,6 +348,6 @@
 <p id="context-status" role="status"></p><details><summary>近期稿件与发布状态</summary><div id="context-history"></div></details>
 </div></dialog>
   <dialog id="compare-dialog" class="studio-dialog" aria-labelledby="compare-title"><div class="dialog-heading"><h2 id="compare-title">提示词 A/B 对照</h2><button type="button" class="text-button" data-close-dialog>关闭</button></div><p id="compare-status" role="status"></p><div id="compare-body"></div><details><summary>查看两套完整提示词</summary><div id="compare-prompt-texts"></div></details></dialog>
-  <script src="/static/dom.js?v=1.2.0"></script><script src="/static/process-state.js?v=1.2.0"></script><script src="/static/stage-rotation.js?v=1.3.0"></script><script src="/static/bot-portrait.js?v=1.2.0"></script><script src="/static/process-clock.js?v=1.3.0"></script><script src="/static/review-status.js?v=1.2.0"></script><script src="/static/process-activity.js?v=1.2.0"></script><script src="/static/flow.js?v=1.4.0"></script><script src="/static/preview.js?v=1.3.2"></script><script src="/static/preview-xhs.js?v=1.3.2"></script><script src="/static/preview-wx.js?v=1.2.0"></script><script src="/static/preview-mm.js?v=1.2.0"></script><script src="/static/preview-poster.js?v=1.3.2"></script><script src="/static/studio.js?v=1.4.0"></script><script src="/static/font-assets.js?v=1.2.0"></script><script src="/static/agent-ask.js?v=1.3.0"></script><script src="/static/review-questions.js?v=1.2.0"></script><script src="/static/creative-context.js?v=1.4.0"></script><script src="/static/prompt-comparison.js?v=1.3.2"></script><script src="/static/marketing-templates.js?v=1.3.2"></script><script src="/static/app.js?v=1.7.0"></script>
+  <script src="/static/dom.js?v=1.2.0"></script><script src="/static/process-state.js?v=1.2.0"></script><script src="/static/stage-rotation.js?v=1.3.0"></script><script src="/static/bot-portrait.js?v=1.2.0"></script><script src="/static/process-clock.js?v=1.3.0"></script><script src="/static/review-status.js?v=1.2.0"></script><script src="/static/process-activity.js?v=1.2.0"></script><script src="/static/flow.js?v=1.4.0"></script><script src="/static/preview.js?v=1.3.2"></script><script src="/static/preview-xhs.js?v=1.4.0"></script><script src="/static/preview-wx.js?v=1.3.0"></script><script src="/static/preview-mm.js?v=1.3.0"></script><script src="/static/preview-poster.js?v=1.3.2"></script><script src="/static/studio.js?v=1.4.1"></script><script src="/static/font-assets.js?v=1.2.0"></script><script src="/static/agent-ask.js?v=1.4.0"></script><script src="/static/review-questions.js?v=1.2.0"></script><script src="/static/creative-context.js?v=1.4.0"></script><script src="/static/prompt-comparison.js?v=1.3.2"></script><script src="/static/marketing-templates.js?v=1.3.2"></script><script src="/static/app.js?v=1.7.1"></script><script src="/static/studio-pointer.js?v=1.0.0"></script>
 </body>
 </html>

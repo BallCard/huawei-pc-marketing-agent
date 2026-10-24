@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>现场演示台 · 华章有据</title>
+  <meta name="description" content="华章有据现场演示台：三个预置案例与真实生成入口。">
+  <link rel="icon" type="image/svg+xml" href="/static/brand/app-icon.svg">
+  <link rel="stylesheet" href="/static/fonts.css?v=1.2.0">
+  <link rel="stylesheet" href="/static/showcase.css?v=1.0.1">
+</head>
+<body class="showcase-page demo-page">
+  <header class="showcase-header">
+    <a class="showcase-brand" href="/showcase"><img src="/static/brand/logo-mark.svg" alt="" width="34" height="34"><span>华章有据</span></a>
+    <nav class="showcase-nav" aria-label="展示页面"><a href="/showcase-functions">功能高亮版</a><a href="/showcase">理念版</a><a href="/showcase-v2">能力地图版</a><a class="is-active" href="/demo">现场演示台</a><a class="nav-quiet" href="/">进入真实工作台 ↗</a></nav>
+  </header>
+
+  <main>
+    <section class="demo-hero"><div><p class="eyebrow">现场演示台 · 预置案例 + 真实生成</p><h1>先让评委看懂，<br><em>再让系统现场跑起来。</em></h1><p>每个案例都按“输入 → 过程 → 结果 → 证据”组织。预置案例用于讲清体验，点击“真实生成”会在新标签页打开现有工作台并载入同一份简报。</p></div><div class="demo-rule"><b>现场建议</b><span>1. 先看一个预置案例</span><span>2. 打开真实生成</span><span>3. 生成期间回到本页讲理念</span></div></section>
+
+    <section class="demo-cases" aria-label="预置案例">
+      <div class="case-tabs" role="tablist" aria-label="预置案例"><button id="case-tab-student" class="case-tab is-active" data-case="student" role="tab" aria-selected="true" aria-controls="case-panel-student">01 新生开学季</button><button id="case-tab-office" class="case-tab" data-case="office" role="tab" aria-selected="false" aria-controls="case-panel-office" tabindex="-1">02 移动办公</button><button id="case-tab-creator" class="case-tab" data-case="creator" role="tab" aria-selected="false" aria-controls="case-panel-creator" tabindex="-1">03 内容创作</button></div>
+      <div id="case-panel-student" class="case-panel is-active" data-case-panel="student" role="tabpanel" aria-labelledby="case-tab-student" tabindex="0">
+        <div class="case-title"><div><p class="eyebrow">案例 01 / 小红书</p><h2>大学新生，开学季，先从“每天怎么背着走”讲起。</h2><p>展示生态营销里的“具体人群 + 具体动作”，再看产品事实如何进入自然表达。</p></div><a class="button button-red" target="_blank" rel="noopener" href="/?preset=student">打开真实生成 ↗</a></div>
+        <div class="demo-flow"><button class="flow-tab is-active" data-flow="student-brief">输入</button><button class="flow-tab" data-flow="student-process">过程</button><button class="flow-tab" data-flow="student-work">结果</button><button class="flow-tab" data-flow="student-proof">证据</button></div>
+        <div class="flow-panel is-active" data-flow-panel="student-brief"><div class="flow-copy"><b>人群 / 场景 / 平台 / 目标</b><p>大学新生 · 开学季 · 小红书 · 种草并引导到店咨询</p><span>现场可以说：这些不是提示词，而是门店自己的经营参数。</span></div><img src="/static/gallery/brief.jpg" alt="创作简报"></div>
+        <div class="flow-panel" data-flow-panel="student-process"><div class="flow-copy"><b>理解 → 备料 → 选角度 → 写作 → 评审</b><p>把“便携、接口、学习”这样的自然语言诉求拆成可检查的维度，再去找对应事实。</p><span>现场可以说：等待时间用来讲它在做什么，而不是只看进度条。</span></div><img src="/static/gallery/workflow.jpg" alt="生成过程"></div>
+        <div class="flow-panel" data-flow-panel="student-work"><div class="flow-copy"><b>平台原生作品</b><p>标题、短段落、图片和互动问题共同服务于一次到店咨询。</p><span>现场可以说：交付的是一份能直接取用的图文内容。</span></div><img src="/static/gallery/result.jpg" alt="作品结果"></div>
+        <div class="flow-panel" data-flow-panel="student-proof"><div class="flow-copy"><b>每条主张都有回查路径</b><p>型号、参数和图片来源可回到知识库原文；不确定的兼容性不被硬写成承诺。</p><span>现场可以说：有据，是结果页上的证据链。</span></div><img src="/static/gallery/evidence.jpg" alt="事实核验"></div>
+      </div>
+
+      <div id="case-panel-office" class="case-panel" data-case-panel="office" role="tabpanel" aria-labelledby="case-tab-office" tabindex="0" hidden>
+        <div class="case-title"><div><p class="eyebrow">案例 02 / 公众号与朋友圈</p><h2>经常出差的职场人，把“到现场连接设备”讲成一个真实动作。</h2><p>展示同一类产品事实如何按渠道重组，并把“能不能说”交给核验层处理。</p></div><a class="button button-red" target="_blank" rel="noopener" href="/?preset=office">打开真实生成 ↗</a></div>
+        <div class="demo-gallery-grid"><figure><img src="/static/gallery/showcase-color-interactive.jpg" alt="色彩互动内容"><figcaption>内容可以有互动，但不能编造用户反馈。</figcaption></figure><figure><img src="/static/gallery/evidence.jpg" alt="证据核验"><figcaption>条件和适用范围一起展示。</figcaption></figure><figure><img src="/static/gallery/result.jpg" alt="平台预览"><figcaption>同一事实，换一种平台结构。</figcaption></figure></div>
+      </div>
+
+      <div id="case-panel-creator" class="case-panel" data-case-panel="creator" role="tabpanel" aria-labelledby="case-tab-creator" tabindex="0" hidden>
+        <div class="case-title"><div><p class="eyebrow">案例 03 / 视觉与创作</p><h2>摄影与设计创作者，先用一个任务讲清屏幕与手写体验。</h2><p>展示场景理解如何推动视觉方向，产品配图仍然来自登记图片，不重绘硬件。</p></div><a class="button button-red" target="_blank" rel="noopener" href="/?preset=creator">打开真实生成 ↗</a></div>
+        <div class="demo-creative"><figure class="creative-large"><img src="/static/gallery/showcase-comic-story.jpg" alt="校园生活四格动漫小剧场"><figcaption>痛点先出现，再让产品能力进入情节。</figcaption></figure><figure><img src="/static/gallery/showcase-miniature-city.jpg" alt="微缩城市创意海报"><figcaption>场景化视觉不是参数堆叠。</figcaption></figure><figure><img src="/static/gallery/showcase-color-interactive.jpg" alt="新品色彩互动征集"><figcaption>互动问题给用户一个可回答的动作。</figcaption></figure></div>
+      </div>
+    </section>
+
+    <section class="demo-return"><div><p class="eyebrow">回到展示</p><h2>真实生成会在新标签页打开。</h2><p>生成期间回到本页继续讲理念、技术和人机交互；生成完成后，再切回工作台展示结果、事实核验和平台预览。</p></div><div class="return-path"><span>演示台</span><i>→</i><span>真实工作台</span><i>→</i><span>回到演示台</span></div></section>
+  </main>
+  <footer class="showcase-footer"><span>华章有据 · 现场演示台</span><span>预置案例用于讲解，真实入口用于验证。</span></footer>
+  <script src="/static/demo.js?v=1.0.1"></script>
+</body>
+</html>

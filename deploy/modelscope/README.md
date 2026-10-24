@@ -1,8 +1,10 @@
 # 华章有据 · 华为电脑营销图文工作台
 
+当前发布版本：**v2.0.0**（决赛展示版）
+
 > 从产品知识出发，为门店与私域生成有据可查的华为电脑营销图文。
 
-[在线体验入口](https://ballcard-huazhang-youju.ms.show) · [图文介绍页](https://ballcard-huazhang-youju.ms.show/about) · [GitHub 项目仓库](https://github.com/BallCard/huawei-pc-marketing-agent)
+[在线体验入口](https://ballcard-huazhang-youju.ms.show) · [图文介绍页](https://ballcard-huazhang-youju.ms.show/about) · [决赛展示指南](https://ballcard-huazhang-youju.ms.show/guide) · [GitHub 项目仓库](https://github.com/BallCard/huawei-pc-marketing-agent)
 
 **体验地址**：[https://ballcard-huazhang-youju.ms.show](https://ballcard-huazhang-youju.ms.show)  
 公开演示环境，无需注册魔搭、无需工作台账号，打开即用。创空间采用保护模式，应用入口开放，源码与资料包保持隐藏。

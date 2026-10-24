@@ -148,8 +148,8 @@ def deploy():
     variables["PUBLIC_ACCESS"] = "1" if public_access else "0"
     variables.update(HOST="0.0.0.0", PORT="7860", COOKIE_SECURE="1", KB_BACKEND="local",
                      KB_DIR="/app/data/kb", CACHE_DIR="/app/data/cache",
-                     JOB_DB="/mnt/workspace/huazhang-youju/jobs.sqlite3",
-                     POSTER_DIR="/mnt/workspace/huazhang-youju/posters")
+                     JOB_DB="/mnt/workspace/huazhang-youju/jobs-v2.sqlite3",
+                     POSTER_DIR="/mnt/workspace/huazhang-youju/posters-v2")
     for kind in ("variables", "secrets"):
         current = api("GET", f"/studios/{REPO}/{kind}")
         entries = current.get(kind, current.get("items", [])) if isinstance(current, dict) else current

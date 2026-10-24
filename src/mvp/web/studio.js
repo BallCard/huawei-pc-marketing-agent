@@ -121,19 +121,23 @@
     });
     const welcome = UI.$("welcome");
     const surfaces = [document.querySelector(".site-header"), UI.$("workspace")];
-    let welcomed = false;
-    try { welcomed = sessionStorage.getItem("studio-welcomed") === "1" || !!sessionStorage.getItem("studio-active-job"); } catch { /* Storage can be disabled by the browser. */ }
     function enter() {
       if (welcome.hidden || welcome.classList.contains("is-leaving")) return;
-      try { sessionStorage.setItem("studio-welcomed", "1"); } catch { /* Welcome still works without storage. */ }
       welcome.classList.add("is-leaving");
       surfaces.forEach(surface => { surface.inert = false; });
-      const finish = () => { welcome.hidden = true; UI.$("page-create").focus({preventScroll: true}); };
+      const finish = () => {
+        welcome.hidden = true;
+        const activePage = pages.find(name => !UI.$(`page-${name}`).hidden) || "create";
+        UI.$(`page-${activePage}`).focus({ preventScroll: true });
+      };
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) finish();
       else setTimeout(finish, 350);
     }
-    welcome.hidden = welcomed;
-    surfaces.forEach(surface => { surface.inert = !welcomed; });
+    // The splash is an explicit entry step on every page load. Do not persist
+    // a "welcomed" flag: reopening or refreshing the workbench should show it
+    // again until the user clicks the entry button.
+    welcome.hidden = false;
+    surfaces.forEach(surface => { surface.inert = true; });
     UI.$("enter-studio").addEventListener("click", enter);
     document.querySelectorAll("[data-page]").forEach(button => button.addEventListener("click", () => navigate(button.dataset.page, false)));
     document.querySelectorAll("[data-nav]").forEach(button => button.addEventListener("click", () => navigate(button.dataset.nav)));

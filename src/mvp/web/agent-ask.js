@@ -264,16 +264,7 @@
       }
       dom.count.textContent = session.round === 2 ? "本次最后一问" : "本轮只问这一点";
     } else {
-      dom.count.textContent = session.round === 2 ? "问询已完成" : "带上回答继续";
-      if (!dom.done.querySelector(".ask-submit")) {
-        const submit = UI.el("button", { type: "button", class: "btn-primary ask-submit" }, [
-          UI.el("span", { class: "ask-submit-text" }, "继续创作"),
-          UI.el("span", { "aria-hidden": "true" }, "→")
-        ]);
-        submit.addEventListener("click", finish);
-        dom.done.appendChild(submit);
-      }
-      dom.done.querySelector(".ask-submit").disabled = Boolean(session.submitting);
+      dom.count.textContent = session.round === 2 ? "问询已完成" : "回答已收到";
     }
 
     if (animate && !prefersReduced()) {
@@ -291,7 +282,7 @@
     if (!dom || dom.panel.hidden) return;
     const target = asking
       ? dom.options.querySelector(".ask-option") || dom.input
-      : dom.done.querySelector(".ask-submit");
+      : null;
     if (target && typeof target.focus === "function") {
       try {
         target.focus({ preventScroll: true });
@@ -337,12 +328,6 @@
     const answers = session.answers.slice();
     const task = applyAnswers(session.task, answers, { candidates: session.candidates });
     const onComplete = session.onComplete;
-    const submit = dom && dom.done.querySelector(".ask-submit");
-    if (submit) {
-      submit.disabled = true;
-      const label = submit.querySelector(".ask-submit-text");
-      if (label) label.textContent = "正在继续…";
-    }
     if (onComplete) onComplete(answers, task);
   }
 
@@ -374,12 +359,6 @@
     };
     showPanel();
     dom.body.scrollTop = 0;
-    const submit = dom.done.querySelector(".ask-submit");
-    if (submit) {
-      submit.disabled = false;
-      const label = submit.querySelector(".ask-submit-text");
-      if (label) label.textContent = "继续创作";
-    }
     render({ animate: false });
     return true;
   }

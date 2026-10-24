@@ -140,6 +140,8 @@
 /* ── 页头「我的门店」入口 ── */
 .header-actions{display:flex;align-items:center;gap:14px;justify-self:end}
 .store-entry{display:inline-flex;align-items:center;gap:6px;padding:6px 12px 6px 10px;border:1px solid var(--border-line);border-radius:999px;font-size:12px;font-weight:600;color:var(--text-muted);background:var(--bg-surface);transition:border-color .15s,color .15s,background .15s}
+.guide-entry{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border:1px solid #e8d3c8;border-radius:999px;font-size:12px;font-weight:600;color:#b8532f;background:#fbf4f0;text-decoration:none;transition:border-color .15s,color .15s,background .15s}
+.guide-entry:hover{border-color:#b8532f;background:#f5e7df;color:#923d20}
 .store-entry .icon{width:14px;height:14px}
 .store-entry:hover{border-color:var(--border-strong);color:var(--text-main)}
 .store-entry[aria-current="page"]{border-color:var(--accent-terracotta);color:var(--accent-terracotta);background:var(--accent-tint)}

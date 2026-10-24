@@ -96,8 +96,12 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(self.client.post("/api/run", json={}).status_code, 401)
         self.assertEqual(self.client.get("/healthz").json(), {"status": "ok"})
         self.assertEqual(self.client.get("/static/gallery/welcome.jpg").status_code, 200)
+        self.assertEqual(self.client.get("/static/gallery/showcase-miniature-city.jpg").status_code, 200)
+        self.assertEqual(self.client.get("/static/gallery/showcase-color-interactive.jpg").status_code, 200)
+        self.assertEqual(self.client.get("/static/gallery/showcase-comic-story.jpg").status_code, 200)
         self.assertEqual(self.client.get("/static/mobile.css?v=1.2.0").status_code, 200)
         self.assertIn("真实界面", self.client.get("/about").text)
+        self.assertIn("决赛战略与展示理念指南", self.client.get("/guide").text)
         self.assertEqual(self.client.get("/static/gallery/private.txt").status_code, 401)
         self.assertEqual(self.client.post("/api/login", json={"username": "tester", "password": "wrong"}).status_code, 401)
         response = self.login()
@@ -176,6 +180,7 @@ class PublicAccessTests(unittest.TestCase):
 
     def test_public_access_serves_app_and_api_without_login(self):
         self.assertEqual(self.client.get("/", follow_redirects=False).status_code, 200)
+        self.assertEqual(self.client.get("/guide", follow_redirects=False).status_code, 200)
         info = self.client.get("/api/info")
         self.assertEqual(info.status_code, 200)
         self.assertFalse(info.json()["auth_enabled"])

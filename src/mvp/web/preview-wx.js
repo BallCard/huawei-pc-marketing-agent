@@ -89,7 +89,9 @@
       root = UI.el("div", { className: "pv-desktop pv-wx" },
         PV.desktopBar("微信 · 公众号"), UI.el("div", { className: "pv-scroll wx-desktop-scroll" }, page));
     } else {
-      root = UI.el("div", { className: "pv-phone pv-wx wide" }, nav, articleEl, footer);
+      // 手机预览保持一页设备框，文章正文在设备内滚动，避免撑开外层工作区。
+      root = UI.el("div", { className: "pv-phone pv-wx wide" }, nav,
+        UI.el("div", { className: "pv-scroll wx-mobile-scroll" }, articleEl, footer));
     }
 
     return root;

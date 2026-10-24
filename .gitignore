@@ -19,6 +19,10 @@ data/
 output/demo/
 *.mp4
 *.pdf
+output/showcase-offline/
+output/showcase-offline.zip
+review_frames/
+*.pptx
 
 # 工具与系统
 .codex-tmp/

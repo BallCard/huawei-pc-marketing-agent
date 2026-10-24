@@ -43,8 +43,9 @@ async function main() {
     let startFailure=false;
     await page.route('**/api/run',route=>route.fulfill(startFailure?{status:503,json:{detail:'UI fixture: 启动失败'}}:{json:{job:'ui-fixture'}}));
     await page.route('**/api/job/ui-fixture',route=>route.fulfill({json:snapshot}));
-    await page.addInitScript(()=>sessionStorage.setItem('studio-welcomed','1'));
     await page.goto(base);
+    await page.locator('#enter-studio').click();
+    await page.locator('#welcome').waitFor({state:'hidden'});
     await page.locator('#audience').fill('大学新生');
     await page.locator('#scenario').fill('图书馆');
     await page.locator('#product').fill('HUAWEI MateBook 14（鸿蒙版）');
@@ -228,8 +229,10 @@ async function main() {
     console.log(JSON.stringify(report,null,2));
 
     const real=await browser.newPage({viewport:{width:1440,height:900}});
-    await real.addInitScript(id=>{sessionStorage.setItem('studio-welcomed','1');sessionStorage.setItem('studio-active-job',JSON.stringify({id,task:{},mode:'structured'}));},jobId);
+    await real.addInitScript(id=>{sessionStorage.setItem('studio-active-job',JSON.stringify({id,task:{},mode:'structured'}));},jobId);
     await real.goto(`${base}/#process`);
+    await real.locator('#enter-studio').click();
+    await real.locator('#welcome').waitFor({state:'hidden'});
     await real.locator('#view-result').waitFor({state:'visible'});
     await real.screenshot({path:path.join(output,'rotation-real-complete.png')});
     await real.close();

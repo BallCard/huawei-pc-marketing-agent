@@ -1,5 +1,6 @@
 """将本人提供的短期网页 access token 安全安装到指定 VPS；不读取 Codex 或浏览器凭据。"""
 import argparse
+import base64
 import json
 import os
 import secrets
@@ -15,6 +16,27 @@ def run(command):
     if result.returncode:
         # 不回显凭据文件或网络响应正文。
         raise SystemExit("账号文件安装失败，请检查 SSH 连接与目标文件权限。")
+
+
+def account_id_from_token(token: str) -> str | None:
+    """Extract the ChatGPT account id needed by newer backend requests."""
+    parts = token.split(".")
+    if len(parts) != 3:
+        return None
+    try:
+        payload = json.loads(base64.urlsafe_b64decode(parts[1] + "=" * (-len(parts[1]) % 4)))
+    except (ValueError, TypeError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    candidates = [payload.get("account_id"), payload.get("chatgpt_account_id")]
+    auth = payload.get("https://api.openai.com/auth")
+    if isinstance(auth, dict):
+        candidates.extend([auth.get("chatgpt_account_id"), auth.get("account_id")])
+    for candidate in candidates:
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()
+    return None
 
 
 def main():
@@ -40,7 +62,12 @@ def main():
     if not isinstance(token,str) or len(token)<80 or any(c.isspace() for c in token):
         raise SystemExit("账号文件没有有效的 access token。")
     # 不传 refresh token、密码、Cookie、个人资料或其他程序的登录文件。
+    # ChatGPT 新版网页接口还要求 ChatGPT-Account-ID；它可从同一个 JWT
+    # 的标准 claim 提取，不需要额外读取浏览器存储。
     credential = {"access_token":token}
+    account_id = account_id_from_token(token)
+    if account_id:
+        credential["account_id"] = account_id
     remote = "/tmp/huazhang-auth-"+secrets.token_hex(12)
     with tempfile.TemporaryDirectory(prefix="huazhang-auth-") as folder:
         local = Path(folder)/"auth.json"

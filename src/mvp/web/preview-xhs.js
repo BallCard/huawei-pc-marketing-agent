@@ -150,15 +150,18 @@
       next.addEventListener("click", () => goToSlide(activeSlide + 1));
       media.append(previous, next);
     }
-    root.appendChild(media);
     const content = UI.el("div", { className: "xhs-content" }, body);
     if (desktop) {
+      root.appendChild(media);
       const interactive = (r.planning?.template || r.marketing_template)?.id === 'C01';
       content.appendChild(UI.el("div", { className: "xhs-comments-empty" },
         UI.el("span", {}, interactive ? "这篇想问你" : "评论区"), UI.el("p", {}, interactive ? article.cta || '说说你的选择' : "暂无评论"),
         interactive ? UI.el('small', {}, '等待真实回复，未预置评论') : null));
+      root.appendChild(content);
+    } else {
+      // 手机预览保持一页设备框，媒体与正文在设备内滚动，避免撑开工作区。
+      root.appendChild(UI.el("div", { className: "pv-scroll xhs-mobile-scroll" }, media, content));
     }
-    root.appendChild(content);
     root.appendChild(bar);
 
     return root;

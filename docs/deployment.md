@@ -1,8 +1,10 @@
-# v1.2 部署与配置
+# v2.0 部署与配置
 
 华章有据是 FastAPI + 原生网页的单实例应用，生成任务运行在后台线程，任务与结果存 SQLite。面向本人及小范围展示，可配置共享访问账号；公开演示用 `PUBLIC_ACCESS=1` 显式关闭工作台登录。只运行一个进程，不能使用多个 worker 或多个副本。
 
 ## 本次发布记录
+
+v2.0.0（version2.0，2026-10-25）以决赛展示为主线，新增 PPT 式 `/showcase-functions`、`/demo` 现场演示台、四个平台独立案例页、门店私域看板展示和公开证据分层。对应源提交以 Git 标签 `v2.0.0` 和创空间 `deployment-source.json` 为准。
 
 v1.2.0（version1.2，2026-10-21）统一文字模型为魔搭 DeepSeek 1017，需求问询最多两轮；加入重要争议交叉核对、轻微意见与确定错误分流，以及固定的“提交评审结果”按钮。同版收录整图海报、私有出图通道、慢速图片回传和手机布局改进。完整更新内容见 [版本记录](../CHANGELOG.md)。对应源提交以 Git 标签 `v1.2.0` 和创空间 `deployment-source.json` 为准。
 
@@ -82,7 +84,7 @@ Vercel 的主要障碍是任务和存储方式，并非不能运行 Python。GPT
 | `HOST` / `PORT` | 魔搭为 `0.0.0.0` / `7860` |
 | `KB_BACKEND` / `KB_DIR` | `local` / `/app/data/kb` |
 | `CACHE_DIR` | `/app/data/cache`，需匹配资料包的 `vision.json` |
-| `JOB_DB` | `/mnt/workspace/huazhang-youju/jobs.sqlite3`，使用魔搭持久目录 |
+| `JOB_DB` | `/mnt/workspace/huazhang-youju/jobs-v2.sqlite3`，使用魔搭持久目录；v2 使用独立文件避免旧版损坏数据库影响启动 |
 | `MAX_CONCURRENT_JOBS` | `1` |
 | `GENERATION_BUDGET_SECONDS` | 默认 `240` 秒上限，为质量模型评审及一次修订/复审留出时间；旧配置若显式设为 `90` 需同步调整，预算不足不会宣称审核通过 |
 | `POSTER_IMAGE_PROVIDER` / `POSTER_IMAGE_MODEL` | 主链路 `private_worker` / `chatgpt-web`，经美国 VPS 调用本人网页账号生图 |

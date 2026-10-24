@@ -96,6 +96,13 @@ function initStoreLoop() {
   if (!dialog || !open) return;
   open.addEventListener("click", () => dialog.showModal());
   UI.$("start-store-loop")?.addEventListener("click", () => {
+    // 这条链路的展示入口要落成可继续编辑的真实输入：先给出路演与门店 SOP
+    // 共同约定的起点，避免按钮只滚动页面却没有改变创作任务。
+    storeDesk.goals = ["引导到店"];
+    storeDesk.touchpoints = ["企业微信私信"];
+    storeDesk.writeSession();
+    storeDesk.syncChips();
+    storeDesk.syncGoalInput();
     dialog.close();
     document.querySelector(".touchpoint-field")?.scrollIntoView({ block: "center", behavior: "smooth" });
     document.querySelector("[data-touchpoint]")?.focus({ preventScroll: true });
@@ -198,7 +205,7 @@ function initStoreBoard() {
 const PRESETS = [
   {
     title: "新生买电脑 · 小红书",
-    sub: "鸿蒙版 · 模仿惠普 C01 · 颜色征集",
+    sub: "鸿蒙版 · 颜色征集",
     v: {
       prompt_variant: "differentiated",
       marketing_template: "C01",
@@ -213,7 +220,7 @@ const PRESETS = [
   },
   {
     title: "同一款 · 换公众号",
-    sub: "职场办公 · 模仿微软 C14 · 主题延展",
+    sub: "职场办公 · 主题延展",
     v: {
       prompt_variant: "differentiated",
       marketing_template: "C14",
@@ -228,7 +235,7 @@ const PRESETS = [
   },
   {
     title: "内容创作 · 小红书",
-    sub: "屏幕与手写 · 模仿华硕 C04 · 试验角色",
+    sub: "屏幕与手写 · 试验角色",
     v: {
       prompt_variant: "differentiated",
       marketing_template: "C04",
@@ -244,7 +251,7 @@ const PRESETS = [
   },
   {
     title: "门店到访 · 海报",
-    sub: "竖版海报 · 模仿联想 C16 · 体验邀请演示",
+    sub: "竖版海报 · 体验邀请演示",
     v: {
       prompt_variant: "differentiated",
       marketing_template: "C16",
@@ -260,7 +267,7 @@ const PRESETS = [
   },
   {
     title: "家庭换新 · 朋友圈",
-    sub: "短文 + 九宫格 · 模仿戴尔 C13 · 选购问答",
+    sub: "短文 + 九宫格 · 选购问答",
     v: {
       prompt_variant: "differentiated",
       marketing_template: "C13",
@@ -461,6 +468,16 @@ async function init() {
       });
       presetsEl.appendChild(btn);
     });
+  }
+
+  const presetKey = new URLSearchParams(location.search).get("preset");
+  const presetIndex = { student: 0, office: 1, creator: 2, store: 3, family: 4 }[presetKey];
+  if (Number.isInteger(presetIndex) && PRESETS[presetIndex]) {
+    fill(PRESETS[presetIndex].v);
+    Studio.setMode("structured");
+    Studio.syncPlatform();
+    Studio.syncOptions();
+    Studio.toast("已载入演示案例，可直接开始真实生成");
   }
 
   UI.$("task-form").addEventListener("submit", event => { event.preventDefault(); submit(""); });

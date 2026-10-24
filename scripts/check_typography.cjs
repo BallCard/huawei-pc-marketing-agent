@@ -51,8 +51,8 @@ async function main(){
 
     for(const [platform,id] of Object.entries(jobs)){
       const p=await context.newPage();watch(p);
-      await p.addInitScript(job=>{sessionStorage.setItem('studio-welcomed','1');sessionStorage.setItem('studio-active-job',JSON.stringify({id:job,task:{},mode:'structured'}));},id);
-      await p.goto(`${base}/#process`);await p.locator('#view-result').waitFor({state:'visible'});
+      await p.addInitScript(job=>{sessionStorage.setItem('studio-active-job',JSON.stringify({id:job,task:{},mode:'structured'}));},id);
+      await p.goto(`${base}/#process`);await p.locator('#enter-studio').click();await p.locator('#welcome').waitFor({state:'hidden'});await p.locator('#view-result').waitFor({state:'visible'});
       await fonts(p,'.stage-copy h3');
       if(platform==='xiaohongshu'){
         await p.evaluate(()=>document.fonts.ready);await p.screenshot({path:path.join(output,'type-process.png')});

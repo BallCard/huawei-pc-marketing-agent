@@ -171,7 +171,7 @@
           title="等待补充信息";
           const ask = clarify();
           if (ask && ask.total) {
-            if (ask.done) add("需求确认", `已补充 ${ask.answered} 点，点击「继续创作」生成`, {kind:"input"});
+            if (ask.done) add("需求确认", `已收到 ${ask.answered} 点补充，正在继续创作`, {kind:"input"});
             else add(`需求确认 ${ask.index}/${ask.total}`, ask.question, {kind:"input", status:"running"});
           } else (result.questions || []).slice(0,3).forEach(q=>add("待确认",q,{kind:"input"}));
           tone="warn"; break;
