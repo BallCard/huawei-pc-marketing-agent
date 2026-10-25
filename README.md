@@ -7,7 +7,7 @@
 [![在线体验](https://img.shields.io/badge/ModelScope-在线体验-blue?style=flat-square)](https://ballcard-huazhang-youju.ms.show)
 [![魔搭创空间](https://img.shields.io/badge/Studio-BallCard%2Fhuazhang--youju-624aff?style=flat-square)](https://modelscope.cn/studios/BallCard/huazhang-youju)
 [![图文介绍](https://img.shields.io/badge/About-图文介绍页-teal?style=flat-square)](https://ballcard-huazhang-youju.ms.show/about)
-[![展示指南](https://img.shields.io/badge/Guide-决赛展示指南-orange?style=flat-square)](https://ballcard-huazhang-youju.ms.show/guide)
+[![使用说明](https://img.shields.io/badge/Guide-使用说明-orange?style=flat-square)](https://my.feishu.cn/docx/W7RddSCcqoFNbNxGfX4cqGrfn1c)
 
 **体验入口**：[https://ballcard-huazhang-youju.ms.show](https://ballcard-huazhang-youju.ms.show)  
 公开演示环境，无需注册魔搭、无需登录账号，打开即用。

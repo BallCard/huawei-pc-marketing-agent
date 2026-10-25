@@ -25,19 +25,66 @@
   <link rel="stylesheet" href="/static/creative-context.css?v=1.6.1">
   <link rel="stylesheet" href="/static/insight-visual.css?v=1.5.0">
   <link rel="stylesheet" href="/static/studio-pointer.css?v=1.0.0">
+  <link rel="stylesheet" href="/static/opening.css?v=1.0.0">
 </head>
 <body>
   <section id="welcome" class="welcome" aria-labelledby="welcome-title">
-    <div class="welcome-content">
-      <img class="welcome-logo" src="/static/brand/logo-mark.svg" width="76" height="76" alt="">
-      <h1 id="welcome-title">华章有据</h1>
-      <p>为门店店长与销售，围绕门店与私域，生成有据可查的华为电脑营销图文。</p>
-      <div style="display:flex; gap:12px; justify-content:center; align-items:center;">
-        <button id="enter-studio" class="welcome-enter" type="button">进入体验 <span aria-hidden="true">↗</span></button>
-        <a href="/guide" target="_blank" class="welcome-enter" style="background:transparent; color:var(--text-main,#2b2825); border:1px solid var(--border-line,#dcd7cc); text-decoration:none; font-size:14px; font-weight:600; padding:12px 20px; border-radius:999px; display:inline-flex; align-items:center; gap:6px;">展示指南 ↗</a>
+    <header class="opening-header">
+      <a class="opening-brand" href="#" aria-label="华章有据">
+        <img src="/static/brand/logo-mark.svg" width="32" height="32" alt="">
+        <strong>华章有据</strong>
+      </a>
+      <div class="opening-kicker"><span>OPENING</span><b>/ 01</b><small>决赛展示</small></div>
+      <span class="opening-header-note">AI + 华为 PC 营销软文智能体</span>
+    </header>
+
+    <div class="opening-progress" aria-hidden="true"><i></i><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+    <div class="welcome-content opening-content">
+      <div class="opening-copy">
+        <p class="opening-eyebrow">华为 PC 营销软文智能体</p>
+        <h1 id="welcome-title">让好产品<br><em>有一个好故事。</em></h1>
+        <p class="opening-lead">把产品资料、真实场景与平台表达连在一起，帮助门店更快产出每一句都能回查依据的营销图文。</p>
+
+        <dl class="opening-facts">
+          <div><dt>产品名称</dt><dd>华章有据</dd></div>
+          <div><dt>产品定位</dt><dd>华为 PC 营销软文智能体</dd></div>
+          <div><dt>战队</dt><dd>ZJUShaaa</dd></div>
+          <div><dt>汇报人</dt><dd>姚飞</dd></div>
+          <div><dt>赛道</dt><dd>华为赛道</dd></div>
+        </dl>
+
+        <div class="opening-actions">
+          <button id="enter-studio" class="welcome-enter" type="button">进入真实工作台 <span aria-hidden="true">↗</span></button>
+          <a href="https://my.feishu.cn/docx/W7RddSCcqoFNbNxGfX4cqGrfn1c" target="_blank" rel="noopener noreferrer" class="opening-secondary">使用说明 <span aria-hidden="true">↗</span></a>
+          <a class="opening-scan" href="https://ballcard-huazhang-youju.ms.show" target="_blank" rel="noopener noreferrer" aria-label="扫码打开魔搭创空间的在线体验">
+            <img src="/static/brand/modelscope-qr.png" width="84" height="84" alt="魔搭在线体验二维码">
+            <span><b>扫码体验</b><small>魔搭创空间<br>无需注册登录</small></span>
+          </a>
+        </div>
+      </div>
+
+      <div class="opening-visual" aria-label="华章有据工作台界面预览">
+        <span class="opening-visual-index">01 / 05</span>
+        <div class="opening-orbit opening-orbit-one" aria-hidden="true"></div>
+        <figure class="opening-card opening-card-main">
+          <img src="/static/gallery/brief.jpg" alt="华章有据创作简报界面预览">
+          <figcaption><b>创作简报</b><span>从人群、场景到平台</span></figcaption>
+        </figure>
+        <figure class="opening-card opening-card-small">
+          <img src="/static/gallery/evidence.jpg" alt="华章有据事实核验界面预览">
+          <figcaption><b>事实核验</b><span>每一句，都有据可查</span></figcaption>
+        </figure>
+        <span class="opening-pin opening-pin-one" aria-hidden="true"></span>
+        <span class="opening-pin opening-pin-two" aria-hidden="true"></span>
       </div>
     </div>
-    <span class="welcome-edition">华章有据 · v2.0</span>
+
+    <footer class="opening-footer">
+      <span><b>ZJUShaaa</b> · 姚飞</span>
+      <span>华为赛道</span>
+      <span>实证先行 · 边界说清</span>
+    </footer>
   </section>
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <!-- Lucide outline icons, ISC license: https://lucide.dev/license -->
@@ -67,7 +114,6 @@
       <button id="tab-evidence" type="button" role="tab" data-page="evidence" aria-controls="page-evidence" aria-selected="false" tabindex="-1">事实核验</button>
     </nav>
     <div class="header-actions">
-      <a href="/guide" target="_blank" class="guide-entry" title="查看决赛战略与展示理念指南"><span>展示指南 ↗</span></a>
       <button id="tab-store" type="button" class="store-entry" data-page="store" aria-label="我的门店" aria-controls="page-store"><svg class="icon"><use href="#i-store"/></svg><span>我的门店</span><i class="store-entry-dot" id="store-entry-dot" aria-hidden="true"></i></button>
       <form id="session-exit" class="session-exit" action="/logout" method="post" hidden><button type="submit">退出登录</button></form>
     </div>

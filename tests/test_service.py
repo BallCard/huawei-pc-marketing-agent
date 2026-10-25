@@ -179,7 +179,10 @@ class PublicAccessTests(unittest.TestCase):
         self.addCleanup(self.client.__exit__, None, None, None)
 
     def test_public_access_serves_app_and_api_without_login(self):
-        self.assertEqual(self.client.get("/", follow_redirects=False).status_code, 200)
+        home = self.client.get("/", follow_redirects=False)
+        self.assertEqual(home.status_code, 200)
+        self.assertNotIn('href="/guide"', home.text)
+        self.assertIn("my.feishu.cn/docx/W7RddSCcqoFNbNxGfX4cqGrfn1c", home.text)
         self.assertEqual(self.client.get("/guide", follow_redirects=False).status_code, 200)
         info = self.client.get("/api/info")
         self.assertEqual(info.status_code, 200)
