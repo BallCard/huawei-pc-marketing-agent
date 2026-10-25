@@ -19,7 +19,10 @@
     slides.forEach((slide, item) => slide.classList.toggle("is-active", item === current));
     dots.querySelectorAll(".deck-dot").forEach((dot, item) => { const active = item === current; dot.classList.toggle("is-active", active); dot.setAttribute("aria-selected", String(active)); });
     const active = slides[current];
-    if (active.matches(".function-map-slide, .case-slide")) active.scrollTop = 0;
+    if (active.matches(".function-map-slide, .case-slide")) {
+      active.scrollTop = 0;
+      if (window.matchMedia("(max-width: 1080px)").matches) active.scrollIntoView({ block: "start", behavior: "auto" });
+    }
     label.textContent = `${active.dataset.label} / ${String(current + 1).padStart(2, "0")}`; footer.textContent = `${String(current + 1).padStart(2, "0")} / ${String(slides.length).padStart(2, "0")}`;
     if (updateHash) history.replaceState(null, "", `#slide=${current + 1}`);
   }

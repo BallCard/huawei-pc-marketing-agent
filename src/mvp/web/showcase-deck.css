@@ -108,6 +108,14 @@ h1 { margin-bottom: 25px; font-size: clamp(46px, 5.5vw, 86px); line-height: 1.12
   line-height: 1.14;
 }
 
+.feature-slide .case-copy h2 em {
+  display: block;
+  margin-top: 9px;
+  color: var(--muted);
+  font: 500 14px/1.55 var(--sans);
+  letter-spacing: .02em;
+}
+
 .feature-slide .case-copy > p:not(.eyebrow) {
   max-width: 510px;
   font-size: 13px;
@@ -129,8 +137,8 @@ h1 { margin-bottom: 25px; font-size: clamp(46px, 5.5vw, 86px); line-height: 1.12
 }
 
 .feature-slide .case-media {
-  height: min(68vh, 700px);
-  min-height: 420px;
+  height: min(72vh, 760px);
+  min-height: 440px;
 }
 
 @media (max-width: 1080px) {
