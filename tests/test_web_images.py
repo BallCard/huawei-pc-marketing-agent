@@ -11,7 +11,7 @@ import httpx
 from PIL import Image as PILImage
 
 from src.mvp import llm, pipeline, web_images
-from src.mvp.kb import Image, LocalKB, ModelDoc
+from src.mvp.kb import Image, LocalKB, ModelDoc, dedupe_images
 
 NAME = "HUAWEI MateBook X Pro 酷睿 Ultra 微绒典藏版"
 PAGE = "https://consumer.huawei.com/cn/laptops/matebook-x-pro-ultra-premium-edition/"
@@ -123,6 +123,29 @@ class WebImageTests(unittest.TestCase):
             result = pipeline.retrieve(SimpleNamespace(load=lambda _: self.doc), self.doc.id, {})
         lookup.assert_not_called()
         self.assertEqual(result["images"], [hero])
+
+    def test_visual_duplicate_assets_are_collapsed_before_catalogue_ids_are_assigned(self):
+        first = Path(self.temp.name) / "kv1-blur.jpg"
+        second = Path(self.temp.name) / "kv1.jpg"
+        distinct = Path(self.temp.name) / "screen.jpg"
+        PILImage.new("RGB", (1104, 870), (220, 240, 235)).save(first, "JPEG", quality=90)
+        PILImage.new("RGB", (1104, 870), (221, 241, 236)).save(second, "JPEG", quality=90)
+        PILImage.new("RGB", (1104, 870), (20, 30, 100)).save(distinct, "JPEG", quality=90)
+        images = [
+            Image("kv1-blur.jpg", NAME, first, "KV", PAGE, "https://consumer.huawei.com/kv1-blur.jpg",
+                  kind="device", shows_device=True),
+            Image("kv1.jpg", NAME, second, "KV", PAGE, "https://consumer.huawei.com/kv1.jpg",
+                  kind="device", shows_device=True),
+            Image("screen.jpg", NAME, distinct, "屏幕", PAGE, "https://consumer.huawei.com/screen.jpg",
+                  kind="screen_ui", shows_device=False),
+        ]
+        out = dedupe_images(images)
+        self.assertEqual([image.id for image in out], ["kv1.jpg", "screen.jpg"])
+        self.doc.images = images
+        with patch.object(web_images, "find_hero") as lookup:
+            result = pipeline.retrieve(SimpleNamespace(load=lambda _: self.doc), self.doc.id, {})
+        lookup.assert_not_called()
+        self.assertEqual([image.id for image in result["images"]], ["kv1.jpg", "screen.jpg"])
 
     def test_activity_records_follow_actual_requests_and_cached_assets_do_not_claim_network(self):
         activities = []

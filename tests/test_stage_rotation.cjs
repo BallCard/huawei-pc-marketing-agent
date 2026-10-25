@@ -66,6 +66,18 @@ test('failure or budget termination immediately clears pending presentation',()=
   assert.equal(c.rotation.queue.length,0);
 });
 
+test('completed stages remain selectable after terminal stage is shown',()=>{
+  const c=clock();
+  c.rotation.update([phase('scene'),phase('plan'),phase('recheck'),phase('finish')],{restore:true});
+  assert.equal(c.rotation.current,'finish');
+  assert.equal(c.rotation.select('plan'),true);
+  assert.equal(c.rotation.current,'plan');
+  assert.equal(c.changes.at(-1).stage.id,'plan');
+  c.advance(10000);
+  assert.equal(c.rotation.current,'plan');
+  assert.equal(c.rotation.select('missing'),false);
+});
+
 test('追问续跑从定格环节接着走，收尾环节不提前复用',()=>{
   const c=clock();
   c.rotation.update([phase('scene'),phase('sources')]);c.advance(2000);

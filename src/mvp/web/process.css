@@ -53,6 +53,11 @@
 .phase-track-scroll { min-width: 0; overflow-x: auto; padding: 6px 0 5px; scrollbar-width: thin; scrollbar-color: #d9cbb9 transparent; }
 .phase-track { position: relative; display: grid; grid-template-columns: repeat(var(--phase-count,5),minmax(0,1fr)); min-width: var(--track-min-width,310px); width: 100%; }
 .phase-dot { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; color: #b4a998; white-space: nowrap; font-size: 12px; }
+.phase-dot[role="button"] { cursor: pointer; }
+.phase-dot[role="button"]:focus-visible { outline: 2px solid #b9957f; outline-offset: 5px; border-radius: 4px; }
+.phase-dot[aria-disabled="true"] { cursor: default; }
+.phase-dot.done[role="button"]:hover { color: #657457; }
+.phase-track-hint { display: block; margin-top: 6px; text-align: right; color: #a99b87; font-size: 10px; }
 .phase-dot i { position: relative; z-index: 1; display: grid; place-items: center; height: 22px; width: 22px; border: 1px solid #ded6c8; border-radius: 50%; background: var(--bg-canvas); color: #b7aa96; font: 10px/1 var(--font-sans); }
 .phase-dot.done { color: #7f8c72; }
 .phase-dot.done i { color: #788a6d; border-color: #c4cdb9; background: #eef0e6; font-size: 12px; }

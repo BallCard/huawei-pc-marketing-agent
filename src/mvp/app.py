@@ -106,6 +106,8 @@ async def access_control(request: Request, call_next):
         response.headers["Content-Type"] = "font/woff2"
     if request.url.path.startswith(("/api/", "/img/")) or request.url.path in ("/", "/login", "/logout"):
         response.headers["Cache-Control"] = "no-store"
+    if public_showcase_asset:
+        response.headers["Cache-Control"] = "no-store"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "same-origin"
     return response

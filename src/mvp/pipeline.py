@@ -17,7 +17,7 @@ from typing import Callable
 import yaml
 
 from . import llm, settings, verify, web_images, reconcile
-from .kb import Image, ModelDoc, Snippet, get_kb
+from .kb import Image, ModelDoc, Snippet, dedupe_images, dedupe_images_with_aliases, get_kb
 from .progress import Trace
 from .clarification import MAX_ROUNDS as MAX_CLARIFY_ROUNDS, round_count as _clarify_round, form_result, prepare_questions, question_text
 from .editorial_context import check_similarity, context_facts
@@ -283,6 +283,11 @@ def retrieve(kb, model_id: str, strat: dict, on_activity=None) -> dict:
     if not any(i.is_hero for i in imgs):
         lookup = web_images.find_hero(doc, on_activity=on_activity) if on_activity else web_images.find_hero(doc)
         imgs = lookup.get("images", []) + imgs
+    # Some Huawei packages contain original and ``*-blur`` exports of the same
+    # visual. Keep one canonical asset before exposing the catalog to the writer
+    # and before assigning I1/I2/... IDs; otherwise both can be selected and
+    # rendered as separate recommendation cards.
+    imgs = dedupe_images(imgs)
     # 整机图排前面，logo/示意图等非产品图排后面；模型只会在“可用图片”里按语义挑，不会被图注带偏
     rank = {"device": 0, "device_scene": 1, "detail": 2, "screen_ui": 3, "diagram": 4, "other": 5, "people": 5, "logo": 6, "": 3}
     imgs.sort(key=lambda i: (0 if i.is_hero else 1, rank.get(i.kind, 5)))
@@ -864,14 +869,20 @@ def continue_review(source: dict, decision: dict, on_update=None) -> dict:
     plan = artifacts.get("plan") or source.get("planning")
     if (plan or {}).get("template"):
         task["_template_plan"] = copy.deepcopy(plan["template"])
-    available = {im.id: im for im in doc.images}
-    available.update({im.id: im for im in web_images.cached_images(doc, require_fresh=False)})
+    available_images, aliases = dedupe_images_with_aliases(
+        list(doc.images) + web_images.cached_images(doc, require_fresh=False))
+    available = {im.id: im for im in available_images}
+    for original, canonical in aliases.items():
+        if canonical in available:
+            available[original] = available[canonical]
     catalog = (artifacts.get("sources") or {}).get("images") or source.get("images", [])
     images, mapping = [], {}
     for row in catalog:
         if row["name"] in available:
-            images.append(available[row["name"]])
-            mapping[row["id"]] = f"I{len(images)}"
+            image = available[row["name"]]
+            if image not in images:
+                images.append(image)
+            mapping[row["id"]] = f"I{images.index(image) + 1}"
     previous = marketing_templates.decorate(source["article"], task, plan)
     task["similarity_feedback"] = check_similarity(previous, context, facts)
     for block in previous.get("blocks", []):

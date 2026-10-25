@@ -11,11 +11,14 @@ ImaKB 在 MVP 阶段仅保留占位（评测与最终演示前需实现，见 RE
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import re
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
+
+from PIL import Image as PILImage
 
 from . import settings
 
@@ -105,6 +108,117 @@ class ModelInfo:
     keys: set[str]
     dir: Path
     name_key: str = ""  # 官方全名归一化后的键
+
+
+_IMAGE_DEDUP_SIZE = 32
+_IMAGE_DEDUP_THRESHOLD = 0.02
+_IMAGE_CHANNEL_SIGNATURE_SIZE = _IMAGE_DEDUP_SIZE * _IMAGE_DEDUP_SIZE + 1
+
+
+def _image_signature(path: Path) -> tuple[float, ...] | None:
+    """Return a small brightness/color-normalized signature for visual deduplication.
+
+    The source package contains both original and ``*-blur`` exports of some
+    Huawei assets. Their bytes and URLs differ, but the displayed picture is
+    effectively the same. A normalized signature catches that case while
+    keeping genuinely different scenes (for example, two different wallpapers)
+    separate.
+    """
+    try:
+        with PILImage.open(path) as source:
+            image = source.convert("RGB").resize((_IMAGE_DEDUP_SIZE, _IMAGE_DEDUP_SIZE))
+            pixels = list(image.getdata())
+    except (OSError, ValueError):
+        return None
+    channels = list(zip(*pixels))
+    out: list[float] = []
+    for values in channels:
+        mean = sum(values) / len(values)
+        variance = sum((value - mean) ** 2 for value in values) / len(values)
+        scale = variance ** 0.5 or 1.0
+        # Keep a low-weight color anchor so flat or near-flat scenes with
+        # different backgrounds do not collapse into the same all-zero hash.
+        out.append(mean / 255.0)
+        out.extend((value - mean) / scale for value in values)
+    return tuple(out)
+
+
+def _image_quality(image: Image) -> tuple[int, int]:
+    try:
+        with PILImage.open(image.path) as source:
+            width, height = source.size
+        pixels = width * height
+    except (OSError, ValueError):
+        try:
+            pixels = int(image.width or 0) * int(image.height or 0)
+        except (TypeError, ValueError):
+            pixels = 0
+    # Equal-sized exports often differ only by Huawei's ``-blur`` suffix;
+    # prefer the original asset when both represent the same visual.
+    source_name = f"{image.id} {image.url}".lower()
+    return pixels, int("blur" not in source_name)
+
+
+def dedupe_images(images: list[Image]) -> list[Image]:
+    """Drop visually duplicated assets while retaining the best source.
+
+    IDs are assigned later by the pipeline, so replacing an earlier row with a
+    higher-resolution duplicate is safe and keeps one canonical image per
+    visual. The input order remains stable for non-duplicates.
+    """
+    return dedupe_images_with_aliases(images)[0]
+
+
+def dedupe_images_with_aliases(images: list[Image]) -> tuple[list[Image], dict[str, str]]:
+    """Return canonical images plus filename aliases for legacy result rows."""
+    kept: list[Image] = []
+    aliases: dict[str, str] = {}
+    digests: dict[str, int] = {}
+    signatures: list[tuple[float, ...] | None] = []
+
+    for image in images:
+        try:
+            digest = hashlib.sha256(image.path.read_bytes()).hexdigest()
+        except OSError:
+            digest = ""
+        duplicate_at = digests.get(digest) if digest else None
+        signature = _image_signature(image.path)
+        if duplicate_at is None and signature is not None:
+            for index, prior in enumerate(signatures):
+                if prior is None or len(prior) != len(signature):
+                    continue
+                if any(abs(signature[index] - prior[index]) > 0.08
+                       for index in (0, _IMAGE_CHANNEL_SIGNATURE_SIZE, _IMAGE_CHANNEL_SIGNATURE_SIZE * 2)):
+                    continue
+                distance = sum(abs(a - b) for a, b in zip(signature, prior)) / len(signature)
+                if distance <= _IMAGE_DEDUP_THRESHOLD:
+                    duplicate_at = index
+                    break
+        if duplicate_at is None:
+            if digest:
+                digests[digest] = len(kept)
+            kept.append(image)
+            signatures.append(signature)
+            aliases[image.id] = image.id
+            continue
+        canonical = kept[duplicate_at]
+        old_canonical_id = canonical.id
+        if _image_quality(image) > _image_quality(canonical):
+            kept[duplicate_at] = image
+            signatures[duplicate_at] = signature
+            canonical = image
+            aliases[old_canonical_id] = canonical.id
+        aliases[image.id] = canonical.id
+    # A later, higher-quality duplicate can replace an earlier canonical row.
+    # Collapse any alias chains so every legacy filename resolves directly to
+    # an image that is present in ``kept``.
+    for alias, target in list(aliases.items()):
+        seen: set[str] = set()
+        while target in aliases and aliases[target] != target and target not in seen:
+            seen.add(target)
+            target = aliases[target]
+        aliases[alias] = target
+    return kept, aliases
 
 
 def _read(p: Path) -> str:

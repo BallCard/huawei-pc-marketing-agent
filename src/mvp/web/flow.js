@@ -93,7 +93,8 @@
     const stages = window.deriveStages({ steps: state.steps, state: state.state, result: latest.result });
     const phases = [...primary().map(id=>window.PROCESS_PHASES.find(p=>p.id===id)), ...stages.filter(s=>["lookup","repair","recheck"].includes(s.id))];
     const active = stages.findLast(s=>s.status === "running");
-    const trackSignature = JSON.stringify(stages.map(s => [s.id, s.status]));
+    const viewed = active?.id || rotation.current;
+    const trackSignature = JSON.stringify([stages.map(s => [s.id, s.status]), viewed]);
     if (track.dataset.signature === trackSignature) return;
     track.dataset.signature = trackSignature;
     track.style.setProperty("--phase-count",phases.length);
@@ -104,13 +105,20 @@
     phases.forEach((phase,index)=>{
       const actual = stages.find(s=>s.id === phase.id), status = actual?.status || "wait";
       let node = track.querySelector(`[data-phase="${phase.id}"]`);
-      if (!node) node = el("span", {"data-phase":phase.id,role:"listitem"},
+      if (!node) node = el("span", {"data-phase":phase.id,role:"button",tabindex:"0",
+        onclick: () => openStageDetail(phase.id),
+        onkeydown: event => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          openStageDetail(phase.id);
+        }},
         el("span",{class:"phase-line","aria-hidden":"true"},el("b")),
         el("i",{"aria-hidden":"true"}),el("span",{class:"phase-name"},phase.label));
-      node.className = `phase-dot ${status}${active?.id === phase.id ? " current" : ""}`;
-      node.title = `${phase.label} · ${actual ? STATUS[status] : "待处理"}`;
+      node.className = `phase-dot ${status}${viewed === phase.id ? " current" : ""}`;
+      node.title = actual ? `${phase.label} · ${STATUS[status]} · 点击查看处理记录` : `${phase.label} · 待处理`;
       node.setAttribute("aria-label",node.title);
-      if (active?.id === phase.id) node.setAttribute("aria-current","step"); else node.removeAttribute("aria-current");
+      node.setAttribute("aria-disabled", String(!actual));
+      if (viewed === phase.id) node.setAttribute("aria-current","step"); else node.removeAttribute("aria-current");
       node.querySelector("i").textContent = status === "done" ? "✓" : status === "error" ? "!" : String(index+1).padStart(2,"0");
       const next = stages.find(s=>s.id === phases[index+1]?.id);
       const line = node.querySelector(".phase-line");
@@ -122,6 +130,14 @@
     if (active && active.id !== previousActive && scroller.scrollWidth > scroller.clientWidth) {
       const node = track.querySelector(`[data-phase="${active.id}"]`);
       scroller.scrollTo({left:Math.max(0,node.offsetLeft + node.offsetWidth/2 - scroller.clientWidth/2),behavior:reduced.matches ? "instant" : "smooth"});
+    }
+  }
+  function openStageDetail(id) {
+    const stages = window.deriveStages({ steps: state.steps, state: state.state, result: latest.result });
+    const stage = stages.find(item => item.id === id);
+    if (stage) {
+      if (["done", "error"].includes(latest.state)) rotation.select(id);
+      openDetail(stage);
     }
   }
   function detailBlock(title, text) {

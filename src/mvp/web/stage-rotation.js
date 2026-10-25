@@ -93,6 +93,15 @@
       }
       if (this.timer != null) { this.clearTimer(this.timer); this.timer = null; }
     }
+    select(id) {
+      if (!this.known.has(id)) return false;
+      if (this.timer != null) { this.clearTimer(this.timer); this.timer = null; }
+      this.queue = [];
+      this.current = id;
+      this.since = this.now();
+      this.emit(null, false);
+      return true;
+    }
     emit(previous, rotate) {
       this.onChange({ stage: this.known.get(this.current) || null,
         next: this.known.get(this.queue[0]) || null, previous, rotate });
