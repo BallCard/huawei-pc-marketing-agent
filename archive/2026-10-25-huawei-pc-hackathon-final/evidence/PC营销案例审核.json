@@ -1,0 +1,247 @@
+{
+  "report_id": "pc-marketing-review-20261021",
+  "exported_at": "2026-10-21T11:56:15.147Z",
+  "policy": "用户审核样板；未入选案例不自动进入 bot；结构提取亦需审核",
+  "cases": [
+    {
+      "id": "C01",
+      "title": "把新品颜色的命名权交给用户",
+      "brand": "惠普",
+      "source": "https://m.adquan.com/case2/detail-345330",
+      "proposed_pattern": [
+        "展示一个真实、可被观察的新品细节",
+        "提出一道有明确答案空间的征集题",
+        "收集真实投稿，说明采用结果",
+        "下一篇回应结果，再介绍相关事实"
+      ],
+      "status": "approved",
+      "note": "小红书示例的评论区可以参考这个设计，海报也可以按照这个",
+      "updatedAt": "2026-10-21T11:51:19.295Z"
+    },
+    {
+      "id": "C02",
+      "title": "把笔记本拍成一座微缩城市",
+      "brand": "联想",
+      "source": "https://www.digitaling.com/projects/361031.html",
+      "proposed_pattern": [
+        "为一组相关功能选定一个统一空间隐喻",
+        "逐项建立功能与空间部件的对应关系",
+        "按同一世界观安排镜头",
+        "回到真实产品与可核对的功能"
+      ],
+      "status": "approved",
+      "note": "海报可以做这个风格的生图",
+      "updatedAt": "2026-10-21T11:51:28.814Z"
+    },
+    {
+      "id": "C03",
+      "title": "同一真实空间，长出两种栏目",
+      "brand": "联想",
+      "source": "https://www.admen.cn/caseContent/7781",
+      "proposed_pattern": [
+        "登记本店可持续拍摄的真实空间和任务",
+        "确定一个稳定栏目及其说话角色",
+        "按平台选择解释型或情景型叙事",
+        "用同一素材拆成短视频与图文"
+      ],
+      "status": "reject",
+      "note": "",
+      "updatedAt": "2026-10-21T11:52:16.198Z"
+    },
+    {
+      "id": "C04",
+      "title": "让电脑品牌有一个会持续说话的角色",
+      "brand": "华硕",
+      "source": "https://www.admen.cn/caseContent/2813",
+      "proposed_pattern": [
+        "明确角色的性格、兴趣与行为边界",
+        "围绕兴趣生产固定栏目",
+        "给粉丝可收藏或使用的内容",
+        "在相关情境中自然出现产品"
+      ],
+      "status": "approved",
+      "note": "可以做，但是表明仅作试验，与品牌方暂无联系",
+      "updatedAt": "2026-10-21T11:51:58.737Z"
+    },
+    {
+      "id": "C05",
+      "title": "把安全功能藏进一场找电脑的追逐",
+      "brand": "Apple",
+      "source": "https://www.digitaling.com/projects/255758.html",
+      "proposed_pattern": [
+        "交代一个有时间压力的具体任务",
+        "加入一个与功能相关的障碍",
+        "用已证实的功能推动下一步",
+        "回到任务结果，保留一个轻喜剧收尾"
+      ],
+      "status": "reject",
+      "note": "这个成本高，太复杂",
+      "updatedAt": "2026-10-21T11:52:13.213Z"
+    },
+    {
+      "id": "C06",
+      "title": "让 E 人老爸替新概念开口",
+      "brand": "惠普",
+      "source": "https://m.adquan.com/case2/detail-340968",
+      "proposed_pattern": [
+        "角色先许下一个具体承诺",
+        "遇到能力或时间障碍，出现轻喜剧冲突",
+        "产品以有依据的能力推动任务",
+        "结果回应开头承诺，人物关系收尾"
+      ],
+      "status": "reject",
+      "note": "",
+      "updatedAt": "2026-10-21T11:52:26.362Z"
+    },
+    {
+      "id": "C07",
+      "title": "一个创业难题，对应一项 AI 能力",
+      "brand": "惠普",
+      "source": "https://www.adquan.com/article/347751",
+      "proposed_pattern": [
+        "先出现一个具体职业的工作难题",
+        "让难题在场景中变得可见",
+        "引入一项相关功能并展示动作",
+        "回到工作任务，形成这一集的收尾"
+      ],
+      "status": "approved",
+      "note": "可以生图做一系列的小剧场，做成动漫样式或者四格漫画之类的",
+      "updatedAt": "2026-10-21T11:52:58.096Z"
+    },
+    {
+      "id": "C08",
+      "title": "严肃合唱团，唱一段不太严肃的卖点",
+      "brand": "华为",
+      "source": "https://www.digitaling.com/projects/315328.html",
+      "proposed_pattern": [
+        "选择一个与日常卖点表达有距离的形式",
+        "用少量准确关键词建立节奏",
+        "让角色对应具体使用情境",
+        "回到产品主张"
+      ],
+      "status": "approved",
+      "note": "反差，故事感，醒目，简洁",
+      "updatedAt": "2026-10-21T11:53:36.313Z"
+    },
+    {
+      "id": "C09",
+      "title": "让创作者和自己的 AI 分身对话",
+      "brand": "英特尔",
+      "source": "https://www.digitaling.com/projects/288287.html",
+      "proposed_pattern": [
+        "确定一个真实创作者的具体任务",
+        "提出该任务中的一个问题",
+        "用问答或双视角展开过程",
+        "展示实际作品或可验证能力"
+      ],
+      "status": "approved",
+      "note": "生活化场景，海报可用，数字孪生。",
+      "updatedAt": "2026-10-21T11:54:09.832Z"
+    },
+    {
+      "id": "C10",
+      "title": "先问：擦香水的电脑是什么样的？",
+      "brand": "华硕",
+      "source": "https://www.digitaling.com/projects/339450.html",
+      "proposed_pattern": [
+        "用真实罕见细节提出悬念",
+        "逐条放出可验证线索",
+        "揭示该细节的结构或用法",
+        "用统一视觉承接正式产品内容"
+      ],
+      "status": "approved",
+      "note": "可以拟一些可能的品牌联动，ip联动，但是非真需标注",
+      "updatedAt": "2026-10-21T11:54:37.256Z"
+    },
+    {
+      "id": "C11",
+      "title": "把电脑放回漫画家的创作过程",
+      "brand": "荣耀",
+      "source": "https://www.dsconsulting.com/cases/c70.html",
+      "proposed_pattern": [
+        "记录创作者正在做的一件具体工作",
+        "展示一个过程节点或困难",
+        "让电脑作为工作工具出现",
+        "给出真实作品或创作者反馈"
+      ],
+      "status": "reject",
+      "note": "",
+      "updatedAt": "2026-10-21T11:54:42.963Z"
+    },
+    {
+      "id": "C12",
+      "title": "用玩家的一个痛点，安排一次对照",
+      "brand": "宏碁",
+      "source": "https://dogooder.com.tw/project.php?id=163&source=holon",
+      "proposed_pattern": [
+        "开场提出一个具体游戏或使用痛点",
+        "交代演示任务和条件",
+        "给出可复查的前后或条件对照",
+        "解释结果及适用范围"
+      ],
+      "status": "reject",
+      "note": "",
+      "updatedAt": "2026-10-21T11:54:48.454Z"
+    },
+    {
+      "id": "C13",
+      "title": "进入用户已经在问的选购问题",
+      "brand": "戴尔",
+      "source": "https://www.5iidea.com/caseContent/2530",
+      "proposed_pattern": [
+        "选一个真实且有边界的购买问题",
+        "先明确使用任务与约束",
+        "用证据逐项回答判断条件",
+        "列出适合与不适合、待核对项"
+      ],
+      "status": "approved",
+      "note": "",
+      "updatedAt": "2026-10-21T11:54:57.795Z"
+    },
+    {
+      "id": "C14",
+      "title": "同一主题，延展成电商与内容两套素材",
+      "brand": "微软",
+      "source": "https://www.5iidea.com/caseContent/2495",
+      "proposed_pattern": [
+        "确定一个活动主题与核心事实",
+        "保留统一视觉和主张",
+        "按入口的任务拆分素材",
+        "每个渠道给出适配的下一步动作"
+      ],
+      "status": "approved",
+      "note": "",
+      "updatedAt": "2026-10-21T11:55:04.095Z"
+    },
+    {
+      "id": "C15",
+      "title": "同一个 AI 主题，按生活节点分成三集",
+      "brand": "联想",
+      "source": "https://www.adquan.com/article/344513",
+      "proposed_pattern": [
+        "确认与本次需求有关的真实节点",
+        "选择该节点中的一件具体任务",
+        "设置一个与功能有因果关系的难处",
+        "展示相关能力后回到人物关系"
+      ],
+      "status": "approved",
+      "note": "结合某个文化现象，或者社会热题，具有时效性和传播性",
+      "updatedAt": "2026-10-21T11:55:32.069Z"
+    },
+    {
+      "id": "C16",
+      "title": "把内容邀请落到真实的线下体验",
+      "brand": "联想",
+      "source": "https://brand.lenovo.com.cn/brand/ppn03436.html",
+      "proposed_pattern": [
+        "提出一个可亲自体验的具体项目",
+        "说明适合谁以及能做什么",
+        "给出真实时间、地点和参与方式",
+        "以体验后反馈形成后续内容"
+      ],
+      "status": "approved",
+      "note": "更真实，但是具体信息可以fake数据，仅展示我们的demo想法",
+      "updatedAt": "2026-10-21T11:56:06.207Z"
+    }
+  ]
+}
